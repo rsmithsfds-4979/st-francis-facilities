@@ -41,6 +41,11 @@
     <div class="nav-item" onclick="goContacts('Volunteer',this)"><span>Volunteers</span></div>
   </div>
   <div class="nav-section">
+    <div class="nav-label">Reports</div>
+    <div class="nav-item" onclick="go('pm-report',this)"><span>PM Compliance</span></div>
+    <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor & COI</span></div>
+  </div>
+  <div class="nav-section">
     <div class="nav-label">Admin</div>
     <div class="nav-item" onclick="go('settings',this)"><span>Settings</span></div>
   </div>
@@ -245,6 +250,29 @@
     <div class="topbar-actions"><button class="btn btn-primary" id="contacts-add-btn" onclick="openContactModal()">+ Add Contact</button></div>
   </div>
   <div class="content"><div id="contacts-list"><div class="loading">Loading...</div></div></div>
+</div>
+
+<!-- PM COMPLIANCE REPORT -->
+<div class="view" id="view-pm-report">
+  <div class="topbar">
+    <div class="topbar-title">PM Compliance Report</div>
+    <div class="topbar-actions no-print">
+      <select class="btn" id="pmr-f-bld" onchange="renderPMReport()"><option value="all">All buildings</option></select>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content" id="pmr-content"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- VENDOR & COI REPORT -->
+<div class="view" id="view-coi-report">
+  <div class="topbar">
+    <div class="topbar-title">Vendor & COI Compliance Report</div>
+    <div class="topbar-actions no-print">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content" id="coir-content"><div class="loading">Loading...</div></div>
 </div>
 
 <!-- SETTINGS -->

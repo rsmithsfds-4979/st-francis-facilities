@@ -384,6 +384,141 @@ function populateCategoryDropdown(){
   if(cur)el.value=cur;
 }
 
+// ---- REPORT HELPERS ----
+function parseDate(str){
+  if(!str)return null;
+  const d=new Date(str);
+  return isNaN(d.getTime())?null:d;
+}
+function daysBetween(a,b){return Math.floor((a.getTime()-b.getTime())/(24*60*60*1000));}
+function fmtDate(d){return d?d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):'—';}
+
+// ---- RENDER PM COMPLIANCE REPORT ----
+function renderPMReport(){
+  const fbEl=document.getElementById('pmr-f-bld');
+  if(fbEl){
+    const cur=fbEl.value;
+    while(fbEl.options.length>1)fbEl.remove(1);
+    buildings.forEach(b=>{const o=document.createElement('option');o.value=b.name;o.textContent=b.name;fbEl.appendChild(o);});
+    if(cur)fbEl.value=cur;
+  }
+  const fb=fbEl?.value||'all';
+  const el=document.getElementById('pmr-content');
+  if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
+  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0);
+  const in30=new Date(now.getTime()+30*24*60*60*1000);
+
+  const active=pmTasks.filter(p=>p.status!=='Done').filter(p=>fb==='all'||p.building===fb||p.building==='All Buildings');
+  const withDate=active.map(p=>({...p,_due:parseDate(p.next_due)}));
+
+  const overdue=withDate.filter(p=>p._due&&p._due<now).sort((a,b)=>a._due-b._due);
+  const dueThisMonth=withDate.filter(p=>p._due&&p._due>=now&&p._due<=monthEnd).sort((a,b)=>a._due-b._due);
+  const upcoming=withDate.filter(p=>p._due&&p._due>monthEnd&&p._due<=in30).sort((a,b)=>a._due-b._due);
+  const noDate=withDate.filter(p=>!p._due);
+
+  const totalActive=active.length;
+  const doneTasks=pmTasks.filter(p=>p.status==='Done');
+  const onTimePct=doneTasks.length?Math.round((doneTasks.filter(p=>{
+    const lc=parseDate(p.last_completed),nd=parseDate(p.next_due);
+    return lc&&nd?lc<=nd:true;
+  }).length/doneTasks.length)*100):null;
+
+  const row=p=>{
+    const days=p._due?daysBetween(now,p._due):null;
+    const ageLabel=days===null?'—':days<0?`${-days} day${days===-1?'':'s'} overdue`:days===0?'Today':`${days} day${days===1?'':'s'} left`;
+    return`<tr>
+      <td style="font-weight:bold;white-space:normal">${p.title}</td>
+      <td>${p.building||''}</td>
+      <td>${p.frequency||''}</td>
+      <td>${p.assigned_to||'Unassigned'}</td>
+      <td>${fmtDate(p._due)}</td>
+      <td>${p.last_completed||'—'}</td>
+      <td>${ageLabel}</td>
+    </tr>`;
+  };
+
+  const section=(title,rows,emptyMsg,color)=>`
+    <div class="card">
+      <div class="card-header"><div class="card-title" ${color?`style="color:${color}"`:''}>${title} · ${rows.length}</div></div>
+      ${rows.length?`<table class="table">
+        <colgroup><col style="width:26%"><col style="width:14%"><col style="width:11%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:13%"></colgroup>
+        <thead><tr><th>Task</th><th>Building</th><th>Frequency</th><th>Assigned</th><th>Next Due</th><th>Last Done</th><th>Status</th></tr></thead>
+        <tbody>${rows.map(row).join('')}</tbody>
+      </table>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+    </div>`;
+
+  el.innerHTML=`
+    <div class="report-meta no-screen" style="display:none">Generated ${fmtDate(now)}${fb!=='all'?' · '+fb:''}</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)">${overdue.length}</div><div class="stat-delta">past due date</div></div>
+      <div class="stat-card"><div class="stat-label">Due This Month</div><div class="stat-value" style="color:var(--warning)">${dueThisMonth.length}</div><div class="stat-delta">${fmtDate(monthStart)}–${fmtDate(monthEnd)}</div></div>
+      <div class="stat-card"><div class="stat-label">Active PMs</div><div class="stat-value" style="color:var(--accent)">${totalActive}</div><div class="stat-delta">not yet done</div></div>
+      <div class="stat-card"><div class="stat-label">On-time %</div><div class="stat-value" style="color:var(--success)">${onTimePct===null?'—':onTimePct+'%'}</div><div class="stat-delta">of completed</div></div>
+    </div>
+    ${section('Overdue',overdue,'No overdue PM tasks. ✓','var(--danger)')}
+    ${section('Due this month',dueThisMonth,'Nothing due this month.')}
+    ${section('Upcoming (next 30 days)',upcoming,'No tasks due in the next 30 days.')}
+    ${noDate.length?section('No due date set',noDate,''):''}
+  `;
+}
+
+// ---- RENDER VENDOR & COI REPORT ----
+function renderCOIReport(){
+  const el=document.getElementById('coir-content');
+  if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const in60=new Date(now.getTime()+60*24*60*60*1000);
+
+  const contractors=contacts.filter(c=>c.type==='Contractor');
+  const withParsed=contractors.map(c=>({...c,_exp:parseDate(c.coi_expiry)}));
+
+  const expired=withParsed.filter(c=>c._exp&&c._exp<now).sort((a,b)=>a._exp-b._exp);
+  const expiring=withParsed.filter(c=>c._exp&&c._exp>=now&&c._exp<=in60).sort((a,b)=>a._exp-b._exp);
+  const missing=withParsed.filter(c=>!c._exp);
+  const current=withParsed.filter(c=>c._exp&&c._exp>in60).sort((a,b)=>a._exp-b._exp);
+
+  const row=(c,label)=>{
+    const days=c._exp?daysBetween(c._exp,now):null;
+    const ageLabel=days===null?'No expiry on file':days<0?`Expired ${-days} day${days===-1?'':'s'} ago`:days===0?'Expires today':`${days} day${days===1?'':'s'} remaining`;
+    return`<tr>
+      <td style="font-weight:bold">${c.name}</td>
+      <td>${c.role||''}</td>
+      <td>${c.phone||''}</td>
+      <td>${fmtDate(c._exp)}</td>
+      <td>${ageLabel}</td>
+      <td>${c.coi_insurer||'—'}</td>
+      <td>${c.coi_policy_number||'—'}</td>
+      <td class="no-print">${c.coi_url?`<a href="${c.coi_url}" target="_blank">📄</a>`:''}</td>
+    </tr>`;
+  };
+
+  const section=(title,rows,emptyMsg,color)=>`
+    <div class="card">
+      <div class="card-header"><div class="card-title" ${color?`style="color:${color}"`:''}>${title} · ${rows.length}</div></div>
+      ${rows.length?`<table class="table">
+        <colgroup><col style="width:17%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:13%"><col style="width:7%"></colgroup>
+        <thead><tr><th>Contractor</th><th>Role</th><th>Phone</th><th>COI Expiry</th><th>Status</th><th>Insurer</th><th>Policy #</th><th class="no-print">COI</th></tr></thead>
+        <tbody>${rows.map(row).join('')}</tbody>
+      </table>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+    </div>`;
+
+  el.innerHTML=`
+    <div class="report-meta no-screen" style="display:none">Generated ${fmtDate(now)}</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Contractors</div><div class="stat-value" style="color:var(--accent)">${contractors.length}</div><div class="stat-delta">total on file</div></div>
+      <div class="stat-card"><div class="stat-label">Expired</div><div class="stat-value" style="color:var(--danger)">${expired.length}</div><div class="stat-delta">COI past expiry</div></div>
+      <div class="stat-card"><div class="stat-label">Expiring in 60 days</div><div class="stat-value" style="color:var(--warning)">${expiring.length}</div><div class="stat-delta">needs renewal soon</div></div>
+      <div class="stat-card"><div class="stat-label">No COI on file</div><div class="stat-value" style="color:var(--text3)">${missing.length}</div><div class="stat-delta">missing expiry</div></div>
+    </div>
+    ${section('Expired COIs',expired,'No expired COIs. ✓','var(--danger)')}
+    ${section('Expiring in the next 60 days',expiring,'No COIs expiring in the next 60 days.','var(--warning)')}
+    ${section('No COI on file',missing,'Every contractor has a COI expiry recorded.')}
+    ${section('Current COIs',current,'No contractors with current COIs.','var(--success)')}
+  `;
+}
+
 // ---- RENDER SETTINGS ----
 function renderSettings(){
   const el=document.getElementById('categories-list');

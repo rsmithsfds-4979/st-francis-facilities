@@ -151,6 +151,32 @@ textarea.fi{resize:vertical;min-height:65px}
 .confirm-box{background:var(--bg2);border-radius:var(--rl);padding:24px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .confirm-box h4{font-size:15px;font-weight:bold;color:var(--accent2);margin-bottom:8px}
 .confirm-box p{font-size:13px;color:var(--text2);font-family:sans-serif;margin-bottom:18px;line-height:1.5}
+@media print {
+  @page { margin: 0.5in; }
+  body { background: #fff; color: #000; }
+  .app { display: block; height: auto; overflow: visible; }
+  .sidebar, .no-print, .topbar-actions { display: none !important; }
+  .main { flex: none; overflow: visible; display: block; }
+  .content { overflow: visible; padding: 0; }
+  .view { display: none !important; }
+  .view.active { display: block !important; }
+  .topbar { border: none; padding: 0 0 12px 0; background: transparent; position: static; }
+  .topbar-title { font-size: 18pt; color: #000; letter-spacing: 0; }
+  .stats-row { grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; page-break-inside: avoid; }
+  .stat-card { border: 1px solid #999; box-shadow: none; padding: 8px 10px; }
+  .stat-value { font-size: 18pt; color: #000; }
+  .stat-label, .stat-delta { color: #444; }
+  .card { border: 1px solid #999; box-shadow: none; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid; }
+  .card-header { padding: 6px 10px; background: #f2f2f2 !important; }
+  .card-title { font-size: 11pt; color: #000; }
+  .table th { background: #f2f2f2 !important; color: #000; font-size: 8pt; padding: 4px 8px; }
+  .table td { font-size: 9pt; padding: 4px 8px; border-color: #ccc; white-space: normal; }
+  .table tr { page-break-inside: avoid; }
+  .badge { border: 1px solid #999; background: #fff !important; color: #000 !important; padding: 1px 6px; }
+  .report-meta { display: block !important; font-size: 9pt; color: #555; font-family: sans-serif; margin-bottom: 8px; }
+  a { color: #000; text-decoration: none; }
+}
+
 @media(max-width:768px){
   .sidebar{width:56px}
   .sidebar-logo,.sidebar-sub,.nav-label{display:none}

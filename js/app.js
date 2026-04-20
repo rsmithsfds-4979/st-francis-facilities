@@ -544,6 +544,8 @@ function go(name,el){
   if(name==='buildings')renderBuildings();
   if(name==='settings')renderSettings();
   if(name==='contacts')renderContacts();
+  if(name==='pm-report')renderPMReport();
+  if(name==='coi-report')renderCOIReport();
   renderHistory();
 }
 
