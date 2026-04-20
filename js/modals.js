@@ -1,0 +1,550 @@
+// All modal open/submit/edit/delete-confirm functions
+
+// ---- WORK ORDER MODAL ----
+function openWOModal(presetRoomId,presetBldId){
+  document.getElementById('wo-modal-h').textContent='New Work Order';
+  const presetRoom=presetRoomId?rooms.find(r=>r.id===presetRoomId):null;
+  const presetBld=presetBldId?buildings.find(b=>b.id===presetBldId):null;
+  const presetBldName=presetBld?.name||presetRoom?.building_name||'';
+  const bldRooms=presetBldName?rooms.filter(r=>r.building_name===presetBldName):[];
+
+  document.getElementById('wo-body').innerHTML=`
+    <div class="fg"><label>Issue description *</label><input type="text" class="fi" id="f-issue" placeholder="Brief description of the problem"></div>
+    <div class="form-row">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="f-bld" onchange="updateRoomDropdown()">
+          <option value="">Select...</option>
+          ${buildings.map(b=>`<option ${b.name===presetBldName?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Room / Location</label>
+        <select class="fi" id="f-room">
+          <option value="">Select room...</option>
+          ${bldRooms.map(r=>`<option value="${r.id}" ${r.id===presetRoomId?'selected':''}>${r.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Priority *</label><select class="fi" id="f-pri"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+      <div class="fg"><label>Due date</label><input type="text" class="fi" id="f-due" placeholder="e.g. May 15 2025"></div>
+    </div>
+    <div class="fg"><label>Assign to *</label>
+      <select class="fi" id="f-assign">
+        <option value="">Select...</option>
+        ${contacts.map(c=>`<option>${c.name}</option>`).join('')}
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Assets being serviced</label>
+      <div id="asset-select-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
+        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 6px">Select the building first to filter assets, or scroll to find assets below</div>
+        ${assets.filter(a=>!presetBldName||a.building===presetBldName).map(a=>`
+          <div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')">
+            <input type="checkbox" value="${a.id}" onclick="event.stopPropagation()">
+            <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
+            <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div>
+          </div>`).join('')}
+      </div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details..."></textarea></div>
+    <div class="fg"><label>Photo (optional)</label>
+      <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click to attach a photo<input type="file" id="wo-photo-input" accept="image/*" style="display:none" onchange="previewPhoto(event,'wo-photo-preview')"></div>
+      <img id="wo-photo-preview" class="photo-preview" style="display:none">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('wo-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitWO()">Save Work Order</button>
+    </div>`;
+  document.getElementById('wo-modal').classList.add('open');
+}
+
+function updateRoomDropdown(){
+  const bldName=document.getElementById('f-bld')?.value;
+  const roomSel=document.getElementById('f-room');
+  const assetList=document.getElementById('asset-select-list');
+  if(roomSel){
+    const bldRooms=bldName?rooms.filter(r=>r.building_name===bldName):[];
+    roomSel.innerHTML='<option value="">Select room...</option>'+bldRooms.map(r=>`<option value="${r.id}">${r.name}${r.floor?' ('+r.floor+')':''}</option>`).join('');
+  }
+  if(assetList&&bldName){
+    const bldAssets=assets.filter(a=>a.building===bldName);
+    assetList.innerHTML=bldAssets.length
+      ?bldAssets.map(a=>`<div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')"><input type="checkbox" value="${a.id}" onclick="event.stopPropagation()"><span style="font-size:14px">${catIcon[a.category]||'📦'}</span><div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div></div>`).join('')
+      :'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No assets found for this building</div>';
+  }
+}
+
+function toggleAssetSelect(el,id){
+  el.classList.toggle('selected');
+  const cb=el.querySelector('input[type=checkbox]');
+  if(cb)cb.checked=!cb.checked;
+}
+
+async function submitWO(){
+  const issue=document.getElementById('f-issue')?.value.trim();
+  const building=document.getElementById('f-bld')?.value;
+  const priority=document.getElementById('f-pri')?.value;
+  const assignee=document.getElementById('f-assign')?.value;
+  if(!issue||!building||!priority||!assignee){showToast('Please fill in all required fields');return;}
+  const roomId=document.getElementById('f-room')?.value||null;
+  const room=roomId?rooms.find(r=>r.id===roomId):null;
+  // Get selected asset IDs
+  const selectedAssets=[...document.querySelectorAll('#asset-select-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  let photo_url=null;
+  const photoFile=document.getElementById('wo-photo-input')?.files[0];
+  if(photoFile)photo_url=await uploadFile(photoFile,'work-orders');
+  saveWO({issue,building,location:room?room.name:document.getElementById('f-room')?.value||'',
+    room_id:roomId,due_date:document.getElementById('f-due')?.value.trim(),
+    priority,assignee,notes:document.getElementById('f-notes')?.value.trim(),
+    status:'Open',photo_url,asset_ids:selectedAssets.length?selectedAssets:null});
+  closeModal('wo-modal');
+}
+
+async function openWODetail(id){
+  const w=workOrders.find(x=>x.id===id);if(!w)return;
+  document.getElementById('wod-h').textContent=w.issue;
+  document.getElementById('wod-sub').textContent=w.building+(w.location?' · '+w.location:'');
+  let comments=[];
+  try{const{data}=await db.from('wo_comments').select('*').eq('work_order_id',id).order('created_at');comments=data||[];}catch(e){}
+  // Get linked assets
+  const linkedAssets=w.asset_ids?.length?assets.filter(a=>w.asset_ids.includes(a.id)):[];
+  document.getElementById('wod-body').innerHTML=`
+    <div class="dr"><div class="dl">Priority</div><div>${pb(w.priority)}</div></div>
+    <div class="dr"><div class="dl">Status</div><div>${sb(w.status)}</div></div>
+    <div class="dr"><div class="dl">Assigned to</div><div style="font-family:sans-serif">${w.assignee}</div></div>
+    <div class="dr"><div class="dl">Due date</div><div style="font-family:sans-serif">${w.due_date||'Not set'}</div></div>
+    <div class="dr"><div class="dl">Completed</div><div style="font-family:sans-serif">${w.completed_date||'—'}</div></div>
+    ${linkedAssets.length?`<div class="dr"><div class="dl">Assets</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:4px">${linkedAssets.map(a=>`<span class="badge b-blue">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}</div></div>`:''}
+    ${w.notes?`<div class="dr"><div class="dl">Notes</div><div style="font-family:sans-serif;white-space:normal;line-height:1.5">${w.notes}</div></div>`:''}
+    ${w.photo_url?`<div style="margin:12px 0"><img src="${w.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openLightbox('${w.photo_url}')"></div>`:''}
+    <div style="margin-top:16px;font-size:11px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px">Comments & Updates</div>
+    <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">
+      ${comments.length?comments.map(c=>`<div class="comment"><div class="comment-author">${c.author}</div><div class="comment-text">${c.comment}</div><div class="comment-time">${new Date(c.created_at).toLocaleString()}</div></div>`).join(''):'<div style="padding:12px 14px;font-size:13px;color:var(--text3);font-family:sans-serif">No comments yet</div>'}
+    </div>
+    <div class="fg"><label>Add a comment</label>
+      <select class="fi" id="cmt-author" style="margin-bottom:8px"><option value="">Your name...</option>${contacts.map(c=>`<option>${c.name}</option>`).join('')}</select>
+      <textarea class="fi" id="cmt-text" placeholder="Update on this work order..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('wo-detail-modal')">Close</button>
+      ${w.status!=='Completed'?`<button class="btn btn-success" onclick="updateWOStatus('${w.id}','Completed');closeModal('wo-detail-modal')">✓ Mark Done</button>`:''}
+      <button class="btn btn-primary" onclick="submitComment('${w.id}')">Add Comment</button>
+    </div>`;
+  document.getElementById('wo-detail-modal').classList.add('open');
+}
+
+function submitComment(woId){
+  const author=document.getElementById('cmt-author')?.value;
+  const comment=document.getElementById('cmt-text')?.value.trim();
+  if(!author||!comment){showToast('Please enter name and comment');return;}
+  addComment(woId,author,comment);
+}
+
+// ---- ASSET MODAL ----
+function openAssetModal(asset,presetRoomId){
+  editingAssetId=asset?asset.id:null;
+  document.getElementById('asset-modal-h').textContent=asset?'Edit Asset':'Add Asset';
+  const v=k=>asset?.[k]||'';
+  const sel=(k,val)=>asset?.[k]===val?'selected':'';
+  const presetRoom=presetRoomId?rooms.find(r=>r.id===presetRoomId):null;
+  const presetBldName=presetRoom?.building_name||'';
+  const bldRooms=presetBldName?rooms.filter(r=>r.building_name===presetBldName):[];
+  document.getElementById('asset-body').innerHTML=`
+    <div class="fg"><label>Name / Description *</label><input type="text" class="fi" id="a-desc" placeholder="e.g. Trane Package Unit, Fire Panel" value="${v('description')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="a-bld" onchange="updateAssetRoomDropdown()">
+          <option value="">Select...</option>
+          ${buildings.map(b=>`<option ${b.name===(v('building')||presetBldName)?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Category *</label>
+        <select class="fi" id="a-cat"><option value="">Select...</option>
+          <option ${sel('category','HVAC')}>HVAC</option><option ${sel('category','Kitchen')}>Kitchen</option>
+          <option ${sel('category','Safety')}>Safety</option><option ${sel('category','AV & Tech')}>AV & Tech</option>
+          <option ${sel('category','Liturgical')}>Liturgical</option><option ${sel('category','Grounds')}>Grounds</option>
+          <option ${sel('category','Plumbing')}>Plumbing</option><option ${sel('category','Electrical')}>Electrical</option>
+          <option ${sel('category','Other')}>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Room</label>
+        <select class="fi" id="a-room-sel">
+          <option value="">Select room...</option>
+          ${(asset?.building?rooms.filter(r=>r.building_name===asset.building):bldRooms).map(r=>`<option value="${r.id}" ${r.id===(asset?.room_id||presetRoomId)?'selected':''}>${r.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Location detail</label><input type="text" class="fi" id="a-loc" placeholder="e.g. Ceiling, Rooftop" value="${v('location')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Serial number</label><input type="text" class="fi" id="a-serial" value="${v('serial')}"></div>
+      <div class="fg"><label>Manufacturer</label><input type="text" class="fi" id="a-mfr" value="${v('manufacturer')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Size / Capacity</label><input type="text" class="fi" id="a-size" placeholder="e.g. 3 Ton" value="${v('size')}"></div>
+      <div class="fg"><label>Expected life</label><input type="text" class="fi" id="a-life" value="${v('expected_life')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Install date</label><input type="text" class="fi" id="a-install" value="${v('install_date')}"></div>
+      <div class="fg"><label>Warranty expiry</label><input type="text" class="fi" id="a-warranty" value="${v('warranty_expiry')}"></div>
+    </div>
+    <div class="fg"><label>Status</label>
+      <select class="fi" id="a-status">
+        <option ${!asset||asset.status==='Active'?'selected':''}>Active</option>
+        <option ${sel('status','Maintenance')}>Maintenance</option>
+        <option ${sel('status','Retired')}>Retired</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="a-notes">${v('notes')}</textarea></div>
+    <div class="fg"><label>Photo</label>
+      ${asset?.photo_url?`<div style="margin-bottom:8px"><img src="${asset.photo_url}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openLightbox('${asset.photo_url}')"></div>`:''}
+      <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 ${asset?.photo_url?'Replace photo':'Attach photo'}<input type="file" id="a-photo-input" accept="image/*" style="display:none" onchange="previewPhoto(event,'a-photo-preview')"></div>
+      <img id="a-photo-preview" class="photo-preview" style="display:none">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('asset-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAsset()">${asset?'Save Changes':'Add Asset'}</button>
+    </div>`;
+  document.getElementById('asset-modal').classList.add('open');
+}
+
+function updateAssetRoomDropdown(){
+  const bldName=document.getElementById('a-bld')?.value;
+  const sel=document.getElementById('a-room-sel');
+  if(sel&&bldName){
+    const bldRooms=rooms.filter(r=>r.building_name===bldName);
+    sel.innerHTML='<option value="">Select room...</option>'+bldRooms.map(r=>`<option value="${r.id}">${r.name}${r.floor?' ('+r.floor+')':''}</option>`).join('');
+  }
+}
+
+async function submitAsset(){
+  const description=document.getElementById('a-desc')?.value.trim();
+  const building=document.getElementById('a-bld')?.value;
+  const category=document.getElementById('a-cat')?.value;
+  if(!description||!building||!category){showToast('Please fill in name, building, and category');return;}
+  const roomId=document.getElementById('a-room-sel')?.value||null;
+  const room=roomId?rooms.find(r=>r.id===roomId):null;
+  let photo_url=editingAssetId?assets.find(a=>a.id===editingAssetId)?.photo_url:null;
+  const photoFile=document.getElementById('a-photo-input')?.files[0];
+  if(photoFile)photo_url=await uploadFile(photoFile,'assets');
+  saveAsset({description,building,category,
+    room_id:roomId,room_number:room?room.name:document.getElementById('a-loc')?.value.trim(),
+    location:document.getElementById('a-loc')?.value.trim(),
+    serial:document.getElementById('a-serial')?.value.trim(),
+    manufacturer:document.getElementById('a-mfr')?.value.trim(),
+    size:document.getElementById('a-size')?.value.trim(),
+    expected_life:document.getElementById('a-life')?.value.trim(),
+    install_date:document.getElementById('a-install')?.value.trim(),
+    warranty_expiry:document.getElementById('a-warranty')?.value.trim(),
+    status:document.getElementById('a-status')?.value,
+    notes:document.getElementById('a-notes')?.value.trim(),
+    photo_url,
+  });
+}
+
+function editAsset(id){const a=assets.find(x=>x.id===id);if(a)openAssetModal(a);}
+
+// ---- BUILDING MODAL ----
+function openBuildingModal(bld){
+  editingBldId=bld?bld.id:null;
+  document.getElementById('bld-modal-h').textContent=bld?'Edit Building':'Add Building';
+  const v=k=>bld?.[k]||'';
+  document.getElementById('bld-body').innerHTML=`
+    <div class="fg"><label>Building name *</label><input type="text" class="fi" id="bld-name" placeholder="e.g. Parish Hall, School Gymnasium" value="${v('name')}"></div>
+    <div class="fg"><label>Description</label><input type="text" class="fi" id="bld-desc" placeholder="Brief description" value="${v('description')}"></div>
+    <div class="fg"><label>Address</label><input type="text" class="fi" id="bld-addr" placeholder="Street address" value="${v('address')}"></div>
+    <div class="fg"><label>Floors / Levels</label><input type="text" class="fi" id="bld-floors" placeholder="e.g. Basement, 1st Floor, 2nd Floor, Roof" value="${v('floors')}"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('building-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitBuilding()">${bld?'Save Changes':'Add Building'}</button>
+    </div>`;
+  document.getElementById('building-modal').classList.add('open');
+}
+
+function submitBuilding(){
+  const name=document.getElementById('bld-name')?.value.trim();
+  if(!name){showToast('Please enter a building name');return;}
+  saveBuilding({name,description:document.getElementById('bld-desc')?.value.trim(),address:document.getElementById('bld-addr')?.value.trim(),floors:document.getElementById('bld-floors')?.value.trim()});
+  closeModal('building-modal');
+}
+
+function editBuilding(id){const b=buildings.find(x=>x.id===id);if(b)openBuildingModal(b);}
+
+// ---- ROOM MODAL ----
+function openRoomModal(room){
+  editingRoomId=room?room.id:null;
+  document.getElementById('room-modal-h').textContent=room?'Edit Room':'Add Room / Space';
+  const v=k=>room?.[k]||'';
+  const bld=buildings.find(b=>b.id===currentBuildingId);
+  document.getElementById('room-body').innerHTML=`
+    <div class="fg"><label>Room / Space name *</label><input type="text" class="fi" id="room-name" placeholder="e.g. Classroom 209, Server Room, Boiler Room" value="${v('name')}"></div>
+    <div class="fg"><label>Floor / Level</label><input type="text" class="fi" id="room-floor" placeholder="e.g. 1st Floor, Basement, Roof" value="${v('floor')||''}"></div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="room-notes" placeholder="Any relevant notes about this space...">${v('notes')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('room-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRoom()">${room?'Save Changes':'Add Room'}</button>
+    </div>`;
+  document.getElementById('room-modal').classList.add('open');
+}
+
+function submitRoom(){
+  const name=document.getElementById('room-name')?.value.trim();
+  if(!name){showToast('Please enter a room name');return;}
+  const bld=buildings.find(b=>b.id===currentBuildingId);
+  saveRoom({name,floor:document.getElementById('room-floor')?.value.trim(),notes:document.getElementById('room-notes')?.value.trim(),building_id:currentBuildingId,building_name:bld?.name||''});
+  closeModal('room-modal');
+}
+
+function editRoom(id){const r=rooms.find(x=>x.id===id);if(r)openRoomModal(r);}
+
+// ---- PM MODAL ----
+function openPMModal(pm){
+  editingPMId=pm?pm.id:null;
+  document.getElementById('pm-modal-h').textContent=pm?'Edit PM Task':'Add PM Task';
+  const v=k=>pm?.[k]||'';
+  document.getElementById('pm-body').innerHTML=`
+    <div class="fg"><label>Title *</label><input type="text" class="fi" id="pm-title" value="${v('title')}" placeholder="e.g. Trimark Spring PM"></div>
+    <div class="form-row">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="pm-bld">
+          <option value="">Select...</option>
+          <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
+          ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Frequency *</label>
+        <select class="fi" id="pm-freq">
+          <option value="">Select...</option>
+          <option ${v('frequency')==='Monthly'?'selected':''}>Monthly</option>
+          <option ${v('frequency')==='Quarterly'?'selected':''}>Quarterly</option>
+          <option ${v('frequency')==='Semi-Annual'?'selected':''}>Semi-Annual</option>
+          <option ${v('frequency')==='Annual'?'selected':''}>Annual</option>
+          <option ${v('frequency')==='As Needed'?'selected':''}>As Needed</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Next due date</label><input type="text" class="fi" id="pm-due" placeholder="e.g. Apr 2025" value="${v('next_due')}"></div>
+      <div class="fg"><label>Assign to</label>
+        <select class="fi" id="pm-assign">
+          <option value="">Select...</option>
+          ${contacts.map(c=>`<option ${v('assigned_to')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Description</label><textarea class="fi" id="pm-desc">${v('description')}</textarea></div>
+    <div class="fg"><label>Status</label>
+      <select class="fi" id="pm-status">
+        <option ${!pm||pm.status==='Upcoming'?'selected':''}>Upcoming</option>
+        <option ${v('status')==='Overdue'?'selected':''}>Overdue</option>
+        <option ${v('status')==='Done'?'selected':''}>Done</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('pm-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPM()">${pm?'Save Changes':'Add PM Task'}</button>
+    </div>`;
+  document.getElementById('pm-modal').classList.add('open');
+}
+
+function submitPM(){
+  const title=document.getElementById('pm-title')?.value.trim();
+  const building=document.getElementById('pm-bld')?.value;
+  const frequency=document.getElementById('pm-freq')?.value;
+  if(!title||!building||!frequency){showToast('Please fill in title, building, frequency');return;}
+  savePM({title,building,frequency,next_due:document.getElementById('pm-due')?.value.trim(),assigned_to:document.getElementById('pm-assign')?.value,description:document.getElementById('pm-desc')?.value.trim(),status:document.getElementById('pm-status')?.value});
+}
+
+function editPM(id){const p=pmTasks.find(x=>x.id===id);if(p)openPMModal(p);}
+
+// ---- INVOICE MODAL ----
+function openInvoiceModal(inv){
+  editingInvId=inv?inv.id:null;
+  document.getElementById('inv-modal-h').textContent=inv?'Edit Invoice':'Add Invoice';
+  const v=k=>inv?.[k]||'';
+  document.getElementById('inv-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Invoice number</label><input type="text" class="fi" id="inv-num" placeholder="e.g. 118436" value="${v('invoice_number')}"></div>
+      <div class="fg"><label>Date</label><input type="text" class="fi" id="inv-date" placeholder="e.g. 09/09/2020" value="${v('date')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Vendor *</label>
+        <select class="fi" id="inv-vendor">
+          <option value="">Select...</option>
+          ${contacts.filter(c=>c.type==='Contractor').map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          <option ${v('vendor')==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Building</label>
+        <select class="fi" id="inv-bld">
+          <option value="">Select...</option>
+          <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
+          ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Description *</label><input type="text" class="fi" id="inv-desc" placeholder="Brief description of work performed" value="${v('description')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Amount *</label><input type="number" class="fi" id="inv-amount" placeholder="0.00" value="${v('amount')}"></div>
+      <div class="fg"><label>Status</label>
+        <select class="fi" id="inv-status">
+          <option ${!inv||inv.status==='Paid'?'selected':''}>Paid</option>
+          <option ${v('status')==='Unpaid'?'selected':''}>Unpaid</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('invoice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitInvoice()">${inv?'Save Changes':'Add Invoice'}</button>
+    </div>`;
+  document.getElementById('invoice-modal').classList.add('open');
+}
+
+function editInvoice(id){const i=invoices.find(x=>x.id===id);if(i)openInvoiceModal(i);}
+
+function submitInvoice(){
+  const vendor=document.getElementById('inv-vendor')?.value;
+  const description=document.getElementById('inv-desc')?.value.trim();
+  const amount=parseFloat(document.getElementById('inv-amount')?.value||0);
+  if(!vendor||!description){showToast('Please fill in vendor and description');return;}
+  saveInvoice({invoice_number:document.getElementById('inv-num')?.value.trim(),date:document.getElementById('inv-date')?.value.trim(),vendor,building:document.getElementById('inv-bld')?.value,description,amount,status:document.getElementById('inv-status')?.value});
+  closeModal('invoice-modal');
+}
+
+// ---- CONTACT MODAL ----
+function openContactModal(contact){
+  editingContactId=contact?contact.id:null;
+  document.getElementById('contact-modal-h').textContent=contact?'Edit Contact':'Add Contact';
+  const v=k=>contact?.[k]||'';
+  const sel=(k,val)=>contact?.[k]===val?'selected':'';
+  document.getElementById('contact-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
+      <div class="fg"><label>Role *</label><input type="text" class="fi" id="ct-role" placeholder="e.g. HVAC Contractor" value="${v('role')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Type *</label>
+        <select class="fi" id="ct-type">
+          <option ${sel('type','Contractor')}>Contractor</option>
+          <option ${sel('type','Staff')}>Staff</option>
+          <option ${sel('type','Parish')}>Parish</option>
+        </select>
+      </div>
+      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
+    </div>
+    <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Certificate of Insurance</div>
+      <div class="form-row">
+        <div class="fg"><label>COI Expiry date</label><input type="text" class="fi" id="ct-coi-exp" placeholder="e.g. Dec 31 2025" value="${v('coi_expiry')}"></div>
+        <div class="fg"><label>Insurance company</label><input type="text" class="fi" id="ct-coi-ins" placeholder="e.g. State Farm" value="${v('coi_insurer')}"></div>
+      </div>
+      <div class="fg"><label>Policy number</label><input type="text" class="fi" id="ct-coi-pol" placeholder="Policy number" value="${v('coi_policy_number')}"></div>
+      <div class="fg"><label>COI Document</label>
+        ${contact?.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current COI</a></div>`:''}
+        <div class="photo-upload" onclick="document.getElementById('coi-file-input').click()">📄 ${contact?.coi_url?'Upload new COI (replaces current)':'Upload COI document (PDF or image)'}<input type="file" id="coi-file-input" accept=".pdf,image/*" style="display:none" onchange="previewCOI(event)"></div>
+        <div id="coi-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('contact-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitContact()">${contact?'Save Changes':'Add Contact'}</button>
+    </div>`;
+  document.getElementById('contact-modal').classList.add('open');
+}
+
+function previewCOI(event){
+  const file=event.target.files[0];
+  if(file)document.getElementById('coi-preview').textContent='✓ '+file.name+' ready to upload';
+}
+
+async function submitContact(){
+  const name=document.getElementById('ct-name')?.value.trim();
+  const role=document.getElementById('ct-role')?.value.trim();
+  const type=document.getElementById('ct-type')?.value;
+  if(!name||!role){showToast('Please fill in name and role');return;}
+  let coi_url=editingContactId?contacts.find(c=>c.id===editingContactId)?.coi_url:null;
+  const coiFile=document.getElementById('coi-file-input')?.files[0];
+  if(coiFile)coi_url=await uploadFile(coiFile,'coi');
+  saveContact({name,role,type,phone:document.getElementById('ct-phone')?.value.trim(),email:document.getElementById('ct-email')?.value.trim(),notes:document.getElementById('ct-notes')?.value.trim(),coi_expiry:document.getElementById('ct-coi-exp')?.value.trim(),coi_insurer:document.getElementById('ct-coi-ins')?.value.trim(),coi_policy_number:document.getElementById('ct-coi-pol')?.value.trim(),coi_url});
+  closeModal('contact-modal');
+}
+
+function editContact(id){const c=contacts.find(x=>x.id===id);if(c)openContactModal(c);}
+
+// ---- HISTORY DETAIL MODAL ----
+function showHistDetail(inv){
+  const h=serviceHistory.find(x=>x.inv===inv);if(!h)return;
+  document.getElementById('hm-h').textContent='Invoice '+h.inv;
+  document.getElementById('hm-sub').textContent=h.date+' · '+h.building;
+  document.getElementById('hm-body').innerHTML=`
+    <div class="dr"><div class="dl">Equipment</div><div style="font-family:sans-serif">${h.equip}</div></div>
+    <div class="dr"><div class="dl">Amount</div><div style="font-family:sans-serif;font-weight:bold">${h.amount>0?fmt(h.amount):'No charge / Proposal'}</div></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Work performed</div>
+    <div class="notes-box">${h.desc}</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal('hist-modal')">Close</button></div>`;
+  document.getElementById('hist-modal').classList.add('open');
+}
+
+// ---- PHOTO / LIGHTBOX ----
+function previewPhoto(event,previewId){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{const img=document.getElementById(previewId);if(img){img.src=e.target.result;img.style.display='block';}};
+  reader.readAsDataURL(file);
+}
+
+function openLightbox(url){document.getElementById('lightbox-img').src=url;document.getElementById('lightbox').classList.add('open');}
+
+// ---- DELETE CONFIRMATIONS ----
+function confirmDeleteAsset(id,name){
+  document.getElementById('conf-h').textContent='Delete asset?';
+  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteAsset(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function confirmDeleteWO(id){
+  document.getElementById('conf-h').textContent='Delete work order?';
+  document.getElementById('conf-msg').textContent='This work order will be permanently removed.';
+  document.getElementById('conf-ok').onclick=()=>{deleteWO(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function confirmDeletePM(id){
+  document.getElementById('conf-h').textContent='Delete PM task?';
+  document.getElementById('conf-msg').textContent='This PM task will be permanently removed.';
+  document.getElementById('conf-ok').onclick=()=>{deletePM(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function confirmDeleteContact(id,name){
+  document.getElementById('conf-h').textContent='Delete contact?';
+  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteContact(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function confirmDeleteBuilding(id,name){
+  document.getElementById('conf-h').textContent='Delete building?';
+  document.getElementById('conf-msg').textContent=`"${name}" and all its rooms will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=async()=>{
+    try{await db.from('buildings').delete().eq('id',id);buildings=buildings.filter(b=>b.id!==id);rooms=rooms.filter(r=>r.building_id!==id);showToast('Building deleted');renderBuildings();renderBuildingNav();populateBuildingDropdowns();}catch(e){showToast('Error deleting');}
+    closeConfirm();
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function confirmDeleteRoom(id,name){
+  document.getElementById('conf-h').textContent='Delete room?';
+  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=async()=>{
+    try{await db.from('rooms').delete().eq('id',id);rooms=rooms.filter(r=>r.id!==id);showToast('Room deleted');renderRooms();}catch(e){showToast('Error deleting');}
+    closeConfirm();
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ---- MODAL HELPERS ----
+function closeConfirm(){document.getElementById('confirm-overlay').classList.remove('open');}
+function closeModal(id){document.getElementById(id)?.classList.remove('open');}
+function outsideClose(e,id){if(e.target.id===id)closeModal(id);}

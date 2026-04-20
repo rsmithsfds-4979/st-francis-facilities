@@ -1,0 +1,398 @@
+// Load/save/delete helpers, CSV import/export, navigation, init
+
+// ---- LOAD ----
+async function loadAll(){
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices()]);
+  renderHistory();renderDash();
+}
+
+async function loadBuildings(){
+  try{
+    const{data,error}=await db.from('buildings').select('*').order('name');
+    if(error)throw error;
+    if(!data||data.length===0){await seedBuildings();}
+    else buildings=data;
+  }catch(e){console.error(e);buildings=[];}
+  await loadRooms();
+  renderBuildingNav();
+  populateBuildingDropdowns();
+}
+
+async function seedBuildings(){
+  try{
+    const{data,error}=await db.from('buildings').insert([
+      {name:'Church',description:'Main church building'},
+      {name:'Education Center',description:'School and education facilities'},
+      {name:'Rectory',description:'Priest residence'},
+    ]).select();
+    if(error)throw error;
+    buildings=data||[];
+    await seedRooms();
+  }catch(e){console.error(e);}
+}
+
+async function loadRooms(){
+  try{
+    const{data,error}=await db.from('rooms').select('*').order('floor').order('name');
+    if(error)throw error;
+    if(!data||data.length===0)await seedRooms();
+    else rooms=data;
+  }catch(e){console.error(e);rooms=[];}
+}
+
+async function seedRooms(){
+  const toInsert=[];
+  for(const bld of buildings){
+    const roomList=defaultRooms[bld.name]||[];
+    roomList.forEach(r=>toInsert.push({...r,building_id:bld.id,building_name:bld.name}));
+  }
+  if(!toInsert.length)return;
+  try{
+    const{data,error}=await db.from('rooms').insert(toInsert).select();
+    if(error)throw error;
+    rooms=data||[];
+  }catch(e){console.error(e);}
+}
+
+async function loadAssets(){
+  try{
+    const{data,error}=await db.from('assets').select('*').order('building').order('category').order('description');
+    if(error)throw error;
+    if(!data||data.length===0)await seedAssets();
+    else assets=data;
+  }catch(e){console.error(e);assets=[];}
+  renderAssets();
+}
+
+async function loadWorkOrders(){
+  try{
+    const{data,error}=await db.from('work_orders').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    workOrders=data||[];
+  }catch(e){console.error(e);workOrders=[];}
+  renderWO();
+}
+
+async function loadPM(){
+  try{
+    const{data,error}=await db.from('pm_schedule').select('*').order('next_due');
+    if(error)throw error;
+    pmTasks=data||[];
+  }catch(e){console.error(e);pmTasks=[];}
+  renderPM();
+}
+
+async function loadContacts(){
+  try{
+    const{data,error}=await db.from('contacts').select('*').order('type').order('name');
+    if(error)throw error;
+    contacts=data||[];
+  }catch(e){console.error(e);contacts=[];}
+  renderContacts();populateContactDropdowns();
+}
+
+async function loadInvoices(){
+  try{
+    const{data,error}=await db.from('vendor_invoices').select('*').order('date',{ascending:false});
+    if(error)throw error;
+    invoices=data||[];
+  }catch(e){console.error(e);invoices=[];}
+  renderInvoices();
+}
+
+// ---- SAVE/DELETE ----
+async function saveBuilding(d){
+  try{
+    if(editingBldId){
+      const{data,error}=await db.from('buildings').update(d).eq('id',editingBldId).select();
+      if(error)throw error;
+      const i=buildings.findIndex(b=>b.id===editingBldId);
+      if(i>-1)buildings[i]=data[0];
+      showToast('Building updated!');
+    }else{
+      const{data,error}=await db.from('buildings').insert([d]).select();
+      if(error)throw error;
+      buildings.push(data[0]);
+      showToast('Building added!');
+    }
+    editingBldId=null;closeModal('building-modal');
+    renderBuildings();renderBuildingNav();populateBuildingDropdowns();
+  }catch(e){console.error(e);showToast('Error saving building');}
+}
+
+async function saveRoom(d){
+  try{
+    if(editingRoomId){
+      const{data,error}=await db.from('rooms').update(d).eq('id',editingRoomId).select();
+      if(error)throw error;
+      const i=rooms.findIndex(r=>r.id===editingRoomId);
+      if(i>-1)rooms[i]=data[0];
+      showToast('Room updated!');
+    }else{
+      const{data,error}=await db.from('rooms').insert([d]).select();
+      if(error)throw error;
+      rooms.push(data[0]);
+      showToast('Room added!');
+    }
+    editingRoomId=null;closeModal('room-modal');
+    renderRooms();
+  }catch(e){console.error(e);showToast('Error saving room');}
+}
+
+async function saveAsset(d){
+  try{
+    if(editingAssetId){
+      const{data,error}=await db.from('assets').update(d).eq('id',editingAssetId).select();
+      if(error)throw error;
+      const i=assets.findIndex(a=>a.id===editingAssetId);
+      if(i>-1)assets[i]=data[0];
+      showToast('Asset updated!');
+    }else{
+      const{data,error}=await db.from('assets').insert([d]).select();
+      if(error)throw error;
+      assets.unshift(data[0]);
+      showToast('Asset added!');
+    }
+    editingAssetId=null;closeModal('asset-modal');
+    renderAssets();renderDash();
+    if(currentRoomId)renderRoomDetail(currentRoomId);
+  }catch(e){console.error(e);showToast('Error saving asset');}
+}
+
+async function deleteAsset(id){
+  try{
+    const{error}=await db.from('assets').delete().eq('id',id);
+    if(error)throw error;
+    assets=assets.filter(a=>a.id!==id);
+    showToast('Asset deleted');renderAssets();renderDash();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function saveWO(d){
+  try{
+    const{data,error}=await db.from('work_orders').insert([d]).select();
+    if(error)throw error;
+    workOrders.unshift(data[0]);
+    showToast('Work order saved!');renderWO();renderDash();
+    if(currentRoomId)renderRoomDetail(currentRoomId);
+  }catch(e){showToast('Error saving work order');}
+}
+
+async function updateWOStatus(id,status){
+  try{
+    const upd={status};
+    if(status==='Completed')upd.completed_date=new Date().toLocaleDateString();
+    const{error}=await db.from('work_orders').update(upd).eq('id',id);
+    if(error)throw error;
+    const w=workOrders.find(x=>x.id===id);
+    if(w)Object.assign(w,upd);
+    showToast('Status updated!');renderWO();renderDash();
+  }catch(e){showToast('Error updating');}
+}
+
+async function deleteWO(id){
+  try{
+    const{error}=await db.from('work_orders').delete().eq('id',id);
+    if(error)throw error;
+    workOrders=workOrders.filter(w=>w.id!==id);
+    showToast('Work order deleted');renderWO();renderDash();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function addComment(woId,author,comment){
+  try{
+    const{error}=await db.from('wo_comments').insert([{work_order_id:woId,author,comment}]);
+    if(error)throw error;
+    showToast('Comment added!');openWODetail(woId);
+  }catch(e){showToast('Error adding comment');}
+}
+
+async function savePM(d){
+  try{
+    if(editingPMId){
+      const{data,error}=await db.from('pm_schedule').update(d).eq('id',editingPMId).select();
+      if(error)throw error;
+      const i=pmTasks.findIndex(p=>p.id===editingPMId);
+      if(i>-1)pmTasks[i]=data[0];
+      showToast('PM task updated!');
+    }else{
+      const{data,error}=await db.from('pm_schedule').insert([d]).select();
+      if(error)throw error;
+      pmTasks.push(data[0]);
+      showToast('PM task added!');
+    }
+    editingPMId=null;closeModal('pm-modal');renderPM();renderDash();
+  }catch(e){showToast('Error saving PM task');}
+}
+
+async function markPMDone(id){
+  try{
+    const{error}=await db.from('pm_schedule').update({status:'Done',last_completed:new Date().toLocaleDateString()}).eq('id',id);
+    if(error)throw error;
+    const p=pmTasks.find(x=>x.id===id);
+    if(p){p.status='Done';p.last_completed=new Date().toLocaleDateString();}
+    showToast('PM marked done!');renderPM();renderDash();
+  }catch(e){showToast('Error');}
+}
+
+async function deletePM(id){
+  try{
+    const{error}=await db.from('pm_schedule').delete().eq('id',id);
+    if(error)throw error;
+    pmTasks=pmTasks.filter(p=>p.id!==id);
+    showToast('PM task deleted');renderPM();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function saveContact(d){
+  try{
+    if(editingContactId){
+      const{data,error}=await db.from('contacts').update(d).eq('id',editingContactId).select();
+      if(error)throw error;
+      const i=contacts.findIndex(c=>c.id===editingContactId);
+      if(i>-1)contacts[i]=data[0];
+      showToast('Contact updated!');
+    }else{
+      const{data,error}=await db.from('contacts').insert([d]).select();
+      if(error)throw error;
+      contacts.push(data[0]);
+      showToast('Contact added!');
+    }
+    editingContactId=null;closeModal('contact-modal');renderContacts();populateContactDropdowns();
+  }catch(e){console.error(e);showToast('Error saving contact');}
+}
+
+async function deleteContact(id){
+  try{
+    const{error}=await db.from('contacts').delete().eq('id',id);
+    if(error)throw error;
+    contacts=contacts.filter(c=>c.id!==id);
+    showToast('Contact deleted');renderContacts();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function saveInvoice(d){
+  try{
+    if(editingInvId){
+      const{data,error}=await db.from('vendor_invoices').update(d).eq('id',editingInvId).select();
+      if(error)throw error;
+      const i=invoices.findIndex(x=>x.id===editingInvId);
+      if(i>-1)invoices[i]=data[0];
+      showToast('Invoice updated!');
+    }else{
+      const{data,error}=await db.from('vendor_invoices').insert([d]).select();
+      if(error)throw error;
+      invoices.unshift(data[0]);
+      showToast('Invoice added!');
+    }
+    editingInvId=null;closeModal('invoice-modal');renderInvoices();
+  }catch(e){showToast('Error saving invoice');}
+}
+
+async function deleteInvoice(id){
+  try{
+    const{error}=await db.from('vendor_invoices').delete().eq('id',id);
+    if(error)throw error;
+    invoices=invoices.filter(x=>x.id!==id);
+    showToast('Invoice deleted');renderInvoices();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function uploadFile(file,folder){
+  try{
+    const ext=file.name.split('.').pop();
+    const path=`${folder}/${Date.now()}.${ext}`;
+    const bucket=folder==='coi'?'documents':'asset-photos';
+    const{error}=await db.storage.from(bucket).upload(path,file);
+    if(error)throw error;
+    const{data}=db.storage.from(bucket).getPublicUrl(path);
+    return data.publicUrl;
+  }catch(e){console.error(e);showToast('Error uploading file');return null;}
+}
+
+// ---- CSV ----
+function exportCSV(){
+  const headers=['description','building','category','room_number','location','serial','manufacturer','size','expected_life','install_date','warranty_expiry','status','notes'];
+  const rows=assets.map(a=>headers.map(h=>`"${(a[h]||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv=[headers.join(','),...rows].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='st-francis-assets.csv';a.click();
+  URL.revokeObjectURL(url);showToast('CSV exported!');
+}
+
+async function importCSV(event){
+  const file=event.target.files[0];if(!file)return;
+  const text=await file.text();
+  const lines=text.split('\n').filter(l=>l.trim());
+  if(lines.length<2){showToast('CSV appears empty');return;}
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
+  const rows=lines.slice(1).map(line=>{
+    const vals=[];let cur='',inQ=false;
+    for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else cur+=ch;}
+    vals.push(cur.trim());
+    const obj={};headers.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,''));
+    return obj;
+  }).filter(r=>r.description||r.name);
+  if(!rows.length){showToast('No valid rows found');return;}
+  try{
+    const toInsert=rows.map(r=>({
+      description:r.description||r.name||'',building:r.building||'Church',category:r.category||'Other',
+      room_number:r.room_number||r.room||'',location:r.location||'',serial:r.serial||r.serial_number||'',
+      manufacturer:r.manufacturer||'',size:r.size||'',expected_life:r.expected_life||r.life||'',
+      install_date:r.install_date||'',warranty_expiry:r.warranty_expiry||r.warranty||'',
+      status:r.status||'Active',notes:r.notes||'',
+    }));
+    const{data,error}=await db.from('assets').insert(toInsert).select();
+    if(error)throw error;
+    assets=[...data,...assets];
+    showToast('Imported '+data.length+' assets!');renderAssets();renderDash();
+  }catch(e){console.error(e);showToast('Error importing CSV');}
+  event.target.value='';
+}
+
+// ---- SEED ASSETS ----
+async function seedAssets(){
+  try{
+    const{data,error}=await db.from('assets').insert(defaultAssets).select();
+    if(error)throw error;
+    assets=data||[];
+    showToast('Asset registry loaded — '+assets.length+' assets added!');
+    // Link assets to rooms where possible
+    await linkAssetsToRooms();
+  }catch(e){console.error(e);assets=[];}
+}
+
+async function linkAssetsToRooms(){
+  for(const a of assets){
+    if(!a.room_number)continue;
+    const bldRooms=rooms.filter(r=>r.building_name===a.building);
+    const match=bldRooms.find(r=>r.name.toLowerCase()===a.room_number.toLowerCase()||r.name.toLowerCase().includes(a.room_number.toLowerCase()));
+    if(match&&!a.room_id){
+      try{
+        await db.from('assets').update({room_id:match.id}).eq('id',a.id);
+        a.room_id=match.id;
+      }catch(e){}
+    }
+  }
+}
+
+// ---- NAVIGATION ----
+function go(name,el){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const v=document.getElementById('view-'+name);
+  if(v)v.classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='buildings')renderBuildings();
+  renderHistory();
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ---- INIT ----
+loadAll();
