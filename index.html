@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>St. Francis de Sales — Facility Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --bg2: #ffffff;
+    --bg3: #eeedea;
+    --text: #1a1a18;
+    --text2: #5c5c58;
+    --text3: #9c9a92;
+    --border: rgba(0,0,0,0.1);
+    --border2: rgba(0,0,0,0.18);
+    --accent: #2d5a8e;
+    --accent2: #1a3d5c;
+    --success: #2d7a4a;
+    --warning: #8a6200;
+    --danger: #8a2020;
+    --success-bg: #e8f5ee;
+    --warning-bg: #fdf3dc;
+    --danger-bg: #faeaea;
+    --info-bg: #e6f0fb;
+    --info: #1a4a8a;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 220px; background: var(--accent2); color: white; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+  .sidebar-header { padding: 20px 16px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-logo { font-size: 14px; font-weight: bold; line-height: 1.4; letter-spacing: 0.02em; }
+  .sidebar-sub { font-size: 11px; opacity: 0.6; margin-top: 3px; font-family: sans-serif; }
+  .nav-section { padding: 12px 8px 4px; }
+  .nav-label { font-size: 9px; font-weight: bold; opacity: 0.5; letter-spacing: 0.12em; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; font-family: sans-serif; }
+  .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; font-size: 13px; color: rgba(255,255,255,0.75); cursor: pointer; transition: all 0.15s; font-family: sans-serif; }
+  .nav-item:hover { background: rgba(255,255,255,0.1); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.18); color: white; font-weight: 500; }
+  .nav-badge { background: #c0392b; color: white; font-size: 10px; font-weight: bold; padding: 1px 6px; border-radius: 10px; }
+  
+  /* Main */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .topbar { padding: 14px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg2); flex-shrink: 0; }
+  .topbar-title { font-size: 18px; font-weight: bold; color: var(--accent2); letter-spacing: -0.02em; }
+  .topbar-actions { display: flex; gap: 10px; }
+  .btn { padding: 7px 14px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border2); background: transparent; color: var(--text); cursor: pointer; transition: all 0.15s; font-family: sans-serif; }
+  .btn:hover { background: var(--bg3); }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+  .btn-danger { background: var(--danger); color: white; border-color: var(--danger); }
+  
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+  
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-value { font-size: 26px; font-weight: bold; line-height: 1; color: var(--accent2); }
+  .stat-delta { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: sans-serif; }
+  
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+  .card-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 13px; font-weight: bold; color: var(--accent2); font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-link { font-size: 12px; color: var(--accent); cursor: pointer; background: none; border: none; font-family: sans-serif; }
+  
+  /* Tables */
+  .table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .table th { text-align: left; padding: 9px 14px; font-size: 11px; font-weight: bold; color: var(--text3); border-bottom: 1px solid var(--border); font-family: sans-serif; text-transform: uppercase; letter-spacing: 0.06em; background: var(--bg3); }
+  .table td { padding: 9px 14px; font-size: 13px; border-bottom: 1px solid var(--border); font-family: sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .table tr:last-child td { border-bottom: none; }
+  .table tr:hover td { background: var(--bg3); cursor: pointer; }
+  
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: bold; white-space: nowrap; font-family: sans-serif; }
+  .b-red { background: var(--danger-bg); color: var(--danger); }
+  .b-amber { background: var(--warning-bg); color: var(--warning); }
+  .b-green { background: var(--success-bg); color: var(--success); }
+  .b-blue { background: var(--info-bg); color: var(--info); }
+  .b-gray { background: var(--bg3); color: var(--text2); }
+  
+  /* Views */
+  .view { display: none; }
+  .view.active { display: block; }
+  
+  /* Two col */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border-radius: var(--radius-lg); padding: 24px; width: 440px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+  .modal h3 { font-size: 16px; font-weight: bold; color: var(--accent2); margin-bottom: 4px; }
+  .modal-sub { font-size: 12px; color: var(--text3); margin-bottom: 18px; font-family: sans-serif; }
+  .fg { margin-bottom: 13px; }
+  .fg label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; font-family: sans-serif; font-weight: bold; }
+  .fi { width: 100%; padding: 8px 11px; border: 1px solid var(--border2); border-radius: 6px; font-size: 13px; background: var(--bg2); color: var(--text); font-family: sans-serif; }
+  .fi:focus { outline: none; border-color: var(--accent); }
+  textarea.fi { resize: vertical; min-height: 70px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+  
+  /* Detail */
+  .detail-row { display: flex; padding: 9px 0; border-bottom: 1px solid var(--border); gap: 12px; font-size: 13px; font-family: sans-serif; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--text3); flex-shrink: 0; width: 120px; font-size: 12px; }
+  .detail-value { flex: 1; color: var(--text); }
+  .notes-box { background: var(--bg3); border-radius: 6px; padding: 12px 14px; font-size: 13px; line-height: 1.7; margin-top: 10px; color: var(--text2); font-family: sans-serif; }
+  
+  /* Room grid */
+  .room-grid { padding: 14px 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .room-card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: background 0.15s; }
+  .room-card:hover { background: var(--bg3); }
+  .room-name { font-size: 12px; font-weight: bold; margin-bottom: 2px; font-family: sans-serif; color: var(--accent2); }
+  .room-note { font-size: 11px; color: var(--text3); font-family: sans-serif; }
+
+  /* Bar */
+  .bar-wrap { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-top: 5px; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent2); color: white; padding: 12px 18px; border-radius: 8px; font-size: 13px; font-family: sans-serif; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--text3); font-family: sans-serif; font-size: 13px; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px; color: var(--text3); font-family: sans-serif; font-size: 13px; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar-logo, .sidebar-sub, .nav-label, .nav-item span:first-child { display: none; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .room-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">St. Francis<br>de Sales</div>
+      <div class="sidebar-sub">Facility Manager</div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <div class="nav-item active" onclick="go('dashboard',this)"><span>Dashboard</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Operations</div>
+      <div class="nav-item" onclick="go('workorders',this)"><span>Work Orders</span><span class="nav-badge" id="wo-badge">0</span></div>
+      <div class="nav-item" onclick="go('history',this)"><span>Service History</span></div>
+      <div class="nav-item" onclick="go('assets',this)"><span>HVAC Assets</span></div>
+      <div class="nav-item" onclick="go('kitchen',this)"><span>Kitchen Assets</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Buildings</div>
+      <div class="nav-item" onclick="go('church',this)"><span>Church</span></div>
+      <div class="nav-item" onclick="go('edcenter',this)"><span>Education Center</span></div>
+      <div class="nav-item" onclick="go('rectory',this)"><span>Rectory</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Directory</div>
+      <div class="nav-item" onclick="go('contacts',this)"><span>Contractors & Staff</span></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Dashboard -->
+    <div class="view active" id="view-dashboard">
+      <div class="topbar">
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="openModal('wo')">+ New Work Order</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Open Work Orders</div><div class="stat-value" id="d-wo" style="color:var(--danger)">—</div><div class="stat-delta">active issues</div></div>
+          <div class="stat-card"><div class="stat-label">Service Records</div><div class="stat-value" id="d-hist" style="color:var(--accent)">—</div><div class="stat-delta">Trimark 2020–2023</div></div>
+          <div class="stat-card"><div class="stat-label">Total Invoiced</div><div class="stat-value" id="d-total" style="color:var(--success)">—</div><div class="stat-delta">Trimark only</div></div>
+          <div class="stat-card"><div class="stat-label">HVAC Units</div><div class="stat-value" style="color:var(--accent2)">71</div><div class="stat-delta">3 buildings</div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Recent Work Orders</div><button class="card-link" onclick="go('workorders')">View all →</button></div>
+            <table class="table">
+              <colgroup><col style="width:44%"><col style="width:28%"><col style="width:28%"></colgroup>
+              <thead><tr><th>Issue</th><th>Building</th><th>Status</th></tr></thead>
+              <tbody id="d-wo-rows"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Spending by Year</div></div>
+            <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px" id="d-spend"><div class="loading">Loading...</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Known Recurring Issues</div></div>
+          <table class="table">
+            <colgroup><col style="width:28%"><col style="width:30%"><col style="width:42%"></colgroup>
+            <thead><tr><th>Unit / System</th><th>Location</th><th>Issue pattern</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:bold">Trane RTU (C11H04914)</td><td>Church — ground outside</td><td>Humidity, compressor, zone sensor — 5+ visits</td></tr>
+              <tr><td style="font-weight:bold">LG Heat Recovery Unit 2</td><td>School rooftop</td><td>Compressor failure, inverter board, high amps</td></tr>
+              <tr><td style="font-weight:bold">Cassette 8A (GSA005025)</td><td>Church lower level</td><td>1995 unit — near end of life, recommend replacement</td></tr>
+              <tr><td style="font-weight:bold">Classroom thermostats</td><td>Ed Center — multiple</td><td>CH-29 error codes recur across rooms</td></tr>
+              <tr><td style="font-weight:bold">Rectory HP 2 (12082KEN4F)</td><td>Rectory rear</td><td>Low refrigerant, core valve leaks</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Work Orders -->
+    <div class="view" id="view-workorders">
+      <div class="topbar">
+        <div class="topbar-title">Work Orders</div>
+        <div class="topbar-actions">
+          <select class="btn" id="wo-f-status" onchange="renderWO()"><option value="all">All statuses</option><option>Open</option><option>In Progress</option><option>Completed</option></select>
+          <select class="btn" id="wo-f-bld" onchange="renderWO()"><option value="all">All buildings</option><option>Church</option><option>Education Center</option><option>Rectory</option><option>Grounds</option></select>
+          <button class="btn btn-primary" onclick="openModal('wo')">+ New Order</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <table class="table">
+            <colgroup><col style="width:7%"><col style="width:28%"><col style="width:15%"><col style="width:11%"><col style="width:14%"><col style="width:14%"><col style="width:11%"></colgroup>
+            <thead><tr><th>ID</th><th>Issue</th><th>Building</th><th>Priority</th><th>Assigned to</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="wo-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Service History -->
+    <div class="view" id="view-history">
+      <div class="topbar">
+        <div class="topbar-title">Trimark Service History</div>
+        <div class="topbar-actions">
+          <select class="btn" id="hist-f-year" onchange="renderHistory()"><option value="all">All years</option><option>2020</option><option>2022</option><option>2023</option></select>
+          <select class="btn" id="hist-f-bld" onchange="renderHistory()"><option value="all">All buildings</option><option>Church</option><option>Education Center</option><option>Rectory</option></select>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <table class="table">
+            <colgroup><col style="width:9%"><col style="width:10%"><col style="width:38%"><col style="width:20%"><col style="width:10%"><col style="width:13%"></colgroup>
+            <thead><tr><th>Invoice #</th><th>Date</th><th>Work performed</th><th>Equipment</th><th>Building</th><th>Amount</th></tr></thead>
+            <tbody id="hist-table"><tr><td colspan="6" class="loading">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HVAC Assets -->
+    <div class="view" id="view-assets">
+      <div class="topbar">
+        <div class="topbar-title">HVAC Asset Registry</div>
+        <div class="topbar-actions">
+          <select class="btn" id="hvac-f-bld" onchange="renderHVAC()"><option value="all">All buildings</option><option>Church</option><option>Education Center</option><option>Rectory</option></select>
+        </div>
+      </div>
+      <div class="content">
+        <div class="card">
+          <table class="table">
+            <colgroup><col style="width:18%"><col style="width:22%"><col style="width:10%"><col style="width:22%"><col style="width:14%"><col style="width:14%"></colgroup>
+            <thead><tr><th>Serial No.</th><th>Description</th><th>Size</th><th>Location</th><th>Manufacturer</th><th>Life</th></tr></thead>
+            <tbody id="hvac-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Kitchen -->
+    <div class="view" id="view-kitchen">
+      <div class="topbar"><div class="topbar-title">Kitchen Assets</div></div>
+      <div class="content">
+        <div class="card"><div class="card-header"><div class="card-title">Kitchen 118 — Education Center</div></div>
+          <div style="padding:12px 18px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Fryer #1</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Fryer #2</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Double Freezer</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Double Refrigerator</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Ice Maker</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Coffee Maker</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Double Oven & Griddle Stovetop</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Single Stovetop Oven</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Hood</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Warming Cabinet #1</div>
+            <div style="font-size:13px;padding:7px 0;font-family:sans-serif">Warming Cabinet #2</div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><div class="card-title">Knights Kitchen — Church Lower Level</div></div>
+          <div style="padding:12px 18px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Double Refrigerator</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Oven with Stovetop & Griddle</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Triple Sink</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Disposal</div>
+            <div style="font-size:13px;padding:7px 0;font-family:sans-serif">Hood</div>
+            <div style="font-size:13px;padding:7px 0;font-family:sans-serif">Oven</div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><div class="card-title">Lower Level Storage — Church</div></div>
+          <div style="padding:12px 18px;display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Double Refrigerator</div>
+            <div style="font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);font-family:sans-serif">Single Freezer</div>
+            <div style="font-size:13px;padding:7px 0;font-family:sans-serif">Single Refrigerator</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Church -->
+    <div class="view" id="view-church">
+      <div class="topbar"><div class="topbar-title">Church — Spaces</div></div>
+      <div class="content">
+        <div class="card"><div class="card-header"><div class="card-title">Main Level</div></div>
+          <div class="room-grid">
+            <div class="room-card"><div class="room-name">Nave</div><div class="room-note">Main worship space</div></div>
+            <div class="room-card"><div class="room-name">Sanctuary</div><div class="room-note">Trane RTU serves this space</div></div>
+            <div class="room-card"><div class="room-name">Choir Loft</div><div class="room-note">AHU 14 overhead</div></div>
+            <div class="room-card"><div class="room-name">Upper Sacristy</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Lower Sacristy</div><div class="room-note">Zone sensor relocated here</div></div>
+            <div class="room-card"><div class="room-name">Narthex</div><div class="room-note">Entrance vestibule</div></div>
+            <div class="room-card"><div class="room-name">Chapel</div><div class="room-note">AHU 13</div></div>
+            <div class="room-card"><div class="room-name">Confessionals</div><div class="room-note">Fujitsu splits KYA016198/480</div></div>
+            <div class="room-card"><div class="room-name">Men's Room</div><div class="room-note">AHU 12 in ceiling</div></div>
+            <div class="room-card"><div class="room-name">Women's Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Janitor's Closet</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Mechanical Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Office Entry</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Business Mgr Office</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Amy's Office (105A)</div><div class="room-note">LG cassette — key needed</div></div>
+            <div class="room-card"><div class="room-name">Conference Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Copy Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Storage Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Music Director Office</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Associate Office</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Pastor Office</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Mini Kitchen</div><div class="room-note">—</div></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><div class="card-title">Lower Level</div></div>
+          <div class="room-grid">
+            <div class="room-card"><div class="room-name">Knights Hall</div><div class="room-note">Cassette 8A serves this area</div></div>
+            <div class="room-card"><div class="room-name">Knights Kitchen</div><div class="room-note">Full commercial kitchen</div></div>
+            <div class="room-card"><div class="room-name">Knights Bathroom</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Storage Room</div><div class="room-note">Fridge & freezer</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ed Center -->
+    <div class="view" id="view-edcenter">
+      <div class="topbar"><div class="topbar-title">Education Center — Spaces</div></div>
+      <div class="content">
+        <div class="card"><div class="card-header"><div class="card-title">1st Floor</div></div>
+          <div class="room-grid">
+            <div class="room-card"><div class="room-name">Vestibule</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Lobby 102</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Library 103</div><div class="room-note">LG cassette ceiling</div></div>
+            <div class="room-card"><div class="room-name">Storage 103A</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Workroom 104</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">RE Admin 105</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">RE Director 105B</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">Youth Ministry 105C</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">Meeting 105A</div><div class="room-note">LG — Amy has key</div></div>
+            <div class="room-card"><div class="room-name">Classroom 107</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">Classroom 108</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Classroom 113</div><div class="room-note">LG cassette</div></div>
+            <div class="room-card"><div class="room-name">Janitor Storage 114</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Fire Pump 114A</div><div class="room-note">Ed Center fire pump</div></div>
+            <div class="room-card"><div class="room-name">Janitor Closet 109</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Mechanical 110</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Multi-Purpose Entry 115</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Multi-Purpose Hall 116</div><div class="room-note">Large event space</div></div>
+            <div class="room-card"><div class="room-name">Kitchen 118</div><div class="room-note">Commercial kitchen · LG FCU #3</div></div>
+            <div class="room-card"><div class="room-name">Storage 120</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Men's Room 1st Floor</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Women's Room 1st Floor</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Staff Bath 1st Floor</div><div class="room-note">—</div></div>
+          </div>
+        </div>
+        <div class="card"><div class="card-header"><div class="card-title">2nd Floor</div></div>
+          <div class="room-grid">
+            <div class="room-card"><div class="room-name">Classroom 201</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 202</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 204</div><div class="room-note">LG — fan motor issue</div></div>
+            <div class="room-card"><div class="room-name">Classroom 205</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 206</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 207</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 208</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 209</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Classroom 210</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Classroom 213</div><div class="room-note">LG unit</div></div>
+            <div class="room-card"><div class="room-name">Storage Closet 213A</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Storage Closet 214</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Janitor Closet 203</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Roof ST03</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Staff Bath 2nd Floor</div><div class="room-note">LG FCU #4</div></div>
+            <div class="room-card"><div class="room-name">Men's Room 2nd Floor</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Women's Room 2nd Floor</div><div class="room-note">—</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rectory -->
+    <div class="view" id="view-rectory">
+      <div class="topbar"><div class="topbar-title">Rectory — Spaces</div></div>
+      <div class="content">
+        <div class="card">
+          <div class="room-grid">
+            <div class="room-card"><div class="room-name">Pastor Bedroom</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Upper Bedroom</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Guest Room 1</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Guest Room 2</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Kitchen</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Dining Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Family Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Laundry Room</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Utility Closet</div><div class="room-note">AHU-1 & AHU-2 units</div></div>
+            <div class="room-card"><div class="room-name">Front Porch</div><div class="room-note">—</div></div>
+            <div class="room-card"><div class="room-name">Back Deck</div><div class="room-note">HP units on back wall</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contacts -->
+    <div class="view" id="view-contacts">
+      <div class="topbar"><div class="topbar-title">Contractors & Staff</div></div>
+      <div class="content">
+        <div class="card">
+          <table class="table">
+            <colgroup><col style="width:18%"><col style="width:18%"><col style="width:10%"><col style="width:22%"><col style="width:32%"></colgroup>
+            <thead><tr><th>Name</th><th>Role</th><th>Type</th><th>Contact</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:bold">Trimark Mechanical</td><td>HVAC Contractor</td><td><span class="badge b-blue">Contractor</span></td><td>(703) 891-4600</td><td>Account #100925-001 · accounting@trimarkcorporation.com</td></tr>
+              <tr><td style="font-weight:bold">UPP</td><td>Plumbing Contractor</td><td><span class="badge b-blue">Contractor</span></td><td>—</td><td>All plumbing work orders</td></tr>
+              <tr><td style="font-weight:bold">Antonio</td><td>Handyman</td><td><span class="badge b-green">Staff</span></td><td>—</td><td>General maintenance & repairs</td></tr>
+              <tr><td style="font-weight:bold">Tim McGinn</td><td>Facilities Contact</td><td><span class="badge b-gray">Parish</span></td><td>—</td><td>Primary POC for Trimark</td></tr>
+              <tr><td style="font-weight:bold">Amy (Office 105A)</td><td>Admin Staff</td><td><span class="badge b-gray">Parish</span></td><td>—</td><td>Holds key to office — required for PM access</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="outsideClose(event)">
+  <div class="modal" id="modal-box">
+    <h3 id="modal-h"></h3>
+    <div class="modal-sub" id="modal-sub"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURATION — PASTE YOUR SUPABASE KEYS HERE
+// ============================================================
+const SUPABASE_URL = 'https://yhwqncrdvgmontpxlgng.supabase.co/rest/v1/
+';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlod3FuY3Jkdmdtb250cHhsZ25nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODkwNjgsImV4cCI6MjA5MjI2NTA2OH0.p_7IteIQ3MUI7ttwES60pJqI8E7aJJf3flEovUBtJT0';
+// ============================================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Static service history from Trimark invoices
+const serviceHistory = [
+  {inv:'118436',date:'09/09/2020',desc:'Trane RTU diagnosis — Compressor #1 tripped, zone sensor mislocated. Recommend new compressor, relocate zone sensor to sanctuary.',equip:'Trane RTU C11H04914',building:'Church',amount:238},
+  {inv:'118472',date:'09/17/2020',desc:'Replace compressor #1, leak search circuit #2, relocate zone sensor, install temp/humidity sensors in sanctuary. New compressor & filter drier installed, recharged 19.4 lbs R410a.',equip:'Trane RTU C11H04914',building:'Church',amount:10660},
+  {inv:'118502',date:'09/21/2020',desc:'Rectory heat pump — thermostat error CH-29. Compressor over amperage. Cleaned coils, reset system. System cooling normally.',equip:'HP 10125RYN2F',building:'Rectory',amount:595},
+  {inv:'118785',date:'11/30/2020',desc:'September PM — Routine HVAC preventative maintenance all buildings. Cassette 6 communication fault. EF1 belt broken, EF2 motor bearing failing. Filters documented.',equip:'All units',building:'Education Center',amount:3487},
+  {inv:'119156',date:'11/30/2020',desc:'Classroom thermostats error code CH29 — checked all 10, reset all, working fine.',equip:'Classroom thermostats',building:'Education Center',amount:238},
+  {inv:'119232',date:'12/15/2020',desc:'Cassette 6 church office — replaced blown 3.15A fuse. Found damaged AC/DC converter chip, board replacement needed.',equip:'HP6 HSN009612 / Cassette 6 HSA010006',building:'Church',amount:595},
+  {inv:'119526',date:'12/15/2020',desc:'Installed humidifier — cut ductwork, mounted humidifier & bypass, wired humidistat, ran vinyl tubing for drainage.',equip:'Humidifier',building:'Church',amount:1988},
+  {inv:'119538',date:'12/31/2020',desc:'Replaced control board on HP 6 condenser. Found faulty indoor PCB and condenser fan motor still causing issues.',equip:'Fujitsu HP6 HSN009612',building:'Church',amount:1024.50},
+  {inv:'119632',date:'12/31/2020',desc:'School RTUs offline — smoke detector alarm triggered by construction debris. Checked heater elements, all intact. Reset alarms.',equip:'AAON RTU 201306-BNEW08714 & BNET08710',building:'Education Center',amount:297.50},
+  {inv:'124159',date:'01/28/2022',desc:'Fall PM completed — all units running normally. Deficiency: Cassette 8A not functioning, needs service call.',equip:'All units',building:'Church',amount:3487},
+  {inv:'124317',date:'03/17/2022',desc:'December PM — multiple deficiencies: Cassette 8A blinking, HR Unit 1A offline, HR Unit 2 high amps, classroom CH-29 errors, EF #2 missing fuses, Rectory HP2 low pressure.',equip:'Multiple units',building:'Education Center',amount:1394.80},
+  {inv:'125511',date:'04/28/2022',desc:'March PM (Spring) — all units running. Same deficiencies from December PM still outstanding.',equip:'All units',building:'Education Center',amount:3487},
+  {inv:'125673',date:'03/29/2022',desc:'RTU inspection per report list — cleaned outdoor air filters, adjusted damper linkage, secured insulation. CO2 sensor at 750ppm. Thermostat replacement recommended.',equip:'Trane RTU C11H04914',building:'Church',amount:562.50},
+  {inv:'125975',date:'05/27/2022',desc:'Replaced RTU thermostat with Honeywell 8000 2h/2c with remote sensor terminals. RTU operating normally.',equip:'Trane RTU C11H04914',building:'Church',amount:1106},
+  {inv:'126094',date:'05/11/2022',desc:'Cassette 8A outside church blinking — refrigerant OK, reset from thermostat. Unit from 1995, recommend replacement if issue continues.',equip:'Cassette 8A GSA005025',building:'Church',amount:250},
+  {inv:'126095',date:'05/27/2022',desc:'Rectory HP2 — leak check. Core valves leaking. Replaced 2 core valves, added 7 lbs 8 oz R410a. System operating normally.',equip:'HP 2 12082KEN4F',building:'Rectory',amount:1000.50},
+  {inv:'126098',date:'05/11/2022',desc:'Heat Recovery Unit 2 — amps too high at 24A. Inverter board damaged. Compressor and inverter board must be replaced.',equip:'LG HR Unit 2 301KABF00021',building:'Education Center',amount:625},
+  {inv:'126099',date:'05/11/2022',desc:'Classroom thermostat error CH-29 in rooms 104, 106, 107, 201, 202, 208, 210, 213 — reset all, cleared errors. Set heat 68F / cool 74F.',equip:'LG RTU 303KALC00048 & 302KARW00006',building:'Education Center',amount:500},
+  {inv:'126100',date:'05/11/2022',desc:'Exhaust Fan #2 — missing fuses. Installed 20A fuse. Fan working normally.',equip:'EF#2 143SE96414',building:'Education Center',amount:252.56},
+  {inv:'126397',date:'07/26/2022',desc:'June PM (Spring) completed — all units running, filters changed. Deficiency: Heat Recovery Unit 2 needs compressor service.',equip:'All units',building:'Education Center',amount:3487},
+  {inv:'126760',date:'07/29/2022',desc:'Heat Recovery Unit 2 compressor & PCB replacement — recovered refrigerant, removed failed compressor, installed new compressor & boards. System pressurized 24hr test.',equip:'LG HR Unit 2 ARUB096BT3 301KABF00021',building:'Education Center',amount:11368},
+  {inv:'127057',date:'06/30/2022',desc:'Church RTU — high humidity 95%. Reset economizer, restarted RTU. Humidity dropped to 65%. System operating properly.',equip:'Trane RTU C11H04914',building:'Church',amount:500},
+  {inv:'127310',date:'07/28/2022',desc:'School RTU2 smoke detector diagnosis — amber light on controls. Smoke detector will not reset. Recommend electrician replace before further diagnosis.',equip:'AAON RTU 201306-BNEW08714',building:'Education Center',amount:375},
+  {inv:'127706',date:'07/29/2022',desc:'LG VRF System 2 — 4 of 10 rooms not communicating. Manually addressed 6 IDUs and 3 HR boxes. Comms restored, system functioning properly.',equip:'LG VRF System 2 — Admin Suite 105',building:'Education Center',amount:250},
+  {inv:'128675',date:'10/13/2022',desc:'Church RTU humidity service — humidity setpoint corrected. Adjusted RTOM setpoint to ~45%. Dehumidification mode should work properly.',equip:'Trane RTU C11H04914',building:'Church',amount:375},
+  {inv:'128701',date:'10/13/2022',desc:'AHU 10 — blown 5A control fuse. Replaced 3A fuse, all components tested, system running normally at 0.8A.',equip:'AHU 10 101650D11V',building:'Church',amount:140},
+  {inv:'128702',date:'10/13/2022',desc:'Cassette #21 classroom 204 — fan motor bearing squealing. Motor cannot be oiled, must return to replace motor.',equip:'LG Cassette ARNU183TQC2 303KAJP00204',building:'Education Center',amount:125},
+  {inv:'131642',date:'08/17/2023',desc:'Trane RTU not cooling properly Sunday service. RTOM board and space humidity sensor faulty. Switched to conventional thermostat temporarily. Recommend RTOM board and sensor replacement.',equip:'Trane RTU C11H04914',building:'Church',amount:0},
+  {inv:'BID-Oct2023',date:'10/04/2023',desc:'PROPOSAL: Heat exchanger replacement on Trane RTU. Disassemble heating section, install new heat exchangers with boom truck, reassemble and test. Price valid 20 days.',equip:'Trane RTU C11H04914',building:'Church',amount:16080},
+];
+
+const hvacAssets = [
+  {serial:'10125RYN2F',desc:'Heat Pump',size:'3 Ton',loc:'Rectory — back of house',mfr:'American Standard',life:'15 yrs',building:'Rectory'},
+  {serial:'101642AX1V',desc:'AHU-1',size:'',loc:'Rectory — utility closet',mfr:'American Standard',life:'15 yrs',building:'Rectory'},
+  {serial:'12082KEN4F',desc:'HP 2',size:'',loc:'Rectory — back wall',mfr:'American Standard',life:'15 yrs',building:'Rectory'},
+  {serial:'11502H9HAV',desc:'AHU #2',size:'',loc:'Rectory — right wall',mfr:'American Standard',life:'15 yrs',building:'Rectory'},
+  {serial:'C11H04914',desc:'Package Unit (RTU) 40 Ton',size:'40 Ton',loc:'Church — ground outside',mfr:'Trane',life:'15 yrs',building:'Church'},
+  {serial:'KYA016198',desc:'Fan Coil — Confessional Left',size:'',loc:'Church — confessional ceiling left',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'KYA016480',desc:'Fan Coil — Confessional Right',size:'',loc:'Church — confessional ceiling right',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'101650D11V',desc:'AHU 10',size:'3 Ton',loc:'Church interior',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'10383MN74F',desc:'Heat Pump Unit #14',size:'3 Ton',loc:'Church — ground outside',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'101320A21V',desc:'AHU 11',size:'3 Ton',loc:'Church interior',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'10292K894F',desc:'Heat Pump Unit #13',size:'3 Ton',loc:'Church — ground outside',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'102446631V',desc:'AHU 12',size:'3 Ton',loc:"Church — men's bath ceiling",mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'10113KW54F',desc:'Heat Pump Unit #12',size:'3 Ton',loc:'Church — ground outside',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'9055N8S2V',desc:'AHU 13',size:'3 Ton',loc:'Church — chapel',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'9433WLY4F',desc:'Heat Pump Unit #11',size:'3 Ton',loc:'Church — ground outside',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'90452U32V',desc:'AHU 14',size:'3 Ton',loc:'Church — choir loft closet',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'10292LBX4F',desc:'Heat Pump Unit #10',size:'3 Ton',loc:'Church — ground outside',mfr:'American Standard',life:'15 yrs',building:'Church'},
+  {serial:'HSN010481',desc:'Heat Pump Unit #9',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA010000',desc:'Cassette 9',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'DYN010421',desc:'Heat Pump Unit #8',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA001276',desc:'Cassette 3',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN010482',desc:'Heat Pump Unit #7',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA009995',desc:'Cassette 5',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN009612',desc:'Heat Pump Unit #6',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA0098871',desc:'Cassette 7',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN010484',desc:'Heat Pump Unit #5',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA001197',desc:'Cassette 2',size:'',loc:'Church — office area',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN010483',desc:'Heat Pump Unit #4',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA010006',desc:'Cassette 6',size:'',loc:'Church — office',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN010475',desc:'Heat Pump Unit #3',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA010002',desc:'Cassette 4',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN000050',desc:'Heat Pump Unit #2',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSA010007',desc:'Cassette 1',size:'',loc:'Church interior',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'HSN000857',desc:'Heat Pump Unit #1',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'GSA005025',desc:'Cassette 8A (1995 — Near EOL)',size:'',loc:'Church lower level',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'KYN007577',desc:'Heat Pump Unit #15',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'GSA005548',desc:'Cassette 8B',size:'',loc:'Church — ground outside',mfr:'Fujitsu',life:'20 yrs',building:'Church'},
+  {serial:'201306-BNEW08714',desc:'RTU 1',size:'',loc:'Ed Center — rooftop',mfr:'AAON',life:'—',building:'Education Center'},
+  {serial:'201306-BNET08710',desc:'RTU 2',size:'',loc:'Ed Center — rooftop',mfr:'AAON',life:'—',building:'Education Center'},
+  {serial:'303KALC00048',desc:'Heat Recovery Unit 1a',size:'',loc:'Ed Center — rooftop',mfr:'LG',life:'—',building:'Education Center'},
+  {serial:'301KABF00021',desc:'Heat Recovery Unit 2',size:'',loc:'Ed Center — rooftop',mfr:'LG',life:'—',building:'Education Center'},
+  {serial:'302KARW00006',desc:'Heat Recovery Unit 1',size:'',loc:'Ed Center — rooftop',mfr:'LG',life:'—',building:'Education Center'},
+  {serial:'303KAWQ00009',desc:'Heat Recovery Unit 4a',size:'',loc:'Ed Center — rooftop',mfr:'LG',life:'—',building:'Education Center'},
+  {serial:'303KAZK00045',desc:'Heat Recovery Unit 3',size:'',loc:'Ed Center — rooftop',mfr:'LG',life:'—',building:'Education Center'},
+  {serial:'143SE96414-1',desc:'Exhaust Fan #1',size:'',loc:'Ed Center — rooftop',mfr:'Loren Cook',life:'—',building:'Education Center'},
+  {serial:'143SE96414-2',desc:'Exhaust Fan #2',size:'',loc:'Ed Center — rooftop',mfr:'Loren Cook',life:'—',building:'Education Center'},
+  {serial:'143SE96414-3',desc:'Exhaust Fan #3',size:'',loc:'Ed Center — rooftop',mfr:'Loren Cook',life:'—',building:'Education Center'},
+  {serial:'TBD',desc:'Exhaust Fan #4',size:'',loc:'Ed Center — kitchen side wall',mfr:'Loren Cook',life:'—',building:'Education Center'},
+];
+
+// State
+let workOrders = [];
+let woCounter = 1;
+
+// ---- Supabase functions ----
+async function loadWorkOrders() {
+  try {
+    const { data, error } = await db.from('work_orders').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    workOrders = data || [];
+    if (workOrders.length > 0) {
+      woCounter = Math.max(...workOrders.map(w => parseInt(w.id) || 0)) + 1;
+    }
+  } catch(e) {
+    console.error('Error loading work orders:', e);
+    workOrders = [];
+  }
+  renderAll();
+}
+
+async function saveWorkOrder(wo) {
+  try {
+    const { data, error } = await db.from('work_orders').insert([wo]).select();
+    if (error) throw error;
+    workOrders.unshift(data[0]);
+    showToast('Work order saved!');
+    renderAll();
+  } catch(e) {
+    console.error('Error saving work order:', e);
+    showToast('Error saving — check your connection');
+  }
+}
+
+async function updateWOStatus(id, status) {
+  try {
+    const { error } = await db.from('work_orders').update({ status }).eq('id', id);
+    if (error) throw error;
+    const wo = workOrders.find(w => w.id === id);
+    if (wo) wo.status = status;
+    showToast('Status updated!');
+    renderAll();
+  } catch(e) {
+    console.error('Error updating status:', e);
+    showToast('Error updating — check your connection');
+  }
+}
+
+async function deleteWO(id) {
+  try {
+    const { error } = await db.from('work_orders').delete().eq('id', id);
+    if (error) throw error;
+    workOrders = workOrders.filter(w => w.id !== id);
+    showToast('Work order deleted');
+    renderAll();
+  } catch(e) {
+    console.error('Error deleting:', e);
+  }
+}
+
+// ---- Render functions ----
+function fmt(n) { return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+const pbadge = p => { const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'}; return `<span class="badge ${m[p]||'b-gray'}">${p}</span>`; };
+const sbadge = s => { const m={Open:'b-amber','In Progress':'b-blue',Completed:'b-green'}; return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`; };
+
+function renderDash() {
+  const open = workOrders.filter(w => w.status !== 'Completed').length;
+  document.getElementById('d-wo').textContent = open;
+  document.getElementById('d-hist').textContent = serviceHistory.length;
+  document.getElementById('wo-badge').textContent = open;
+  const total = serviceHistory.reduce((a, h) => a + h.amount, 0);
+  document.getElementById('d-total').textContent = fmt(total);
+
+  const rows = document.getElementById('d-hist-rows');
+  if (rows) {
+    const recent = workOrders.slice(0, 5);
+    rows.innerHTML = recent.length
+      ? recent.map(w => `<tr>
+          <td style="font-weight:bold">${w.issue}</td>
+          <td>${w.building}</td>
+          <td>${sbadge(w.status)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="3" class="empty">No work orders yet</td></tr>';
+  }
+
+  const byYear = {};
+  serviceHistory.forEach(h => { const y = h.date.split('/')[2]; byYear[y] = (byYear[y]||0) + h.amount; });
+  const maxY = Math.max(...Object.values(byYear));
+  const spend = document.getElementById('d-spend');
+  if (spend) spend.innerHTML = Object.entries(byYear).sort().map(([y,v]) => `<div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;font-family:sans-serif"><span>${y}</span><span style="color:var(--text3)">${fmt(v)}</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(v/maxY*100)}%"></div></div>
+  </div>`).join('');
+}
+
+function renderWO() {
+  const fs = document.getElementById('wo-f-status')?.value || 'all';
+  const fb = document.getElementById('wo-f-bld')?.value || 'all';
+  const filtered = workOrders.filter(w => (fs==='all'||w.status===fs) && (fb==='all'||w.building===fb));
+  const tb = document.getElementById('wo-table');
+  if (tb) tb.innerHTML = filtered.length
+    ? filtered.map((w,i) => `<tr>
+        <td style="font-size:11px;color:var(--text3)">#${i+1}</td>
+        <td style="font-weight:bold">${w.issue}</td>
+        <td>${w.building}</td>
+        <td>${pbadge(w.priority)}</td>
+        <td>${w.assignee}</td>
+        <td>${sbadge(w.status)}</td>
+        <td>
+          ${w.status !== 'Completed' ? `<button class="btn" style="font-size:10px;padding:3px 7px" onclick="updateWOStatus('${w.id}','Completed')">Done</button>` : ''}
+          <button class="btn btn-danger" style="font-size:10px;padding:3px 7px;margin-left:4px" onclick="deleteWO('${w.id}')">Del</button>
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" class="empty">No work orders match this filter</td></tr>';
+}
+
+function renderHistory() {
+  const fy = document.getElementById('hist-f-year')?.value || 'all';
+  const fb = document.getElementById('hist-f-bld')?.value || 'all';
+  const filtered = serviceHistory.filter(h => (fy==='all'||h.date.includes('/'+fy)) && (fb==='all'||h.building===fb));
+  const tb = document.getElementById('hist-table');
+  if (tb) tb.innerHTML = [...filtered].reverse().map(h => `<tr onclick="showDetail('${h.inv}')">
+    <td style="font-size:11px;color:var(--text3)">${h.inv}</td>
+    <td style="font-size:11px;color:var(--text3)">${h.date}</td>
+    <td style="white-space:normal;line-height:1.4;font-weight:bold;padding-top:9px;padding-bottom:9px">${h.desc.substring(0,80)}${h.desc.length>80?'…':''}</td>
+    <td style="font-size:11px;color:var(--text3);white-space:normal">${h.equip.substring(0,28)}</td>
+    <td><span class="badge b-blue" style="font-size:10px">${h.building.substring(0,6)}</span></td>
+    <td style="font-weight:bold">${h.amount > 0 ? fmt(h.amount) : '—'}</td>
+  </tr>`).join('');
+}
+
+function renderHVAC() {
+  const fb = document.getElementById('hvac-f-bld')?.value || 'all';
+  const filtered = hvacAssets.filter(h => fb==='all' || h.building===fb);
+  const tb = document.getElementById('hvac-table');
+  if (tb) tb.innerHTML = filtered.map(h => `<tr>
+    <td style="font-size:11px;font-family:monospace;color:var(--text3)">${h.serial}</td>
+    <td style="font-weight:bold">${h.desc}</td>
+    <td>${h.size||'—'}</td>
+    <td>${h.loc}</td>
+    <td>${h.mfr}</td>
+    <td style="font-size:11px;color:var(--text3)">${h.life}</td>
+  </tr>`).join('');
+}
+
+function renderAll() { renderDash(); renderWO(); renderHistory(); renderHVAC(); }
+
+// ---- Modal ----
+function openModal(type) {
+  if (type === 'wo') {
+    document.getElementById('modal-h').textContent = 'New Work Order';
+    document.getElementById('modal-sub').textContent = 'This will be saved permanently to your database.';
+    document.getElementById('modal-body').innerHTML = `
+      <div class="fg"><label>Issue description *</label><input type="text" class="fi" id="f-issue" placeholder="Brief description of the problem"></div>
+      <div class="fg"><label>Building *</label><select class="fi" id="f-bld"><option value="">Select building...</option><option>Church</option><option>Education Center</option><option>Rectory</option><option>Grounds</option></select></div>
+      <div class="fg"><label>Specific location</label><input type="text" class="fi" id="f-loc" placeholder="Room or area"></div>
+      <div class="fg"><label>Priority *</label><select class="fi" id="f-pri"><option value="">Select priority...</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
+      <div class="fg"><label>Assign to *</label><select class="fi" id="f-assign"><option value="">Select assignee...</option><option>Antonio (Handyman)</option><option>Trimark (HVAC)</option><option>UPP (Plumbing)</option><option>Other</option></select></div>
+      <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details..."></textarea></div>
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitWO()">Save Work Order</button>
+      </div>`;
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function submitWO() {
+  const issue = document.getElementById('f-issue').value.trim();
+  const building = document.getElementById('f-bld').value;
+  const location = document.getElementById('f-loc').value.trim();
+  const priority = document.getElementById('f-pri').value;
+  const assignee = document.getElementById('f-assign').value;
+  const notes = document.getElementById('f-notes').value.trim();
+
+  if (!issue || !building || !priority || !assignee) {
+    showToast('Please fill in all required fields');
+    return;
+  }
+
+  saveWorkOrder({ issue, building, location, priority, assignee, notes, status: 'Open' });
+  closeModal();
+}
+
+function showDetail(inv) {
+  const h = serviceHistory.find(x => x.inv === inv);
+  if (!h) return;
+  document.getElementById('modal-h').textContent = 'Invoice / Work Order ' + h.inv;
+  document.getElementById('modal-sub').textContent = '';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row"><div class="detail-label">Date</div><div class="detail-value">${h.date}</div></div>
+    <div class="detail-row"><div class="detail-label">Building</div><div class="detail-value">${h.building}</div></div>
+    <div class="detail-row"><div class="detail-label">Equipment</div><div class="detail-value">${h.equip}</div></div>
+    <div class="detail-row"><div class="detail-label">Amount</div><div class="detail-value" style="font-weight:bold">${h.amount > 0 ? fmt(h.amount) : 'No charge / Proposal'}</div></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);font-family:sans-serif;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px">Work performed</div>
+    <div class="notes-box">${h.desc}</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">Close</button></div>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function outsideClose(e) { if (e.target.id === 'modal-overlay') closeModal(); }
+
+// ---- Navigation ----
+function go(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const v = document.getElementById('view-' + name);
+  if (v) v.classList.add('active');
+  if (el) el.classList.add('active');
+  else document.querySelectorAll('.nav-item').forEach(n => { if (n.textContent.trim().toLowerCase().includes(name.substring(0,5).toLowerCase())) n.classList.add('active'); });
+  renderAll();
+}
+
+// ---- Toast ----
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ---- Init ----
+loadWorkOrders();
+renderHVAC();
+renderHistory();
+</script>
+</body>
+</html>
