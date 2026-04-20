@@ -36,7 +36,13 @@
   </div>
   <div class="nav-section">
     <div class="nav-label">Directory</div>
-    <div class="nav-item" onclick="go('contacts',this)"><span>Contractors & Staff</span></div>
+    <div class="nav-item" onclick="goContacts('Contractor',this)"><span>Contractors</span></div>
+    <div class="nav-item" onclick="goContacts('Staff',this)"><span>Staff</span></div>
+    <div class="nav-item" onclick="goContacts('Volunteer',this)"><span>Volunteers</span></div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Admin</div>
+    <div class="nav-item" onclick="go('settings',this)"><span>Settings</span></div>
   </div>
 </div>
 
@@ -145,7 +151,7 @@
     <input type="text" class="search-bar" id="asset-search" placeholder="Search by name, serial, room, location..." oninput="renderAssets()">
     <div class="filter-bar">
       <select class="btn" id="af-bld" onchange="renderAssets()"><option value="all">All buildings</option></select>
-      <select class="btn" id="af-cat" onchange="renderAssets()"><option value="all">All categories</option><option>HVAC</option><option>Kitchen</option><option>Safety</option><option>AV & Tech</option><option>Liturgical</option><option>Grounds</option><option>Plumbing</option><option>Electrical</option><option>Other</option></select>
+      <select class="btn" id="af-cat" onchange="renderAssets()"><option value="all">All categories</option></select>
       <select class="btn" id="af-status" onchange="renderAssets()"><option value="all">All statuses</option><option>Active</option><option>Maintenance</option><option>Retired</option></select>
     </div>
     <div id="asset-list"><div class="loading">Loading assets...</div></div>
@@ -211,12 +217,14 @@
     <div class="topbar-title" id="room-detail-title">Room</div>
     <div class="topbar-actions">
       <button class="btn" id="room-back-btn" onclick="goBackToBuilding()">← Back</button>
+      <button class="btn" onclick="editRoom(currentRoomId)">Edit Room</button>
       <button class="btn" onclick="openAssetModal(null,currentRoomId)">+ Add Asset</button>
       <button class="btn btn-primary" onclick="openWOModal(currentRoomId,currentBuildingId)">+ Work Order</button>
     </div>
   </div>
   <div class="content">
-    <div id="room-detail-meta" style="margin-bottom:20px;font-family:sans-serif;font-size:13px;color:var(--text3)"></div>
+    <div id="room-detail-meta" style="margin-bottom:12px;font-family:sans-serif;font-size:13px;color:var(--text3)"></div>
+    <div id="room-photos" style="margin-bottom:16px"></div>
     <div class="two-col">
       <div>
         <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Assets in this room</div>
@@ -233,10 +241,26 @@
 <!-- CONTACTS -->
 <div class="view" id="view-contacts">
   <div class="topbar">
-    <div class="topbar-title">Contractors & Staff</div>
-    <div class="topbar-actions"><button class="btn btn-primary" onclick="openContactModal()">+ Add Contact</button></div>
+    <div class="topbar-title" id="contacts-title">Directory</div>
+    <div class="topbar-actions"><button class="btn btn-primary" id="contacts-add-btn" onclick="openContactModal()">+ Add Contact</button></div>
   </div>
   <div class="content"><div id="contacts-list"><div class="loading">Loading...</div></div></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="view" id="view-settings">
+  <div class="topbar">
+    <div class="topbar-title">Settings</div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Asset Categories</div>
+        <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button>
+      </div>
+      <div id="categories-list"><div class="loading">Loading...</div></div>
+    </div>
+  </div>
 </div>
 
 </div><!-- end .main -->
@@ -269,6 +293,9 @@
 </div>
 <div class="modal-overlay" id="hist-modal" onclick="outsideClose(event,'hist-modal')">
   <div class="modal"><h3 id="hm-h"></h3><div class="modal-sub" id="hm-sub"></div><div id="hm-body"></div></div>
+</div>
+<div class="modal-overlay" id="category-modal" onclick="outsideClose(event,'category-modal')">
+  <div class="modal"><h3 id="cat-modal-h">Add Category</h3><div class="modal-sub">Manage the category list shown in the Asset Registry.</div><div id="cat-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

@@ -5,12 +5,15 @@ const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // Shared state
-let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[];
-let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null;
-let currentBuildingId=null,currentRoomId=null;
+let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[];
+let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null;
+let currentBuildingId=null,currentRoomId=null,currentContactType='Contractor';
+// One-shot callback fired after the next successful contact save (used by inline "+ Add new contact" flows).
+let afterContactSave=null;
 
 // Shared formatters / badge helpers
-const catIcon={'HVAC':'❄️','Kitchen':'🍳','Safety':'🚒','AV & Tech':'📽️','Liturgical':'⛪','Grounds':'🌿','Plumbing':'🔧','Electrical':'💡','Other':'📦'};
+// catIcon is populated from the categories table on load; falls back to 📦 for unknown categories.
+let catIcon={};
 const fmt=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const pb=p=>{const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};return`<span class="badge ${m[p]||'b-gray'}">${p}</span>`};
 const sb=s=>{const m={Open:'b-amber','In Progress':'b-blue',Completed:'b-green',Active:'b-green',Maintenance:'b-amber',Retired:'b-gray',Upcoming:'b-blue',Overdue:'b-red',Done:'b-green',Paid:'b-green',Unpaid:'b-amber'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`};

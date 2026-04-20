@@ -55,10 +55,13 @@ function renderDash(){
   const aa=document.getElementById('d-asset-alerts');
   const attnA=assets.filter(a=>a.status==='Maintenance');
   if(aa)aa.innerHTML=attnA.length
-    ?attnA.slice(0,5).map(a=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
-      ${a.photo_url?`<img src="${a.photo_url}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;cursor:pointer" onclick="openLightbox('${a.photo_url}')">`:`<span style="font-size:17px">${catIcon[a.category]||'📦'}</span>`}
+    ?attnA.slice(0,5).map(a=>{
+      const pic=firstPhoto(a);
+      return`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+      ${pic?`<img src="${pic}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;cursor:pointer" onclick="openLightbox('${pic}')">`:`<span style="font-size:17px">${catIcon[a.category]||'📦'}</span>`}
       <div style="flex:1;min-width:0"><div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location} · ${a.building}</div></div>
-      ${sb(a.status)}</div>`).join('')
+      ${sb(a.status)}</div>`;
+    }).join('')
     :'<div style="text-align:center;padding:20px;color:var(--text3);font-family:sans-serif;font-size:13px">All assets operational ✓</div>';
 }
 
@@ -150,13 +153,24 @@ function openRoom(id){
 }
 
 function renderRoomDetail(roomId){
+  const room=rooms.find(r=>r.id===roomId);
   const roomAssets=assets.filter(a=>a.room_id===roomId);
   const roomWOs=workOrders.filter(w=>w.room_id===roomId);
 
+  const rp=document.getElementById('room-photos');
+  if(rp){
+    const pics=allPhotos(room);
+    rp.innerHTML=pics.length
+      ?`<div class="photo-gallery">${pics.map(u=>`<div class="photo-thumb" style="width:110px;height:110px"><img src="${u}" onclick="openLightbox('${u}')"></div>`).join('')}</div>`
+      :'';
+  }
+
   const ra=document.getElementById('room-assets');
   if(ra)ra.innerHTML=roomAssets.length
-    ?roomAssets.map(a=>`<div class="asset-card" style="margin-bottom:8px">
-        ${a.photo_url?`<img src="${a.photo_url}" class="asset-photo" onclick="openLightbox('${a.photo_url}')">`:`<div class="asset-icon">${catIcon[a.category]||'📦'}</div>`}
+    ?roomAssets.map(a=>{
+      const pic=firstPhoto(a);
+      return`<div class="asset-card" style="margin-bottom:8px">
+        ${pic?`<img src="${pic}" class="asset-photo" onclick="openLightbox('${pic}')">`:`<div class="asset-icon">${catIcon[a.category]||'📦'}</div>`}
         <div class="asset-info">
           <div class="asset-name">${a.description}</div>
           <div class="asset-meta">${[a.serial,a.manufacturer].filter(Boolean).join(' · ')}</div>
@@ -165,7 +179,8 @@ function renderRoomDetail(roomId){
         <div class="asset-actions">
           <button class="btn btn-edit btn-sm" onclick="editAsset('${a.id}')">Edit</button>
         </div>
-      </div>`).join('')
+      </div>`;
+    }).join('')
     :'<div class="empty-state" style="padding:20px"><p>No assets in this room.</p><small>Click "+ Add Asset" to add one.</small></div>';
 
   const rw=document.getElementById('room-workorders');
@@ -195,8 +210,10 @@ function renderAssets(){
   const el=document.getElementById('asset-list');
   if(!el)return;
   if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No assets match.</p></div>';return;}
-  el.innerHTML=filtered.map(a=>`<div class="asset-card">
-    ${a.photo_url?`<img src="${a.photo_url}" class="asset-photo" onclick="openLightbox('${a.photo_url}')">`:`<div class="asset-icon">${catIcon[a.category]||'📦'}</div>`}
+  el.innerHTML=filtered.map(a=>{
+    const pic=firstPhoto(a);
+    return`<div class="asset-card">
+    ${pic?`<img src="${pic}" class="asset-photo" onclick="openLightbox('${pic}')">`:`<div class="asset-icon">${catIcon[a.category]||'📦'}</div>`}
     <div class="asset-info">
       <div class="asset-name">${a.description}</div>
       <div class="asset-meta">${[a.serial,a.room_number,a.location,a.manufacturer,a.size].filter(Boolean).join(' · ')}</div>
@@ -207,7 +224,8 @@ function renderAssets(){
       <button class="btn btn-edit btn-sm" onclick="editAsset('${a.id}')">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDeleteAsset('${a.id}','${(a.description||'').replace(/'/g,"\\'")}')">Del</button>
     </div>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 }
 
 // ---- RENDER WORK ORDERS ----
@@ -258,14 +276,19 @@ function renderPM(){
 function renderContacts(){
   const el=document.getElementById('contacts-list');
   if(!el)return;
-  if(!contacts.length){el.innerHTML='<div class="empty-state"><p>No contacts yet.</p></div>';return;}
+  const typePlural={Contractor:'Contractors',Staff:'Staff',Volunteer:'Volunteers'};
+  const typeLabel=typePlural[currentContactType]||'Directory';
+  const titleEl=document.getElementById('contacts-title');
+  if(titleEl)titleEl.textContent=typeLabel;
+  const btnEl=document.getElementById('contacts-add-btn');
+  if(btnEl)btnEl.textContent='+ Add '+currentContactType;
+  const filtered=contacts.filter(c=>c.type===currentContactType);
+  if(!filtered.length){el.innerHTML=`<div class="empty-state"><p>No ${typeLabel.toLowerCase()} yet.</p><small>Click "+ Add ${currentContactType}" to add one.</small></div>`;return;}
   const now=new Date();
-  const grouped={Contractor:[],Staff:[],Parish:[]};
-  contacts.forEach(c=>{if(grouped[c.type])grouped[c.type].push(c);else grouped['Parish'].push(c);});
-  el.innerHTML=Object.entries(grouped).filter(([,v])=>v.length).map(([type,list])=>`
+  el.innerHTML=`
     <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">${type}s</div></div>
-      ${list.map(c=>{
+      <div class="card-header"><div class="card-title">${typeLabel}</div></div>
+      ${filtered.map(c=>{
         const coiExp=c.coi_expiry?new Date(c.coi_expiry):null;
         const coiExpired=coiExp&&coiExp<now;
         const coiSoon=coiExp&&!coiExpired&&coiExp<new Date(now.getTime()+60*24*60*60*1000);
@@ -289,7 +312,7 @@ function renderContacts(){
           </div>
         </div>`;
       }).join('')}
-    </div>`).join('');
+    </div>`;
 }
 
 // ---- RENDER INVOICES ----
@@ -305,7 +328,7 @@ function renderInvoices(){
   const tb=document.getElementById('inv-table');
   if(tb)tb.innerHTML=f.length
     ?f.map(i=>`<tr onclick="editInvoice('${i.id}')" style="cursor:pointer">
-      <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}</td>
+      <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}${i.pdf_url?` <a href="${i.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
       <td style="font-size:11px;color:var(--text3)">${i.date||'—'}</td>
       <td style="font-weight:bold">${i.vendor}</td>
       <td>${(i.description||'').substring(0,50)}</td>
@@ -351,3 +374,33 @@ function populateBuildingDropdowns(){
 }
 
 function populateContactDropdowns(){}
+
+function populateCategoryDropdown(){
+  const el=document.getElementById('af-cat');
+  if(!el)return;
+  const cur=el.value;
+  while(el.options.length>1)el.remove(1);
+  categories.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;el.appendChild(o);});
+  if(cur)el.value=cur;
+}
+
+// ---- RENDER SETTINGS ----
+function renderSettings(){
+  const el=document.getElementById('categories-list');
+  if(!el)return;
+  if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}
+  el.innerHTML=categories.map(c=>{
+    const inUse=assets.filter(a=>a.category===c.name).length;
+    return`<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+      <div style="width:38px;height:38px;border-radius:8px;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${c.icon||'📦'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
+        <div style="font-size:12px;color:var(--text3)">${inUse} asset${inUse===1?'':'s'} using this category</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-edit btn-sm" onclick="editCategory('${c.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteCategory('${c.id}','${c.name.replace(/'/g,"\\'")}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}

@@ -1,5 +1,17 @@
 // Static seed data: default rooms, default assets, and Trimark service history
 
+const defaultCategories=[
+  {name:'HVAC',icon:'❄️'},
+  {name:'Kitchen',icon:'🍳'},
+  {name:'Safety',icon:'🚒'},
+  {name:'AV & Tech',icon:'📽️'},
+  {name:'Liturgical',icon:'⛪'},
+  {name:'Grounds',icon:'🌿'},
+  {name:'Plumbing',icon:'🔧'},
+  {name:'Electrical',icon:'💡'},
+  {name:'Other',icon:'📦'},
+];
+
 const defaultRooms={
   'Church':[
     {name:'Nave',floor:'Main',notes:'Main worship space'},

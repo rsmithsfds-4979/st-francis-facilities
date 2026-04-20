@@ -2,8 +2,35 @@
 
 // ---- LOAD ----
 async function loadAll(){
+  // Categories must load before assets so catIcon is populated when renderAssets runs.
+  await loadCategories();
   await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices()]);
   renderHistory();renderDash();
+}
+
+async function loadCategories(){
+  try{
+    const{data,error}=await db.from('categories').select('*').order('sort_order').order('name');
+    if(error)throw error;
+    if(!data||data.length===0){await seedCategories();}
+    else categories=data;
+  }catch(e){console.error(e);categories=[];}
+  rebuildCatIcon();
+  populateCategoryDropdown();
+}
+
+async function seedCategories(){
+  try{
+    const toInsert=defaultCategories.map((c,i)=>({...c,sort_order:i+1}));
+    const{data,error}=await db.from('categories').insert(toInsert).select();
+    if(error)throw error;
+    categories=data||[];
+  }catch(e){console.error(e);categories=[];}
+}
+
+function rebuildCatIcon(){
+  catIcon={};
+  categories.forEach(c=>{catIcon[c.name]=c.icon||'📦';});
 }
 
 async function loadBuildings(){
@@ -136,6 +163,7 @@ async function saveRoom(d){
     }
     editingRoomId=null;closeModal('room-modal');
     renderRooms();
+    if(currentRoomId)renderRoomDetail(currentRoomId);
   }catch(e){console.error(e);showToast('Error saving room');}
 }
 
@@ -246,19 +274,26 @@ async function deletePM(id){
 
 async function saveContact(d){
   try{
+    let saved=null;
     if(editingContactId){
       const{data,error}=await db.from('contacts').update(d).eq('id',editingContactId).select();
       if(error)throw error;
       const i=contacts.findIndex(c=>c.id===editingContactId);
       if(i>-1)contacts[i]=data[0];
+      saved=data[0];
       showToast('Contact updated!');
     }else{
       const{data,error}=await db.from('contacts').insert([d]).select();
       if(error)throw error;
       contacts.push(data[0]);
+      saved=data[0];
       showToast('Contact added!');
     }
     editingContactId=null;closeModal('contact-modal');renderContacts();populateContactDropdowns();
+    if(afterContactSave&&saved){
+      const cb=afterContactSave;afterContactSave=null;
+      try{cb(saved);}catch(e){console.error(e);}
+    }
   }catch(e){console.error(e);showToast('Error saving contact');}
 }
 
@@ -298,11 +333,133 @@ async function deleteInvoice(id){
   }catch(e){showToast('Error deleting');}
 }
 
+async function saveCategory(d){
+  try{
+    if(editingCategoryId){
+      const old=categories.find(c=>c.id===editingCategoryId);
+      const renamed=old&&old.name!==d.name;
+      const{data,error}=await db.from('categories').update(d).eq('id',editingCategoryId).select();
+      if(error)throw error;
+      const i=categories.findIndex(c=>c.id===editingCategoryId);
+      if(i>-1)categories[i]=data[0];
+      // Rename: update all assets using the old category name
+      if(renamed){
+        await db.from('assets').update({category:d.name}).eq('category',old.name);
+        assets.forEach(a=>{if(a.category===old.name)a.category=d.name;});
+      }
+      showToast('Category updated!');
+    }else{
+      const sort_order=(categories.reduce((m,c)=>Math.max(m,c.sort_order||0),0))+1;
+      const{data,error}=await db.from('categories').insert([{...d,sort_order}]).select();
+      if(error)throw error;
+      categories.push(data[0]);
+      showToast('Category added!');
+    }
+    editingCategoryId=null;closeModal('category-modal');
+    rebuildCatIcon();populateCategoryDropdown();
+    renderSettings();renderAssets();renderDash();
+  }catch(e){console.error(e);showToast('Error saving category');}
+}
+
+async function deleteCategory(id){
+  const c=categories.find(x=>x.id===id);
+  if(!c)return;
+  const inUse=assets.filter(a=>a.category===c.name).length;
+  if(inUse>0){
+    showToast(`Cannot delete — ${inUse} asset${inUse>1?'s':''} still use "${c.name}"`);
+    return;
+  }
+  try{
+    const{error}=await db.from('categories').delete().eq('id',id);
+    if(error)throw error;
+    categories=categories.filter(x=>x.id!==id);
+    rebuildCatIcon();populateCategoryDropdown();
+    showToast('Category deleted');renderSettings();
+  }catch(e){showToast('Error deleting');}
+}
+
+// ---- MULTI-PHOTO HELPERS ----
+// Each modal that handles photos maintains an entry in photoStates keyed by
+// a short name ('asset' | 'wo' | 'room'). init on modal open, finalize on save.
+const photoStates={};
+
+function initPhotoState(key,existing){
+  photoStates[key]={
+    existing:(existing||[]).filter(Boolean),
+    pending:[],          // File objects not yet uploaded
+    pendingPreviews:[],  // data URLs for preview
+    removed:[],          // URLs of existing photos marked for removal
+  };
+}
+
+function renderPhotoGallery(key,galleryId){
+  const s=photoStates[key];
+  const el=document.getElementById(galleryId);
+  if(!el||!s)return;
+  const kept=s.existing.filter(u=>!s.removed.includes(u));
+  const thumbs=[
+    ...kept.map(u=>`<div class="photo-thumb"><img src="${u}" onclick="openLightbox('${u}')"><button type="button" onclick="removeExistingPhoto('${key}','${u}','${galleryId}')">×</button></div>`),
+    ...s.pendingPreviews.map((p,i)=>`<div class="photo-thumb"><img src="${p}"><button type="button" onclick="removePendingPhoto('${key}',${i},'${galleryId}')">×</button></div>`),
+  ];
+  el.innerHTML=thumbs.join('')||'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No photos yet</div>';
+}
+
+function addPendingPhotos(key,event,galleryId){
+  const files=Array.from(event.target.files||[]);
+  const s=photoStates[key];
+  if(!s)return;
+  files.forEach(f=>{
+    s.pending.push(f);
+    const reader=new FileReader();
+    reader.onload=e=>{s.pendingPreviews.push(e.target.result);renderPhotoGallery(key,galleryId);};
+    reader.readAsDataURL(f);
+  });
+  event.target.value='';
+}
+
+function removeExistingPhoto(key,url,galleryId){
+  const s=photoStates[key];if(!s)return;
+  s.removed.push(url);renderPhotoGallery(key,galleryId);
+}
+
+function removePendingPhoto(key,idx,galleryId){
+  const s=photoStates[key];if(!s)return;
+  s.pending.splice(idx,1);
+  s.pendingPreviews.splice(idx,1);
+  renderPhotoGallery(key,galleryId);
+}
+
+async function finalizePhotos(key,folder){
+  const s=photoStates[key];
+  if(!s)return[];
+  const kept=s.existing.filter(u=>!s.removed.includes(u));
+  const uploaded=[];
+  for(const f of s.pending){
+    const url=await uploadFile(f,folder);
+    if(url)uploaded.push(url);
+  }
+  return[...kept,...uploaded];
+}
+
+// Returns the first available photo URL from either photo_urls[] or legacy photo_url.
+function firstPhoto(obj){
+  if(obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0)return obj.photo_urls[0];
+  return obj?.photo_url||null;
+}
+function photoCount(obj){
+  if(obj?.photo_urls&&Array.isArray(obj.photo_urls))return obj.photo_urls.length;
+  return obj?.photo_url?1:0;
+}
+function allPhotos(obj){
+  if(obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0)return obj.photo_urls;
+  return obj?.photo_url?[obj.photo_url]:[];
+}
+
 async function uploadFile(file,folder){
   try{
     const ext=file.name.split('.').pop();
-    const path=`${folder}/${Date.now()}.${ext}`;
-    const bucket=folder==='coi'?'documents':'asset-photos';
+    const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const bucket=(folder==='coi'||folder==='invoices')?'documents':'asset-photos';
     const{error}=await db.storage.from(bucket).upload(path,file);
     if(error)throw error;
     const{data}=db.storage.from(bucket).getPublicUrl(path);
@@ -385,7 +542,14 @@ function go(name,el){
   if(v)v.classList.add('active');
   if(el)el.classList.add('active');
   if(name==='buildings')renderBuildings();
+  if(name==='settings')renderSettings();
+  if(name==='contacts')renderContacts();
   renderHistory();
+}
+
+function goContacts(type,el){
+  currentContactType=type;
+  go('contacts',el);
 }
 
 function showToast(msg){

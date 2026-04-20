@@ -29,9 +29,10 @@ function openWOModal(presetRoomId,presetBldId){
       <div class="fg"><label>Due date</label><input type="text" class="fi" id="f-due" placeholder="e.g. May 15 2025"></div>
     </div>
     <div class="fg"><label>Assign to *</label>
-      <select class="fi" id="f-assign">
+      <select class="fi" id="f-assign" onchange="handleAssignChange(this)">
         <option value="">Select...</option>
         ${contacts.map(c=>`<option>${c.name}</option>`).join('')}
+        <option value="__add_new__">+ Add new contact…</option>
         <option>Other</option>
       </select>
     </div>
@@ -48,14 +49,16 @@ function openWOModal(presetRoomId,presetBldId){
       </div>
     </div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details..."></textarea></div>
-    <div class="fg"><label>Photo (optional)</label>
-      <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click to attach a photo<input type="file" id="wo-photo-input" accept="image/*" style="display:none" onchange="previewPhoto(event,'wo-photo-preview')"></div>
-      <img id="wo-photo-preview" class="photo-preview" style="display:none">
+    <div class="fg"><label>Photos (optional)</label>
+      <div class="photo-gallery" id="wo-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click to attach photos<input type="file" id="wo-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('wo',event,'wo-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('wo-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitWO()">Save Work Order</button>
     </div>`;
+  initPhotoState('wo',[]);
+  renderPhotoGallery('wo','wo-photo-gallery');
   document.getElementById('wo-modal').classList.add('open');
 }
 
@@ -81,6 +84,23 @@ function toggleAssetSelect(el,id){
   if(cb)cb.checked=!cb.checked;
 }
 
+// Opens the contact modal from the WO assign dropdown; after save, insert new name and select it.
+function handleAssignChange(sel){
+  if(sel.value!=='__add_new__')return;
+  sel.value='';
+  afterContactSave=(newContact)=>{
+    const opt=document.createElement('option');
+    opt.textContent=newContact.name;
+    opt.value=newContact.name;
+    // Insert before the "+ Add new contact" option
+    const anchor=sel.querySelector('option[value="__add_new__"]');
+    if(anchor)sel.insertBefore(opt,anchor);
+    else sel.appendChild(opt);
+    sel.value=newContact.name;
+  };
+  openContactModal();
+}
+
 async function submitWO(){
   const issue=document.getElementById('f-issue')?.value.trim();
   const building=document.getElementById('f-bld')?.value;
@@ -91,13 +111,11 @@ async function submitWO(){
   const room=roomId?rooms.find(r=>r.id===roomId):null;
   // Get selected asset IDs
   const selectedAssets=[...document.querySelectorAll('#asset-select-list input[type=checkbox]:checked')].map(cb=>cb.value);
-  let photo_url=null;
-  const photoFile=document.getElementById('wo-photo-input')?.files[0];
-  if(photoFile)photo_url=await uploadFile(photoFile,'work-orders');
+  const photo_urls=await finalizePhotos('wo','work-orders');
   saveWO({issue,building,location:room?room.name:document.getElementById('f-room')?.value||'',
     room_id:roomId,due_date:document.getElementById('f-due')?.value.trim(),
     priority,assignee,notes:document.getElementById('f-notes')?.value.trim(),
-    status:'Open',photo_url,asset_ids:selectedAssets.length?selectedAssets:null});
+    status:'Open',photo_urls,photo_url:photo_urls[0]||null,asset_ids:selectedAssets.length?selectedAssets:null});
   closeModal('wo-modal');
 }
 
@@ -117,7 +135,7 @@ async function openWODetail(id){
     <div class="dr"><div class="dl">Completed</div><div style="font-family:sans-serif">${w.completed_date||'—'}</div></div>
     ${linkedAssets.length?`<div class="dr"><div class="dl">Assets</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:4px">${linkedAssets.map(a=>`<span class="badge b-blue">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}</div></div>`:''}
     ${w.notes?`<div class="dr"><div class="dl">Notes</div><div style="font-family:sans-serif;white-space:normal;line-height:1.5">${w.notes}</div></div>`:''}
-    ${w.photo_url?`<div style="margin:12px 0"><img src="${w.photo_url}" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openLightbox('${w.photo_url}')"></div>`:''}
+    ${allPhotos(w).length?`<div style="margin:12px 0"><div class="photo-gallery">${allPhotos(w).map(u=>`<div class="photo-thumb" style="width:110px;height:110px"><img src="${u}" onclick="openLightbox('${u}')"></div>`).join('')}</div></div>`:''}
     <div style="margin-top:16px;font-size:11px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px">Comments & Updates</div>
     <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">
       ${comments.length?comments.map(c=>`<div class="comment"><div class="comment-author">${c.author}</div><div class="comment-text">${c.comment}</div><div class="comment-time">${new Date(c.created_at).toLocaleString()}</div></div>`).join(''):'<div style="padding:12px 14px;font-size:13px;color:var(--text3);font-family:sans-serif">No comments yet</div>'}
@@ -161,11 +179,7 @@ function openAssetModal(asset,presetRoomId){
       </div>
       <div class="fg"><label>Category *</label>
         <select class="fi" id="a-cat"><option value="">Select...</option>
-          <option ${sel('category','HVAC')}>HVAC</option><option ${sel('category','Kitchen')}>Kitchen</option>
-          <option ${sel('category','Safety')}>Safety</option><option ${sel('category','AV & Tech')}>AV & Tech</option>
-          <option ${sel('category','Liturgical')}>Liturgical</option><option ${sel('category','Grounds')}>Grounds</option>
-          <option ${sel('category','Plumbing')}>Plumbing</option><option ${sel('category','Electrical')}>Electrical</option>
-          <option ${sel('category','Other')}>Other</option>
+          ${categories.map(c=>`<option ${sel('category',c.name)}>${c.name}</option>`).join('')}
         </select>
       </div>
     </div>
@@ -198,15 +212,16 @@ function openAssetModal(asset,presetRoomId){
       </select>
     </div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="a-notes">${v('notes')}</textarea></div>
-    <div class="fg"><label>Photo</label>
-      ${asset?.photo_url?`<div style="margin-bottom:8px"><img src="${asset.photo_url}" style="width:100%;max-height:140px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="openLightbox('${asset.photo_url}')"></div>`:''}
-      <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 ${asset?.photo_url?'Replace photo':'Attach photo'}<input type="file" id="a-photo-input" accept="image/*" style="display:none" onchange="previewPhoto(event,'a-photo-preview')"></div>
-      <img id="a-photo-preview" class="photo-preview" style="display:none">
+    <div class="fg"><label>Photos</label>
+      <div class="photo-gallery" id="a-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 Click to add photos<input type="file" id="a-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('asset',event,'a-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('asset-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitAsset()">${asset?'Save Changes':'Add Asset'}</button>
     </div>`;
+  initPhotoState('asset',allPhotos(asset));
+  renderPhotoGallery('asset','a-photo-gallery');
   document.getElementById('asset-modal').classList.add('open');
 }
 
@@ -226,9 +241,7 @@ async function submitAsset(){
   if(!description||!building||!category){showToast('Please fill in name, building, and category');return;}
   const roomId=document.getElementById('a-room-sel')?.value||null;
   const room=roomId?rooms.find(r=>r.id===roomId):null;
-  let photo_url=editingAssetId?assets.find(a=>a.id===editingAssetId)?.photo_url:null;
-  const photoFile=document.getElementById('a-photo-input')?.files[0];
-  if(photoFile)photo_url=await uploadFile(photoFile,'assets');
+  const photo_urls=await finalizePhotos('asset','assets');
   saveAsset({description,building,category,
     room_id:roomId,room_number:room?room.name:document.getElementById('a-loc')?.value.trim(),
     location:document.getElementById('a-loc')?.value.trim(),
@@ -240,7 +253,8 @@ async function submitAsset(){
     warranty_expiry:document.getElementById('a-warranty')?.value.trim(),
     status:document.getElementById('a-status')?.value,
     notes:document.getElementById('a-notes')?.value.trim(),
-    photo_url,
+    photo_urls,
+    photo_url:photo_urls[0]||null,
   });
 }
 
@@ -282,18 +296,25 @@ function openRoomModal(room){
     <div class="fg"><label>Room / Space name *</label><input type="text" class="fi" id="room-name" placeholder="e.g. Classroom 209, Server Room, Boiler Room" value="${v('name')}"></div>
     <div class="fg"><label>Floor / Level</label><input type="text" class="fi" id="room-floor" placeholder="e.g. 1st Floor, Basement, Roof" value="${v('floor')||''}"></div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="room-notes" placeholder="Any relevant notes about this space...">${v('notes')}</textarea></div>
+    <div class="fg"><label>Photos</label>
+      <div class="photo-gallery" id="room-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('room-photo-input').click()">📷 Click to add photos<input type="file" id="room-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('room',event,'room-photo-gallery')"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('room-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitRoom()">${room?'Save Changes':'Add Room'}</button>
     </div>`;
+  initPhotoState('room',allPhotos(room));
+  renderPhotoGallery('room','room-photo-gallery');
   document.getElementById('room-modal').classList.add('open');
 }
 
-function submitRoom(){
+async function submitRoom(){
   const name=document.getElementById('room-name')?.value.trim();
   if(!name){showToast('Please enter a room name');return;}
   const bld=buildings.find(b=>b.id===currentBuildingId);
-  saveRoom({name,floor:document.getElementById('room-floor')?.value.trim(),notes:document.getElementById('room-notes')?.value.trim(),building_id:currentBuildingId,building_name:bld?.name||''});
+  const photo_urls=await finalizePhotos('room','rooms');
+  saveRoom({name,floor:document.getElementById('room-floor')?.value.trim(),notes:document.getElementById('room-notes')?.value.trim(),building_id:currentBuildingId,building_name:bld?.name||'',photo_urls});
   closeModal('room-modal');
 }
 
@@ -396,6 +417,11 @@ function openInvoiceModal(inv){
         </select>
       </div>
     </div>
+    <div class="fg"><label>Invoice PDF</label>
+      ${inv?.pdf_url?`<div style="margin-bottom:8px"><a href="${inv.pdf_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current PDF</a></div>`:''}
+      <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 ${inv?.pdf_url?'Upload new PDF (replaces current)':'Upload PDF (optional)'}<input type="file" id="inv-pdf-input" accept=".pdf" style="display:none" onchange="previewInvoicePDF(event)"></div>
+      <div id="inv-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('invoice-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitInvoice()">${inv?'Save Changes':'Add Invoice'}</button>
@@ -403,14 +429,22 @@ function openInvoiceModal(inv){
   document.getElementById('invoice-modal').classList.add('open');
 }
 
+function previewInvoicePDF(event){
+  const file=event.target.files[0];
+  if(file)document.getElementById('inv-pdf-preview').textContent='✓ '+file.name+' ready to upload';
+}
+
 function editInvoice(id){const i=invoices.find(x=>x.id===id);if(i)openInvoiceModal(i);}
 
-function submitInvoice(){
+async function submitInvoice(){
   const vendor=document.getElementById('inv-vendor')?.value;
   const description=document.getElementById('inv-desc')?.value.trim();
   const amount=parseFloat(document.getElementById('inv-amount')?.value||0);
   if(!vendor||!description){showToast('Please fill in vendor and description');return;}
-  saveInvoice({invoice_number:document.getElementById('inv-num')?.value.trim(),date:document.getElementById('inv-date')?.value.trim(),vendor,building:document.getElementById('inv-bld')?.value,description,amount,status:document.getElementById('inv-status')?.value});
+  let pdf_url=editingInvId?invoices.find(x=>x.id===editingInvId)?.pdf_url:null;
+  const pdfFile=document.getElementById('inv-pdf-input')?.files[0];
+  if(pdfFile)pdf_url=await uploadFile(pdfFile,'invoices');
+  saveInvoice({invoice_number:document.getElementById('inv-num')?.value.trim(),date:document.getElementById('inv-date')?.value.trim(),vendor,building:document.getElementById('inv-bld')?.value,description,amount,status:document.getElementById('inv-status')?.value,pdf_url});
   closeModal('invoice-modal');
 }
 
@@ -428,9 +462,9 @@ function openContactModal(contact){
     <div class="form-row">
       <div class="fg"><label>Type *</label>
         <select class="fi" id="ct-type">
-          <option ${sel('type','Contractor')}>Contractor</option>
-          <option ${sel('type','Staff')}>Staff</option>
-          <option ${sel('type','Parish')}>Parish</option>
+          <option ${sel('type','Contractor')||(!contact&&currentContactType==='Contractor'?'selected':'')}>Contractor</option>
+          <option ${sel('type','Staff')||(!contact&&currentContactType==='Staff'?'selected':'')}>Staff</option>
+          <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
         </select>
       </div>
       <div class="fg"><label>Phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
@@ -541,6 +575,46 @@ function confirmDeleteRoom(id,name){
     try{await db.from('rooms').delete().eq('id',id);rooms=rooms.filter(r=>r.id!==id);showToast('Room deleted');renderRooms();}catch(e){showToast('Error deleting');}
     closeConfirm();
   };
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ---- CATEGORY MODAL ----
+function openCategoryModal(cat){
+  editingCategoryId=cat?cat.id:null;
+  document.getElementById('cat-modal-h').textContent=cat?'Edit Category':'Add Category';
+  const v=k=>cat?.[k]||'';
+  document.getElementById('cat-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Name *</label><input type="text" class="fi" id="cat-name" placeholder="e.g. Landscaping" value="${v('name')}"></div>
+      <div class="fg"><label>Icon (emoji)</label><input type="text" class="fi" id="cat-icon" placeholder="📦" value="${v('icon')}" maxlength="4"></div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+      ${cat?'Renaming will update every asset using this category.':'Paste any emoji or leave blank for the default 📦.'}
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('category-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCategory()">${cat?'Save Changes':'Add Category'}</button>
+    </div>`;
+  document.getElementById('category-modal').classList.add('open');
+}
+
+function submitCategory(){
+  const name=document.getElementById('cat-name')?.value.trim();
+  if(!name){showToast('Please enter a category name');return;}
+  const icon=document.getElementById('cat-icon')?.value.trim()||'📦';
+  saveCategory({name,icon});
+}
+
+function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
+
+function confirmDeleteCategory(id,name){
+  const c=categories.find(x=>x.id===id);
+  const inUse=c?assets.filter(a=>a.category===c.name).length:0;
+  document.getElementById('conf-h').textContent='Delete category?';
+  document.getElementById('conf-msg').textContent=inUse>0
+    ?`"${name}" is used by ${inUse} asset${inUse>1?'s':''}. Reassign them before deleting.`
+    :`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteCategory(id);closeConfirm();};
   document.getElementById('confirm-overlay').classList.add('open');
 }
 
