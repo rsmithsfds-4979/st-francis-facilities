@@ -331,8 +331,8 @@ function renderInvoices(){
       <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}${i.pdf_url?` <a href="${i.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
       <td style="font-size:11px;color:var(--text3)">${i.date||'—'}</td>
       <td style="font-weight:bold">${i.vendor}</td>
-      <td>${(i.description||'').substring(0,50)}</td>
-      <td><span class="badge b-blue" style="font-size:10px">${(i.building||'').substring(0,6)}</span></td>
+      <td>${i.description||''}</td>
+      <td><span class="badge b-blue" style="font-size:10px">${i.building||''}</span></td>
       <td style="font-weight:bold">${fmt(i.amount)}</td>
       <td>${sb(i.status)}</td></tr>`).join('')
     :'<tr><td colspan="7" class="loading">No invoices yet</td></tr>';
@@ -347,9 +347,9 @@ function renderHistory(){
   if(tb)tb.innerHTML=[...f].reverse().map(h=>`<tr onclick="showHistDetail('${h.inv}')" style="cursor:pointer">
     <td style="font-size:11px;color:var(--text3)">${h.inv}</td>
     <td style="font-size:11px;color:var(--text3)">${h.date}</td>
-    <td style="white-space:normal;line-height:1.4;font-weight:bold;padding-top:9px;padding-bottom:9px">${h.desc.substring(0,80)}${h.desc.length>80?'…':''}</td>
-    <td style="font-size:11px;color:var(--text3);white-space:normal">${h.equip.substring(0,28)}</td>
-    <td><span class="badge b-blue" style="font-size:10px">${h.building.substring(0,6)}</span></td>
+    <td style="line-height:1.4;font-weight:bold;padding-top:9px;padding-bottom:9px">${h.desc}</td>
+    <td style="font-size:11px;color:var(--text3)">${h.equip}</td>
+    <td><span class="badge b-blue" style="font-size:10px">${h.building}</span></td>
     <td style="font-weight:bold">${h.amount>0?fmt(h.amount):'—'}</td>
   </tr>`).join('');
 }
@@ -392,6 +392,220 @@ function parseDate(str){
 }
 function daysBetween(a,b){return Math.floor((a.getTime()-b.getTime())/(24*60*60*1000));}
 function fmtDate(d){return d?d.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}):'—';}
+
+// ---- FINANCE HELPERS ----
+// Merges vendor_invoices + static Trimark serviceHistory into a uniform list of
+// spending records. Drops rows whose date can't be parsed.
+function allSpending(){
+  const items=[];
+  (invoices||[]).forEach(i=>{
+    const d=parseDate(i.date);
+    if(!d)return;
+    items.push({date:d,amount:Number(i.amount)||0,building:i.building||'Other',source:'invoice'});
+  });
+  (typeof serviceHistory!=='undefined'?serviceHistory:[]).forEach(h=>{
+    const d=parseDate(h.date);
+    if(!d)return;
+    items.push({date:d,amount:Number(h.amount)||0,building:h.building||'Other',source:'history'});
+  });
+  return items;
+}
+
+// Chart state
+let _financeChart=null;
+let _financeChartRange='24';   // '12' | '24' | 'ytd'
+let _financeChartMode='stacked'; // 'stacked' (per-building) | 'total'
+
+function renderFinance(){
+  const el=document.getElementById('finance-content');
+  if(!el)return;
+  const year=new Date().getFullYear();
+  el.innerHTML=`
+    <div id="finance-budget"></div>
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 12px">Cost per building — ${year}</div>
+    <div id="finance-buildings" class="stats-row" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-header">
+        <div class="card-title">Spending Trends</div>
+        <div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" id="frange-12" onclick="setFinanceRange('12')">12 mo</button>
+          <button class="btn btn-sm" id="frange-24" onclick="setFinanceRange('24')">24 mo</button>
+          <button class="btn btn-sm" id="frange-ytd" onclick="setFinanceRange('ytd')">This year</button>
+          <span style="width:8px"></span>
+          <button class="btn btn-sm" id="fmode-stacked" onclick="setFinanceMode('stacked')">By building</button>
+          <button class="btn btn-sm" id="fmode-total" onclick="setFinanceMode('total')">Total</button>
+        </div>
+      </div>
+      <div style="padding:14px 18px;height:320px;position:relative">
+        <canvas id="finance-chart"></canvas>
+      </div>
+    </div>
+  `;
+  renderBudgetProgress();
+  renderBuildingCosts();
+  renderSpendingChart();
+  updateFinanceToolbar();
+}
+
+function renderBudgetProgress(){
+  const el=document.getElementById('finance-budget');
+  if(!el)return;
+  const now=new Date();
+  const year=now.getFullYear();
+  const b=budgets.find(x=>x.year===year);
+  const spent=allSpending().filter(s=>s.date.getFullYear()===year).reduce((a,s)=>a+s.amount,0);
+  const daysLeft=Math.max(0,Math.ceil((new Date(year+1,0,1)-now)/(24*60*60*1000)));
+
+  if(!b){
+    el.innerHTML=`<div class="card"><div class="card-header">
+      <div class="card-title">Annual Budget (${year})</div>
+      <button class="btn btn-primary btn-sm no-print" onclick="openBudgetModal()">Set Budget</button>
+    </div>
+    <div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">
+      No budget set for ${year} — click Set Budget to add one. Year-to-date spending so far: <strong>${fmt(spent)}</strong>.
+    </div></div>`;
+    return;
+  }
+
+  const amt=Number(b.amount)||0;
+  const pct=amt>0?Math.round((spent/amt)*100):0;
+  const remaining=amt-spent;
+  let barColor,pctColor;
+  if(pct<75){barColor='var(--success)';pctColor='var(--success)';}
+  else if(pct<=100){barColor='var(--warning)';pctColor='var(--warning)';}
+  else {barColor='var(--danger)';pctColor='var(--danger)';}
+
+  el.innerHTML=`<div class="card"><div class="card-header">
+    <div class="card-title">Annual Budget (${year})</div>
+    <button class="btn btn-sm no-print" onclick="openBudgetModal()">Edit Budget</button>
+  </div>
+  <div style="padding:16px 18px;font-family:sans-serif">
+    <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="font-size:22px;font-weight:bold;color:var(--accent2)">${fmt(spent)}</div>
+      <div style="font-size:13px;color:var(--text3)">of ${fmt(amt)}</div>
+      <div style="margin-left:auto;font-size:14px;font-weight:bold;color:${pctColor}">${pct}% used</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,pct)}%;background:${barColor}"></div></div>
+    <div style="margin-top:10px;font-size:12px;color:var(--text3)">
+      ${remaining>=0?`<strong>${fmt(remaining)}</strong> remaining`:`<span style="color:var(--danger);font-weight:bold">${fmt(-remaining)} over budget</span>`} · ${daysLeft} day${daysLeft===1?'':'s'} left in ${year}
+    </div>
+    ${b.notes?`<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">${b.notes}</div>`:''}
+  </div></div>`;
+}
+
+function renderBuildingCosts(){
+  const el=document.getElementById('finance-buildings');
+  if(!el)return;
+  const now=new Date();
+  const currentYear=now.getFullYear();
+  const priorYear=currentYear-1;
+  const all=allSpending();
+  // Prefer current buildings[] as the canonical list; fall back to whatever appears in spending data.
+  let bldNames=buildings.map(b=>b.name);
+  if(!bldNames.length)bldNames=[...new Set(all.map(s=>s.building))];
+
+  el.innerHTML=bldNames.map(b=>{
+    const current=all.filter(s=>s.building===b&&s.date.getFullYear()===currentYear).reduce((a,s)=>a+s.amount,0);
+    const prior=all.filter(s=>s.building===b&&s.date.getFullYear()===priorYear).reduce((a,s)=>a+s.amount,0);
+    let yoyLabel,yoyClass;
+    if(prior===0){yoyLabel='— no prior data';yoyClass='yoy-flat';}
+    else{
+      const yoy=Math.round(((current-prior)/prior)*100);
+      if(yoy>0){yoyLabel=`▲ ${yoy}% YoY`;yoyClass='yoy-up';}
+      else if(yoy<0){yoyLabel=`▼ ${-yoy}% YoY`;yoyClass='yoy-down';}
+      else{yoyLabel='— flat';yoyClass='yoy-flat';}
+    }
+    return`<div class="stat-card">
+      <div class="stat-label">${b}</div>
+      <div class="stat-value" style="color:var(--accent2)">${fmt(current)}</div>
+      <div class="stat-delta ${yoyClass}">${yoyLabel} · vs ${fmt(prior)} in ${priorYear}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSpendingChart(){
+  const canvas=document.getElementById('finance-chart');
+  if(!canvas)return;
+  if(_financeChart){_financeChart.destroy();_financeChart=null;}
+
+  const now=new Date();
+  const thisMonth=new Date(now.getFullYear(),now.getMonth(),1);
+  let startDate;
+  if(_financeChartRange==='ytd'){
+    startDate=new Date(now.getFullYear(),0,1);
+  }else{
+    const monthsBack=Number(_financeChartRange);
+    startDate=new Date(now.getFullYear(),now.getMonth()-monthsBack+1,1);
+  }
+
+  const months=[];
+  const cursor=new Date(startDate);
+  while(cursor<=thisMonth){
+    months.push(new Date(cursor));
+    cursor.setMonth(cursor.getMonth()+1);
+  }
+
+  const all=allSpending();
+  const bldNames=[...new Set(all.map(s=>s.building))].filter(Boolean).sort();
+
+  const bucket={};
+  const key=(y,m,b)=>`${y}-${String(m+1).padStart(2,'0')}-${b}`;
+  all.forEach(s=>{
+    const bStart=new Date(s.date.getFullYear(),s.date.getMonth(),1);
+    if(bStart<startDate||bStart>thisMonth)return;
+    const k=key(s.date.getFullYear(),s.date.getMonth(),s.building);
+    bucket[k]=(bucket[k]||0)+s.amount;
+  });
+
+  const monthLabels=months.map(m=>m.toLocaleDateString('en-US',{year:'2-digit',month:'short'}));
+  const palette=['#2d5a8e','#8a4400','#2d7a4a','#8a6200','#1a4a8a','#8a2020','#5c5c58'];
+
+  let datasets;
+  if(_financeChartMode==='stacked'){
+    datasets=bldNames.map((b,i)=>({
+      label:b,
+      data:months.map(m=>bucket[key(m.getFullYear(),m.getMonth(),b)]||0),
+      backgroundColor:palette[i%palette.length],
+    }));
+  }else{
+    datasets=[{
+      label:'Total',
+      data:months.map(m=>bldNames.reduce((sum,b)=>sum+(bucket[key(m.getFullYear(),m.getMonth(),b)]||0),0)),
+      backgroundColor:'#2d5a8e',
+    }];
+  }
+
+  _financeChart=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:monthLabels,datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{family:'sans-serif',size:11}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}},
+      },
+      scales:{
+        x:{stacked:_financeChartMode==='stacked',ticks:{font:{family:'sans-serif',size:10}}},
+        y:{stacked:_financeChartMode==='stacked',beginAtZero:true,ticks:{font:{family:'sans-serif',size:10},callback:v=>'$'+Number(v).toLocaleString()}},
+      },
+    },
+  });
+}
+
+function setFinanceRange(r){_financeChartRange=r;renderSpendingChart();updateFinanceToolbar();}
+function setFinanceMode(m){_financeChartMode=m;renderSpendingChart();updateFinanceToolbar();}
+
+function updateFinanceToolbar(){
+  ['12','24','ytd'].forEach(r=>{
+    const btn=document.getElementById('frange-'+r);
+    if(btn)btn.classList.toggle('btn-primary',_financeChartRange===r);
+  });
+  ['stacked','total'].forEach(m=>{
+    const btn=document.getElementById('fmode-'+m);
+    if(btn)btn.classList.toggle('btn-primary',_financeChartMode===m);
+  });
+}
 
 // ---- RENDER PM COMPLIANCE REPORT ----
 function renderPMReport(){
@@ -442,11 +656,11 @@ function renderPMReport(){
   const section=(title,rows,emptyMsg,color)=>`
     <div class="card">
       <div class="card-header"><div class="card-title" ${color?`style="color:${color}"`:''}>${title} · ${rows.length}</div></div>
-      ${rows.length?`<table class="table">
+      ${rows.length?`<div class="table-wrap"><table class="table">
         <colgroup><col style="width:26%"><col style="width:14%"><col style="width:11%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:13%"></colgroup>
         <thead><tr><th>Task</th><th>Building</th><th>Frequency</th><th>Assigned</th><th>Next Due</th><th>Last Done</th><th>Status</th></tr></thead>
         <tbody>${rows.map(row).join('')}</tbody>
-      </table>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+      </table></div>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
     </div>`;
 
   el.innerHTML=`
@@ -497,11 +711,11 @@ function renderCOIReport(){
   const section=(title,rows,emptyMsg,color)=>`
     <div class="card">
       <div class="card-header"><div class="card-title" ${color?`style="color:${color}"`:''}>${title} · ${rows.length}</div></div>
-      ${rows.length?`<table class="table">
+      ${rows.length?`<div class="table-wrap"><table class="table">
         <colgroup><col style="width:17%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:13%"><col style="width:7%"></colgroup>
         <thead><tr><th>Contractor</th><th>Role</th><th>Phone</th><th>COI Expiry</th><th>Status</th><th>Insurer</th><th>Policy #</th><th class="no-print">COI</th></tr></thead>
         <tbody>${rows.map(row).join('')}</tbody>
-      </table>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+      </table></div>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
     </div>`;
 
   el.innerHTML=`

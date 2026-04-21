@@ -48,9 +48,11 @@ body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-heig
 .card-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
 .card-title{font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em}
 .card-link{font-size:12px;color:var(--accent);cursor:pointer;background:none;border:none;font-family:sans-serif}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
 .table{width:100%;border-collapse:collapse;table-layout:fixed}
 .table th{text-align:left;padding:9px 14px;font-size:11px;font-weight:bold;color:var(--text3);border-bottom:1px solid var(--border);font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;background:var(--bg3)}
-.table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border);font-family:sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.table td{padding:9px 14px;font-size:13px;border-bottom:1px solid var(--border);font-family:sans-serif;white-space:normal;word-break:break-word;vertical-align:top}
+.table td.nowrap,.table th.nowrap{white-space:nowrap}
 .table tr:last-child td{border-bottom:none}
 .table tr:hover td{background:var(--bg3);cursor:pointer}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:bold;white-space:nowrap;font-family:sans-serif}
@@ -138,6 +140,12 @@ textarea.fi{resize:vertical;min-height:65px}
 /* COI alert */
 .coi-alert{background:var(--danger-bg);border:1px solid #f0a0a0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px}
 .coi-warn{background:var(--warning-bg);border:1px solid #f0d060;}
+/* Budget progress */
+.progress-bar{height:14px;background:var(--bg3);border-radius:7px;overflow:hidden;border:1px solid var(--border)}
+.progress-fill{height:100%;border-radius:7px;transition:width .3s ease}
+.yoy-up{color:var(--danger)!important;font-weight:bold}
+.yoy-down{color:var(--success)!important;font-weight:bold}
+.yoy-flat{color:var(--text3)!important}
 /* Inv */
 .bar-wrap{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:5px}
 .bar-fill{height:100%;border-radius:3px;background:var(--accent)}
@@ -175,6 +183,8 @@ textarea.fi{resize:vertical;min-height:65px}
   .badge { border: 1px solid #999; background: #fff !important; color: #000 !important; padding: 1px 6px; }
   .report-meta { display: block !important; font-size: 9pt; color: #555; font-family: sans-serif; margin-bottom: 8px; }
   a { color: #000; text-decoration: none; }
+  canvas { max-width: 100% !important; height: auto !important; }
+  .progress-fill { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
 
 @media(max-width:768px){

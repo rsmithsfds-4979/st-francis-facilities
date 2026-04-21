@@ -5,8 +5,8 @@ const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // Shared state
-let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[];
-let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null;
+let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[];
+let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null;
 let currentBuildingId=null,currentRoomId=null,currentContactType='Contractor';
 // One-shot callback fired after the next successful contact save (used by inline "+ Add new contact" flows).
 let afterContactSave=null;

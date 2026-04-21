@@ -607,6 +607,30 @@ function submitCategory(){
 
 function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
 
+// ---- BUDGET MODAL ----
+function openBudgetModal(){
+  const year=new Date().getFullYear();
+  const existing=budgets.find(b=>b.year===year);
+  editingBudgetId=existing?existing.id:null;
+  document.getElementById('budget-modal-h').textContent=existing?`Edit Budget (${year})`:`Set Budget (${year})`;
+  document.getElementById('budget-body').innerHTML=`
+    <div class="fg"><label>Year</label><input type="number" class="fi" id="budget-year" value="${year}" readonly style="background:var(--bg3)"></div>
+    <div class="fg"><label>Budget amount ($) *</label><input type="number" step="0.01" class="fi" id="budget-amount" placeholder="e.g. 60000" value="${existing?existing.amount:''}"></div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="budget-notes" placeholder="Optional context (funding source, carry-over, etc.)">${existing?.notes||''}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('budget-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitBudget()">${existing?'Save Changes':'Set Budget'}</button>
+    </div>`;
+  document.getElementById('budget-modal').classList.add('open');
+}
+
+function submitBudget(){
+  const year=Number(document.getElementById('budget-year')?.value);
+  const amount=parseFloat(document.getElementById('budget-amount')?.value);
+  if(!year||isNaN(amount)||amount<0){showToast('Enter a valid budget amount');return;}
+  saveBudget({year,amount,notes:document.getElementById('budget-notes')?.value.trim()||null});
+}
+
 function confirmDeleteCategory(id,name){
   const c=categories.find(x=>x.id===id);
   const inUse=c?assets.filter(a=>a.category===c.name).length:0;

@@ -4,8 +4,16 @@
 async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets()]);
   renderHistory();renderDash();
+}
+
+async function loadBudgets(){
+  try{
+    const{data,error}=await db.from('budgets').select('*').order('year',{ascending:false});
+    if(error)throw error;
+    budgets=data||[];
+  }catch(e){console.error(e);budgets=[];}
 }
 
 async function loadCategories(){
@@ -455,6 +463,27 @@ function allPhotos(obj){
   return obj?.photo_url?[obj.photo_url]:[];
 }
 
+async function saveBudget(d){
+  // One row per year; upsert on year.
+  try{
+    const existing=budgets.find(b=>b.year===d.year);
+    if(existing){
+      const{data,error}=await db.from('budgets').update({amount:d.amount,notes:d.notes,updated_at:new Date().toISOString()}).eq('id',existing.id).select();
+      if(error)throw error;
+      const i=budgets.findIndex(b=>b.id===existing.id);
+      if(i>-1)budgets[i]=data[0];
+      showToast('Budget updated!');
+    }else{
+      const{data,error}=await db.from('budgets').insert([d]).select();
+      if(error)throw error;
+      budgets.push(data[0]);
+      showToast('Budget saved!');
+    }
+    editingBudgetId=null;closeModal('budget-modal');
+    renderFinance();
+  }catch(e){console.error(e);showToast('Error saving budget');}
+}
+
 async function uploadFile(file,folder){
   try{
     const ext=file.name.split('.').pop();
@@ -546,6 +575,7 @@ function go(name,el){
   if(name==='contacts')renderContacts();
   if(name==='pm-report')renderPMReport();
   if(name==='coi-report')renderCOIReport();
+  if(name==='finance')renderFinance();
   renderHistory();
 }
 

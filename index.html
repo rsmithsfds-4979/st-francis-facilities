@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>St. Francis de Sales — Facility Manager</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -42,6 +43,7 @@
   </div>
   <div class="nav-section">
     <div class="nav-label">Reports</div>
+    <div class="nav-item" onclick="go('finance',this)"><span>Financial Dashboard</span></div>
     <div class="nav-item" onclick="go('pm-report',this)"><span>PM Compliance</span></div>
     <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor & COI</span></div>
   </div>
@@ -74,11 +76,11 @@
     <div class="two-col">
       <div class="card">
         <div class="card-header"><div class="card-title">Recent Work Orders</div><button class="card-link" onclick="go('workorders')">View all →</button></div>
-        <table class="table">
+        <div class="table-wrap"><table class="table">
           <colgroup><col style="width:44%"><col style="width:28%"><col style="width:28%"></colgroup>
           <thead><tr><th>Issue</th><th>Building</th><th>Status</th></tr></thead>
           <tbody id="d-wo-rows"><tr><td colspan="3" class="loading">Loading...</td></tr></tbody>
-        </table>
+        </table></div>
       </div>
       <div class="card">
         <div class="card-header"><div class="card-title">Upcoming PM</div><button class="card-link" onclick="go('pm')">View schedule →</button></div>
@@ -104,11 +106,11 @@
   </div>
   <div class="content">
     <div class="card">
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <colgroup><col style="width:5%"><col style="width:22%"><col style="width:13%"><col style="width:13%"><col style="width:9%"><col style="width:11%"><col style="width:10%"><col style="width:17%"></colgroup>
         <thead><tr><th>#</th><th>Issue</th><th>Building</th><th>Room</th><th>Priority</th><th>Assigned</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody id="wo-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>
@@ -133,11 +135,11 @@
   </div>
   <div class="content">
     <div class="card">
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <colgroup><col style="width:9%"><col style="width:10%"><col style="width:37%"><col style="width:19%"><col style="width:10%"><col style="width:15%"></colgroup>
         <thead><tr><th>Invoice</th><th>Date</th><th>Work performed</th><th>Equipment</th><th>Building</th><th>Amount</th></tr></thead>
         <tbody id="hist-table"></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>
@@ -179,11 +181,11 @@
       <div class="stat-card"><div class="stat-label">Invoices Logged</div><div class="stat-value" id="inv-count" style="color:var(--text2)">—</div><div class="stat-delta">total records</div></div>
     </div>
     <div class="card">
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <colgroup><col style="width:11%"><col style="width:10%"><col style="width:15%"><col style="width:29%"><col style="width:11%"><col style="width:12%"><col style="width:12%"></colgroup>
         <thead><tr><th>Invoice #</th><th>Date</th><th>Vendor</th><th>Description</th><th>Building</th><th>Amount</th><th>Status</th></tr></thead>
         <tbody id="inv-table"><tr><td colspan="7" class="loading">Loading...</td></tr></tbody>
-      </table>
+      </table></div>
     </div>
   </div>
 </div>
@@ -250,6 +252,17 @@
     <div class="topbar-actions"><button class="btn btn-primary" id="contacts-add-btn" onclick="openContactModal()">+ Add Contact</button></div>
   </div>
   <div class="content"><div id="contacts-list"><div class="loading">Loading...</div></div></div>
+</div>
+
+<!-- FINANCIAL DASHBOARD -->
+<div class="view" id="view-finance">
+  <div class="topbar">
+    <div class="topbar-title">Financial Dashboard</div>
+    <div class="topbar-actions no-print">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content" id="finance-content"><div class="loading">Loading...</div></div>
 </div>
 
 <!-- PM COMPLIANCE REPORT -->
@@ -324,6 +337,9 @@
 </div>
 <div class="modal-overlay" id="category-modal" onclick="outsideClose(event,'category-modal')">
   <div class="modal"><h3 id="cat-modal-h">Add Category</h3><div class="modal-sub">Manage the category list shown in the Asset Registry.</div><div id="cat-body"></div></div>
+</div>
+<div class="modal-overlay" id="budget-modal" onclick="outsideClose(event,'budget-modal')">
+  <div class="modal"><h3 id="budget-modal-h">Set Annual Budget</h3><div class="modal-sub">One target amount per calendar year.</div><div id="budget-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">
