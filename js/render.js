@@ -1,5 +1,9 @@
 // Render functions for dashboard, buildings, rooms, assets, work orders, PM, contacts, invoices, history
 
+// ---- ROOM HELPERS ----
+const ROOM_TYPE_ICONS={Worship:'⛪',Classroom:'📚',Office:'💼',Kitchen:'🍳',Restroom:'🚻',Storage:'📦',Mechanical:'⚙️',Meeting:'🪑',Hall:'🏛️',Exterior:'🌳',Other:'🏠'};
+function roomTypeIcon(type){return ROOM_TYPE_ICONS[type]||'🏠';}
+
 // ---- CALENDAR HELPERS ----
 function eventDate(e){
   if(!e?.start)return null;
@@ -507,22 +511,32 @@ function renderRooms(){
     ${roomList.map(r=>{
       const aCount=assets.filter(a=>a.room_id===r.id).length;
       const wCount=workOrders.filter(w=>w.room_id===r.id&&w.status!=='Completed').length;
-      const specLine=[
-        r.room_type?r.room_type:null,
-        r.capacity?`Cap ${r.capacity}`:null,
-        r.square_footage?`${Number(r.square_footage).toLocaleString()} sq ft`:null,
-      ].filter(Boolean).join(' · ');
+      const metaBits=[
+        r.capacity?`👥 ${r.capacity}`:null,
+        r.square_footage?`📐 ${Number(r.square_footage).toLocaleString()} sq ft`:null,
+      ].filter(Boolean);
+      const pic=firstPhoto(r);
+      const header=pic
+        ?`<div class="room-card-photo" style="background-image:url('${pic}')"></div>`
+        :`<div class="room-card-icon">${roomTypeIcon(r.room_type)}</div>`;
       return`<div class="room-card" onclick="openRoom('${r.id}')">
-        <div class="room-name">${r.name}${r.room_number?` <span style="color:var(--text3);font-weight:500">${r.room_number}</span>`:''}</div>
-        ${specLine?`<div class="room-note" style="color:var(--text2)">${specLine}</div>`:''}
-        ${r.notes?`<div class="room-note">${r.notes}</div>`:''}
-        <div class="room-badges">
-          ${aCount?`<span class="badge b-blue" style="font-size:10px">${aCount} assets</span>`:''}
-          ${wCount?`<span class="badge b-amber" style="font-size:10px">${wCount} open WO</span>`:''}
-        </div>
-        <div style="display:flex;gap:4px;margin-top:6px">
-          <button class="btn btn-sm" style="font-size:10px;padding:2px 6px" onclick="event.stopPropagation();editRoom('${r.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" style="font-size:10px;padding:2px 6px" onclick="event.stopPropagation();confirmDeleteRoom('${r.id}','${r.name.replace(/'/g,"\\'")}')">Del</button>
+        ${header}
+        <div class="room-card-body">
+          <div class="room-card-header">
+            <div class="room-card-title">${r.name}</div>
+            ${r.room_number?`<div class="room-card-num">${r.room_number}</div>`:''}
+          </div>
+          ${r.room_type?`<div class="room-card-type">${roomTypeIcon(r.room_type)} ${r.room_type}</div>`:''}
+          ${metaBits.length?`<div class="room-card-meta">${metaBits.join('<span style="color:var(--border)">·</span>')}</div>`:''}
+          ${r.notes?`<div class="room-card-note">${r.notes}</div>`:''}
+          <div class="room-card-badges">
+            ${aCount?`<span class="badge b-blue" style="font-size:10px">${aCount} asset${aCount>1?'s':''}</span>`:''}
+            ${wCount?`<span class="badge b-amber" style="font-size:10px">${wCount} open WO</span>`:''}
+          </div>
+          <div class="room-card-actions">
+            <button class="btn btn-edit btn-sm" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();editRoom('${r.id}')">Edit</button>
+            <button class="btn btn-danger btn-sm" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();confirmDeleteRoom('${r.id}','${r.name.replace(/'/g,"\\'")}')">Del</button>
+          </div>
         </div>
       </div>`;
     }).join('')}`).join('');
