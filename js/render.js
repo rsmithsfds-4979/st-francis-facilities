@@ -806,11 +806,19 @@ function renderHistory(){
   const fy=document.getElementById('hist-f-year')?.value||'all';
   const fb=document.getElementById('hist-f-bld')?.value||'all';
   const fv=document.getElementById('hist-f-vendor')?.value||'all';
+  const q=(document.getElementById('hist-search')?.value||'').toLowerCase();
 
   const filtered=entries.filter(e=>{
     const d=parseDate(e.date);
     const yr=d?d.getFullYear():null;
-    return(fy==='all'||String(yr)===fy)&&(fb==='all'||e.building===fb)&&(fv==='all'||e.vendor===fv);
+    if(fy!=='all'&&String(yr)!==fy)return false;
+    if(fb!=='all'&&e.building!==fb)return false;
+    if(fv!=='all'&&e.vendor!==fv)return false;
+    if(q){
+      const hay=[e.ref,e.date,e.desc,e.equip,e.building,e.vendor].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
   });
   filtered.sort((a,b)=>{
     const da=parseDate(a.date),db=parseDate(b.date);
