@@ -389,19 +389,61 @@ function openBuildingModal(bld){
   document.getElementById('bld-body').innerHTML=`
     <div class="fg"><label>Building name *</label><input type="text" class="fi" id="bld-name" placeholder="e.g. Parish Hall, School Gymnasium" value="${v('name')}"></div>
     <div class="fg"><label>Description</label><input type="text" class="fi" id="bld-desc" placeholder="Brief description" value="${v('description')}"></div>
-    <div class="fg"><label>Address</label><input type="text" class="fi" id="bld-addr" placeholder="Street address" value="${v('address')}"></div>
-    <div class="fg"><label>Floors / Levels</label><input type="text" class="fi" id="bld-floors" placeholder="e.g. Basement, 1st Floor, 2nd Floor, Roof" value="${v('floors')}"></div>
+    <div class="fg"><label>Street address</label><input type="text" class="fi" id="bld-addr" placeholder="123 Main St" value="${v('address')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>City</label><input type="text" class="fi" id="bld-city" value="${v('city')}"></div>
+      <div class="fg"><label>State</label><input type="text" class="fi" id="bld-state" value="${v('state')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Zip</label><input type="text" class="fi" id="bld-zip" value="${v('zip')}"></div>
+      <div class="fg"><label>Year built</label><input type="number" class="fi" id="bld-year" placeholder="e.g. 1958" value="${v('year_built')||''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Square footage</label><input type="number" class="fi" id="bld-sqft" placeholder="e.g. 18000" value="${v('square_footage')||''}"></div>
+      <div class="fg"><label>Floors / Levels</label><input type="text" class="fi" id="bld-floors" placeholder="e.g. Basement, 1st, 2nd, Roof" value="${v('floors')}"></div>
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Emergency contact</div>
+      <div class="form-row">
+        <div class="fg"><label>Name</label><input type="text" class="fi" id="bld-em-name" placeholder="On-site contact after hours" value="${v('emergency_contact_name')}"></div>
+        <div class="fg"><label>Phone</label><input type="text" class="fi" id="bld-em-phone" value="${v('emergency_contact_phone')}"></div>
+      </div>
+    </div>
+    <div class="fg"><label>Key systems / shutoff locations</label><textarea class="fi" id="bld-systems" placeholder="e.g. Water main: rear janitor's closet. Gas shutoff: south exterior wall. Main electrical panel: Room 110.">${v('key_systems')}</textarea></div>
+    <div class="fg"><label>Photos</label>
+      <div class="photo-gallery" id="bld-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('bld-photo-input').click()">📷 Click to add photos<input type="file" id="bld-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('building',event,'bld-photo-gallery')"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('building-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitBuilding()">${bld?'Save Changes':'Add Building'}</button>
     </div>`;
+  initPhotoState('building',bld?allPhotos(bld):[]);
+  renderPhotoGallery('building','bld-photo-gallery');
   document.getElementById('building-modal').classList.add('open');
 }
 
-function submitBuilding(){
+async function submitBuilding(){
   const name=document.getElementById('bld-name')?.value.trim();
   if(!name){showToast('Please enter a building name');return;}
-  saveBuilding({name,description:document.getElementById('bld-desc')?.value.trim(),address:document.getElementById('bld-addr')?.value.trim(),floors:document.getElementById('bld-floors')?.value.trim()});
+  const photo_urls=await finalizePhotos('building','buildings');
+  const yearVal=document.getElementById('bld-year')?.value;
+  const sqftVal=document.getElementById('bld-sqft')?.value;
+  saveBuilding({
+    name,
+    description:document.getElementById('bld-desc')?.value.trim(),
+    address:document.getElementById('bld-addr')?.value.trim(),
+    city:document.getElementById('bld-city')?.value.trim(),
+    state:document.getElementById('bld-state')?.value.trim(),
+    zip:document.getElementById('bld-zip')?.value.trim(),
+    year_built:yearVal?Number(yearVal):null,
+    square_footage:sqftVal?Number(sqftVal):null,
+    floors:document.getElementById('bld-floors')?.value.trim(),
+    emergency_contact_name:document.getElementById('bld-em-name')?.value.trim(),
+    emergency_contact_phone:document.getElementById('bld-em-phone')?.value.trim(),
+    key_systems:document.getElementById('bld-systems')?.value.trim(),
+    photo_urls,
+  });
   closeModal('building-modal');
 }
 
@@ -949,6 +991,88 @@ function confirmDeleteSupply(id,name){
   document.getElementById('conf-h').textContent='Delete supply?';
   document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
   document.getElementById('conf-ok').onclick=()=>{deleteSupply(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ---- UTILITY READING MODAL ----
+function openUtilityModal(reading){
+  editingUtilityId=reading?reading.id:null;
+  document.getElementById('utility-modal-h').textContent=reading?'Edit Utility Reading':'Add Utility Reading';
+  const v=k=>reading?.[k]??'';
+  const sel=(k,val)=>reading?.[k]===val?'selected':'';
+  const defaultUnit=reading?.usage_unit||({Electric:'kWh',Water:'gal',Gas:'therm'}[reading?.utility_type]||'kWh');
+  document.getElementById('utility-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="ur-bld">
+          ${buildings.map(b=>`<option value="${b.id}" ${(reading?.building_id||currentBuildingId)===b.id?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Utility *</label>
+        <select class="fi" id="ur-type" onchange="onUtilityTypeChange()">
+          <option ${sel('utility_type','Electric')}>Electric</option>
+          <option ${sel('utility_type','Water')}>Water</option>
+          <option ${sel('utility_type','Gas')}>Gas</option>
+          <option ${sel('utility_type','Other')}>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Period start</label><input type="date" class="fi" id="ur-start" value="${v('period_start')}"></div>
+      <div class="fg"><label>Period end</label><input type="date" class="fi" id="ur-end" value="${v('period_end')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Usage</label><input type="number" step="0.01" class="fi" id="ur-usage" value="${v('usage')}"></div>
+      <div class="fg"><label>Unit</label><input type="text" class="fi" id="ur-unit" placeholder="kWh, gal, therm, CCF" value="${v('usage_unit')||defaultUnit}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Cost ($)</label><input type="number" step="0.01" class="fi" id="ur-cost" value="${v('cost')}"></div>
+      <div class="fg"><label>Meter reading (optional)</label><input type="number" step="0.01" class="fi" id="ur-meter" value="${v('meter_reading')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Provider</label><input type="text" class="fi" id="ur-provider" placeholder="e.g. Duke Energy" value="${v('provider')}"></div>
+      <div class="fg"><label>Account number</label><input type="text" class="fi" id="ur-account" value="${v('account_number')}"></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="ur-notes">${v('notes')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('utility-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitUtility()">${reading?'Save Changes':'Save Reading'}</button>
+    </div>`;
+  document.getElementById('utility-modal').classList.add('open');
+}
+
+function onUtilityTypeChange(){
+  const type=document.getElementById('ur-type')?.value;
+  const unitEl=document.getElementById('ur-unit');
+  if(!unitEl)return;
+  const defaults={Electric:'kWh',Water:'gal',Gas:'therm'};
+  if(!unitEl.value||Object.values(defaults).includes(unitEl.value))unitEl.value=defaults[type]||'';
+}
+
+function submitUtility(){
+  const building_id=document.getElementById('ur-bld')?.value;
+  const utility_type=document.getElementById('ur-type')?.value;
+  if(!building_id||!utility_type){showToast('Building and utility type are required');return;}
+  saveUtility({
+    building_id,utility_type,
+    period_start:document.getElementById('ur-start')?.value||null,
+    period_end:document.getElementById('ur-end')?.value||null,
+    usage:parseFloat(document.getElementById('ur-usage')?.value)||null,
+    usage_unit:document.getElementById('ur-unit')?.value.trim()||null,
+    cost:parseFloat(document.getElementById('ur-cost')?.value)||0,
+    meter_reading:parseFloat(document.getElementById('ur-meter')?.value)||null,
+    provider:document.getElementById('ur-provider')?.value.trim()||null,
+    account_number:document.getElementById('ur-account')?.value.trim()||null,
+    notes:document.getElementById('ur-notes')?.value.trim()||null,
+  });
+}
+
+function editUtility(id){const r=utilityReadings.find(x=>x.id===id);if(r)openUtilityModal(r);}
+
+function confirmDeleteUtility(id){
+  document.getElementById('conf-h').textContent='Delete utility reading?';
+  document.getElementById('conf-msg').textContent='This reading will be permanently removed.';
+  document.getElementById('conf-ok').onclick=()=>{deleteUtility(id);closeConfirm();};
   document.getElementById('confirm-overlay').classList.add('open');
 }
 

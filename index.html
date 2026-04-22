@@ -252,12 +252,16 @@
     <div class="topbar-title" id="bld-detail-title">Building</div>
     <div class="topbar-actions">
       <button class="btn" onclick="go('buildings')">← All Buildings</button>
+      <button class="btn" onclick="editCurrentBuilding()">Edit</button>
       <button class="btn" onclick="openRoomModal()">+ Add Room</button>
       <button class="btn btn-primary" onclick="openWOModal(null,currentBuildingId)">+ Work Order</button>
     </div>
   </div>
   <div class="content">
-    <div id="bld-detail-meta" style="margin-bottom:16px;font-family:sans-serif;font-size:13px;color:var(--text3)"></div>
+    <div id="bld-photo-area" style="margin-bottom:16px"></div>
+    <div id="bld-info-area" style="margin-bottom:16px"></div>
+    <div id="bld-utilities-area" style="margin-bottom:16px"></div>
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 10px">Rooms</div>
     <input type="text" class="search-bar" id="room-search" placeholder="Search rooms..." oninput="renderRooms()" style="margin-bottom:12px">
     <div id="rooms-grid" class="room-grid"><div class="loading">Loading...</div></div>
   </div>
@@ -398,6 +402,9 @@
 </div>
 <div class="modal-overlay" id="supply-modal" onclick="outsideClose(event,'supply-modal')">
   <div class="modal"><h3 id="supply-modal-h">Add Supply</h3><div class="modal-sub">Track janitorial and consumable supplies.</div><div id="supply-body"></div></div>
+</div>
+<div class="modal-overlay" id="utility-modal" onclick="outsideClose(event,'utility-modal')">
+  <div class="modal"><h3 id="utility-modal-h">Add Utility Reading</h3><div class="modal-sub">Log electric, water, or gas usage for a billing period.</div><div id="utility-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

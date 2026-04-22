@@ -5,8 +5,45 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities()]);
   renderHistory();renderDash();
+}
+
+async function loadUtilities(){
+  try{
+    const{data,error}=await db.from('utility_readings').select('*').order('period_end',{ascending:false});
+    if(error)throw error;
+    utilityReadings=data||[];
+  }catch(e){console.error(e);utilityReadings=[];}
+}
+
+async function saveUtility(d){
+  try{
+    if(editingUtilityId){
+      const{data,error}=await db.from('utility_readings').update(d).eq('id',editingUtilityId).select();
+      if(error)throw error;
+      const i=utilityReadings.findIndex(u=>u.id===editingUtilityId);
+      if(i>-1)utilityReadings[i]=data[0];
+      showToast('Utility reading updated!');
+    }else{
+      const{data,error}=await db.from('utility_readings').insert([d]).select();
+      if(error)throw error;
+      utilityReadings.unshift(data[0]);
+      showToast('Utility reading saved!');
+    }
+    editingUtilityId=null;closeModal('utility-modal');
+    if(currentBuildingId)renderBuildingUtilities();
+  }catch(e){console.error(e);showToast('Error saving reading');}
+}
+
+async function deleteUtility(id){
+  try{
+    const{error}=await db.from('utility_readings').delete().eq('id',id);
+    if(error)throw error;
+    utilityReadings=utilityReadings.filter(u=>u.id!==id);
+    showToast('Reading deleted');
+    if(currentBuildingId)renderBuildingUtilities();
+  }catch(e){showToast('Error deleting');}
 }
 
 async function loadSupplies(){
@@ -195,7 +232,7 @@ async function loadBuildings(){
     const{data,error}=await db.from('buildings').select('*').order('name');
     if(error)throw error;
     if(!data||data.length===0){await seedBuildings();}
-    else buildings=data;
+    else buildings=(data||[]).map(b=>({...b,photo_urls:normalizeIdArray(b.photo_urls)}));
   }catch(e){console.error(e);buildings=[];}
   await loadRooms();
   renderBuildingNav();
@@ -309,16 +346,17 @@ async function saveBuilding(d){
       const{data,error}=await db.from('buildings').update(d).eq('id',editingBldId).select();
       if(error)throw error;
       const i=buildings.findIndex(b=>b.id===editingBldId);
-      if(i>-1)buildings[i]=data[0];
+      if(i>-1)buildings[i]={...data[0],photo_urls:normalizeIdArray(data[0].photo_urls)};
       showToast('Building updated!');
     }else{
       const{data,error}=await db.from('buildings').insert([d]).select();
       if(error)throw error;
-      buildings.push(data[0]);
+      buildings.push({...data[0],photo_urls:normalizeIdArray(data[0].photo_urls)});
       showToast('Building added!');
     }
     editingBldId=null;closeModal('building-modal');
     renderBuildings();renderBuildingNav();populateBuildingDropdowns();
+    if(currentBuildingId===editingBldId||currentBuildingId)openBuilding(currentBuildingId);
   }catch(e){console.error(e);showToast('Error saving building');}
 }
 

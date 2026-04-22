@@ -343,11 +343,140 @@ function openBuilding(id){
   const b=buildings.find(x=>x.id===id);
   if(!b)return;
   document.getElementById('bld-detail-title').textContent=b.name;
-  document.getElementById('bld-detail-meta').textContent=b.description||'';
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('view-building-detail').classList.add('active');
+  renderBuildingHeader();
+  renderBuildingUtilities();
   renderRooms();
+}
+
+function editCurrentBuilding(){
+  const b=buildings.find(x=>x.id===currentBuildingId);
+  if(b)openBuildingModal(b);
+}
+
+function renderBuildingHeader(){
+  const b=buildings.find(x=>x.id===currentBuildingId);
+  if(!b)return;
+  const photos=allPhotos(b);
+  const photoEl=document.getElementById('bld-photo-area');
+  if(photoEl){
+    photoEl.innerHTML=photos.length
+      ?`<div class="photo-gallery">${photos.map(u=>`<div class="photo-thumb" style="width:140px;height:140px"><img src="${u}" onclick="openLightbox('${u}')"></div>`).join('')}</div>`
+      :'';
+  }
+
+  const addrLine=[b.address,[b.city,b.state,b.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const infoEl=document.getElementById('bld-info-area');
+  if(infoEl){
+    const spec=[
+      b.year_built?`Built ${b.year_built}`:null,
+      b.square_footage?`${Number(b.square_footage).toLocaleString()} sq ft`:null,
+      b.floors?b.floors:null,
+    ].filter(Boolean).join(' · ');
+    infoEl.innerHTML=`<div class="card"><div style="padding:14px 18px;font-family:sans-serif">
+      ${b.description?`<div style="font-size:13px;color:var(--text2);margin-bottom:10px">${b.description}</div>`:''}
+      ${addrLine?`<div style="font-size:13px;color:var(--text2)">📍 ${addrLine}</div>`:''}
+      ${spec?`<div style="font-size:13px;color:var(--text3);margin-top:4px">🏛️ ${spec}</div>`:''}
+      ${b.emergency_contact_name||b.emergency_contact_phone?`<div style="font-size:13px;color:var(--text2);margin-top:8px">🚨 <strong>Emergency:</strong> ${b.emergency_contact_name||''}${b.emergency_contact_phone?' · '+b.emergency_contact_phone:''}</div>`:''}
+      ${b.key_systems?`<div style="margin-top:10px;padding:10px 12px;background:var(--bg3);border-radius:6px;font-size:12px;color:var(--text2);white-space:pre-wrap">🔧 ${b.key_systems}</div>`:''}
+    </div></div>`;
+  }
+}
+
+// ---- BUILDING UTILITIES ----
+let _utilChart=null;
+let _utilTab='All'; // 'All' | 'Electric' | 'Water' | 'Gas'
+
+function renderBuildingUtilities(){
+  const b=buildings.find(x=>x.id===currentBuildingId);
+  const el=document.getElementById('bld-utilities-area');
+  if(!b||!el)return;
+  const readings=utilityReadings.filter(u=>u.building_id===b.id);
+  const tabs=['All','Electric','Water','Gas'];
+  el.innerHTML=`<div class="card">
+    <div class="card-header">
+      <div class="card-title">Utilities</div>
+      <div style="display:flex;gap:4px">
+        ${tabs.map(t=>`<button class="btn btn-sm ${_utilTab===t?'btn-primary':''}" onclick="setUtilityTab('${t}')">${t}</button>`).join('')}
+        <button class="btn btn-primary btn-sm" style="margin-left:6px" onclick="openUtilityModal()">+ Add Reading</button>
+      </div>
+    </div>
+    <div style="padding:10px 18px">
+      <div style="height:200px;position:relative"><canvas id="util-chart"></canvas></div>
+    </div>
+    <div id="util-table"></div>
+  </div>`;
+  renderUtilityChart();
+  renderUtilityTable();
+}
+
+function setUtilityTab(t){_utilTab=t;renderBuildingUtilities();}
+
+function renderUtilityChart(){
+  const canvas=document.getElementById('util-chart');
+  if(!canvas)return;
+  if(_utilChart){_utilChart.destroy();_utilChart=null;}
+  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'||u.utility_type===_utilTab));
+  if(!readings.length){
+    canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  // Bucket by month of period_end
+  const bucket={}; // key = YYYY-MM-utility
+  readings.forEach(r=>{
+    const d=parseDate(r.period_end||r.period_start);
+    if(!d)return;
+    const k=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const sub=bucket[k]||(bucket[k]={});
+    sub[r.utility_type]=(sub[r.utility_type]||0)+(Number(r.cost)||0);
+  });
+  const months=Object.keys(bucket).sort();
+  const types=_utilTab==='All'?['Electric','Water','Gas']:[_utilTab];
+  const palette={Electric:'#2d5a8e',Water:'#1a4a8a',Gas:'#8a4400'};
+  const datasets=types.map(t=>({
+    label:t+' ($)',
+    data:months.map(m=>bucket[m][t]||0),
+    backgroundColor:palette[t]||'#5c5c58',
+  }));
+  _utilChart=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels:months,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{family:'sans-serif',size:11}}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`}}},
+      scales:{
+        x:{stacked:_utilTab==='All',ticks:{font:{family:'sans-serif',size:10}}},
+        y:{stacked:_utilTab==='All',beginAtZero:true,ticks:{font:{family:'sans-serif',size:10},callback:v=>'$'+Number(v).toLocaleString()}},
+      },
+    },
+  });
+}
+
+function renderUtilityTable(){
+  const el=document.getElementById('util-table');
+  if(!el)return;
+  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'||u.utility_type===_utilTab))
+    .sort((a,b)=>{const da=parseDate(a.period_end),db=parseDate(b.period_end);return(db||0)-(da||0);});
+  if(!readings.length){el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No readings logged yet.</div>';return;}
+  el.innerHTML=`<div class="table-wrap"><table class="table">
+    <colgroup><col style="width:10%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:15%"><col style="width:15%"></colgroup>
+    <thead><tr><th>Type</th><th>Period</th><th>Usage</th><th>Cost</th><th>Provider</th><th>Account</th><th>Actions</th></tr></thead>
+    <tbody>${readings.slice(0,24).map(r=>`<tr>
+      <td>${r.utility_type}</td>
+      <td style="font-size:12px">${r.period_start||'—'} → ${r.period_end||'—'}</td>
+      <td>${r.usage?Number(r.usage).toLocaleString()+' '+(r.usage_unit||''):'—'}</td>
+      <td style="font-weight:bold">${r.cost?fmt(r.cost):'—'}</td>
+      <td style="font-size:12px">${r.provider||'—'}</td>
+      <td style="font-size:12px;color:var(--text3)">${r.account_number||'—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-edit btn-sm" onclick="editUtility('${r.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteUtility('${r.id}')">Del</button>
+      </td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
 }
 
 function renderRooms(){
