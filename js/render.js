@@ -26,6 +26,172 @@ function fmtEventWhen(e){
   return dateStr+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
 }
 
+// ---- FULL CALENDAR PAGE ----
+function renderCalendar(){
+  const contentEl=document.getElementById('cal-content');
+  const titleEl=document.getElementById('cal-title');
+  if(!contentEl)return;
+  ['day','week','month','quarter'].forEach(v=>{
+    const btn=document.getElementById('cv-'+v);
+    if(btn)btn.classList.toggle('btn-primary',calView===v);
+  });
+  if(titleEl)titleEl.textContent=calTitle();
+  const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;
+  if(!configured){
+    contentEl.innerHTML='<div class="empty-state"><p>Google Calendar not configured.</p><small>Go to Settings → Google Calendar → Configure.</small></div>';
+    return;
+  }
+  if(calView==='day')renderCalDay(contentEl);
+  else if(calView==='week')renderCalWeek(contentEl);
+  else if(calView==='month')renderCalMonth(contentEl);
+  else renderCalQuarter(contentEl);
+}
+
+function calTitle(){
+  const d=calDate;
+  if(calView==='day')return d.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  if(calView==='week'){
+    const start=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+    const end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+6);
+    const sameMo=start.getMonth()===end.getMonth();
+    return sameMo
+      ?`Week of ${start.toLocaleDateString('en-US',{month:'long'})} ${start.getDate()}–${end.getDate()}, ${start.getFullYear()}`
+      :`Week of ${start.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-US',{month:'short',day:'numeric'})}, ${start.getFullYear()}`;
+  }
+  if(calView==='month')return d.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+  const q=Math.floor(d.getMonth()/3)+1;
+  const s=new Date(d.getFullYear(),(q-1)*3,1);
+  const e=new Date(d.getFullYear(),(q-1)*3+2,1);
+  return `Q${q} ${d.getFullYear()} (${s.toLocaleDateString('en-US',{month:'long'})} – ${e.toLocaleDateString('en-US',{month:'long'})})`;
+}
+
+function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
+
+function fmtEventTime(e){
+  if(e.allDay)return'All day';
+  const s=new Date(e.start);
+  const end=e.end?new Date(e.end):null;
+  const sStr=s.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  if(end)return sStr+' – '+end.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  return sStr;
+}
+
+function sortEvents(events){return[...events].sort((a,b)=>(new Date(a.start))-(new Date(b.start)));}
+
+function renderCalDay(el){
+  const events=sortEvents(eventsOnDate(calDate));
+  if(!events.length){el.innerHTML='<div class="empty-state"><p>No events on this day.</p></div>';return;}
+  el.innerHTML=events.map(e=>`
+    <div class="card" style="margin-bottom:12px">
+      <div style="padding:14px 18px;display:flex;gap:14px;align-items:flex-start">
+        <div style="font-size:12px;color:var(--accent);font-family:sans-serif;font-weight:bold;min-width:100px;flex-shrink:0">${fmtEventTime(e)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:bold;font-size:15px;color:var(--accent2)">${e.title}</div>
+          ${e.location?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:4px">📍 ${e.location}</div>`:''}
+          ${e.description?`<div style="font-size:13px;color:var(--text2);font-family:sans-serif;margin-top:8px;white-space:pre-wrap;line-height:1.5">${e.description}</div>`:''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function renderCalWeek(el){
+  const d=calDate;
+  const weekStart=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+  const today=new Date();
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cols=[];
+  for(let i=0;i<7;i++){
+    const day=new Date(weekStart.getFullYear(),weekStart.getMonth(),weekStart.getDate()+i);
+    const events=sortEvents(eventsOnDate(day));
+    const isToday=sameDay(day,today);
+    cols.push(`<div class="cal-week-col ${isToday?'cal-today':''}">
+      <div class="cal-week-head">
+        <div class="cal-week-dayname">${dayNames[i]}</div>
+        <div class="cal-week-daynum">${day.getDate()}</div>
+      </div>
+      <div class="cal-week-body" onclick="calJumpToDay('${day.toISOString()}')">
+        ${events.length
+          ?events.map(e=>`<div class="cal-chip cal-chip-big">
+              <div class="cal-chip-time">${fmtEventTime(e)}</div>
+              <div class="cal-chip-title">${e.title}</div>
+              ${e.location?`<div class="cal-chip-loc">📍 ${e.location}</div>`:''}
+            </div>`).join('')
+          :'<div class="cal-week-empty">—</div>'}
+      </div>
+    </div>`);
+  }
+  el.innerHTML=`<div class="cal-week">${cols.join('')}</div>`;
+}
+
+function renderCalMonth(el){
+  const d=calDate;
+  const year=d.getFullYear();
+  const month=d.getMonth();
+  const firstDay=new Date(year,month,1);
+  const gridStart=new Date(year,month,1-firstDay.getDay());
+  const today=new Date();
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const day=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+i);
+    const inMonth=day.getMonth()===month;
+    const isToday=sameDay(day,today);
+    const events=sortEvents(eventsOnDate(day));
+    const shown=events.slice(0,3);
+    const extra=events.length-shown.length;
+    cells.push(`<div class="cal-month-cell ${inMonth?'':'cal-month-other'} ${isToday?'cal-today':''}" onclick="calJumpToDay('${day.toISOString()}')">
+      <div class="cal-month-daynum">${day.getDate()}</div>
+      ${shown.map(e=>`<div class="cal-chip cal-chip-mini" title="${(e.title+(e.location?' — '+e.location:'')).replace(/"/g,'&quot;')}">${e.allDay?'':fmtEventTime(e).split(' – ')[0]+' '}${e.title}</div>`).join('')}
+      ${extra>0?`<div class="cal-more">+${extra} more</div>`:''}
+    </div>`);
+    if((i+1)%7===0&&i>=27&&day>=new Date(year,month+1,0))break; // trim 6th row if not needed
+  }
+  el.innerHTML=`<div class="cal-month-grid">
+    ${dayNames.map(n=>`<div class="cal-month-head">${n}</div>`).join('')}
+    ${cells.join('')}
+  </div>`;
+}
+
+function renderCalQuarter(el){
+  const d=calDate;
+  const year=d.getFullYear();
+  const qStartMonth=Math.floor(d.getMonth()/3)*3;
+  const today=new Date();
+  const dayNames=['S','M','T','W','T','F','S'];
+  const months=[];
+  for(let m=0;m<3;m++){
+    const monthDate=new Date(year,qStartMonth+m,1);
+    const firstDay=monthDate.getDay();
+    const gridStart=new Date(year,qStartMonth+m,1-firstDay);
+    const cells=[];
+    for(let i=0;i<42;i++){
+      const day=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+i);
+      const inMonth=day.getMonth()===qStartMonth+m;
+      const isToday=sameDay(day,today);
+      const events=eventsOnDate(day);
+      const titles=events.slice(0,5).map(e=>e.title).join('\n').replace(/"/g,'&quot;');
+      cells.push(`<div class="cal-mini-cell ${inMonth?'':'cal-mini-other'} ${isToday?'cal-today':''}" onclick="calJumpToDay('${day.toISOString()}')" title="${titles}">
+        <div class="cal-mini-num">${day.getDate()}</div>
+        ${events.length?`<div class="cal-mini-events">${events.length>3?events.length:'•'.repeat(events.length)}</div>`:''}
+      </div>`);
+    }
+    months.push(`<div class="cal-mini-month">
+      <div class="cal-mini-title">${monthDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</div>
+      <div class="cal-mini-grid">
+        ${dayNames.map(n=>`<div class="cal-mini-head">${n}</div>`).join('')}
+        ${cells.join('')}
+      </div>
+    </div>`);
+  }
+  el.innerHTML=`<div class="cal-quarter">${months.join('')}</div>`;
+}
+
+function calJumpToDay(iso){
+  calDate=new Date(iso);
+  calView='day';
+  loadCalEvents();
+}
+
 // ---- RENDER DASHBOARD ----
 function renderDash(){
   const open=workOrders.filter(w=>w.status!=='Completed').length;

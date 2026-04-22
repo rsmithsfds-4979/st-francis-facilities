@@ -18,6 +18,7 @@
   <div class="nav-section">
     <div class="nav-label">Overview</div>
     <div class="nav-item active" onclick="go('dashboard',this)"><span>Dashboard</span></div>
+    <div class="nav-item" onclick="go('calendar',this)"><span>Calendar</span></div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Operations</div>
@@ -96,6 +97,26 @@
       <div id="d-asset-alerts"><div class="loading">Loading...</div></div>
     </div>
   </div>
+</div>
+
+<!-- CALENDAR -->
+<div class="view" id="view-calendar">
+  <div class="topbar">
+    <div class="topbar-title" id="cal-title">Calendar</div>
+    <div class="topbar-actions no-print">
+      <div class="cal-view-toggle">
+        <button class="btn btn-sm" id="cv-day" onclick="setCalView('day')">Today</button>
+        <button class="btn btn-sm" id="cv-week" onclick="setCalView('week')">Week</button>
+        <button class="btn btn-sm" id="cv-month" onclick="setCalView('month')">Month</button>
+        <button class="btn btn-sm" id="cv-quarter" onclick="setCalView('quarter')">Quarter</button>
+      </div>
+      <span style="width:8px"></span>
+      <button class="btn btn-sm" onclick="calPrev()">← Prev</button>
+      <button class="btn btn-sm" onclick="calToday()">Today</button>
+      <button class="btn btn-sm" onclick="calNext()">Next →</button>
+    </div>
+  </div>
+  <div class="content" id="cal-content"><div class="loading">Loading...</div></div>
 </div>
 
 <!-- WORK ORDERS -->

@@ -26,21 +26,22 @@ async function saveSetting(key,value){
   }catch(e){console.error(e);showToast('Error saving setting');throw e;}
 }
 
-// Fetches upcoming events from a PUBLIC Google Calendar using a referrer-restricted API key.
-async function loadGCalEvents(){
+// Fetches events from a PUBLIC Google Calendar using a referrer-restricted API key.
+// Default range is now → +90 days (for the dashboard card). Pass from/to to override.
+async function loadGCalEvents(from,to){
   const apiKey=appSettings.gcal_api_key;
   const calendarId=appSettings.gcal_calendar_id;
   if(!apiKey||!calendarId){gcalEvents=[];return;}
   try{
-    const now=new Date();
-    const in90=new Date(now.getTime()+90*24*60*60*1000);
+    const timeMin=(from||new Date()).toISOString();
+    const timeMax=(to||new Date(Date.now()+90*24*60*60*1000)).toISOString();
     const params=new URLSearchParams({
       key:apiKey,
-      timeMin:now.toISOString(),
-      timeMax:in90.toISOString(),
+      timeMin,
+      timeMax,
       singleEvents:'true',
       orderBy:'startTime',
-      maxResults:'100',
+      maxResults:'500',
     });
     const url=`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
     const res=await fetch(url);
@@ -59,6 +60,54 @@ async function loadGCalEvents(){
     console.error('GCal fetch failed:',e);
     gcalEvents=[];
   }
+}
+
+// ---- CALENDAR NAVIGATION ----
+// Fetches events for the current calView / calDate window (with buffer) then re-renders.
+async function loadCalEvents(){
+  const[from,to]=calendarRange(calView,calDate);
+  // Add a small buffer so month/quarter grids that spill into adjacent months still show events
+  const buf=7*24*60*60*1000;
+  await loadGCalEvents(new Date(from.getTime()-buf),new Date(to.getTime()+buf));
+  renderCalendar();
+}
+
+function calendarRange(view,date){
+  const d=new Date(date);
+  if(view==='day'){
+    const start=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    const end=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1);
+    return[start,end];
+  }
+  if(view==='week'){
+    const start=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
+    const end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+7);
+    return[start,end];
+  }
+  if(view==='month'){
+    const start=new Date(d.getFullYear(),d.getMonth(),1);
+    const end=new Date(d.getFullYear(),d.getMonth()+1,1);
+    return[start,end];
+  }
+  // quarter
+  const qStartMonth=Math.floor(d.getMonth()/3)*3;
+  const start=new Date(d.getFullYear(),qStartMonth,1);
+  const end=new Date(d.getFullYear(),qStartMonth+3,1);
+  return[start,end];
+}
+
+function setCalView(v){calView=v;loadCalEvents();}
+function calPrev(){shiftCalDate(-1);loadCalEvents();}
+function calNext(){shiftCalDate(1);loadCalEvents();}
+function calToday(){calDate=new Date();loadCalEvents();}
+
+function shiftCalDate(dir){
+  const d=new Date(calDate);
+  if(calView==='day')d.setDate(d.getDate()+dir);
+  else if(calView==='week')d.setDate(d.getDate()+7*dir);
+  else if(calView==='month')d.setMonth(d.getMonth()+dir);
+  else d.setMonth(d.getMonth()+3*dir);
+  calDate=d;
 }
 
 async function loadBudgets(){
@@ -629,6 +678,7 @@ function go(name,el){
   if(name==='pm-report')renderPMReport();
   if(name==='coi-report')renderCOIReport();
   if(name==='finance')renderFinance();
+  if(name==='calendar')loadCalEvents();
   renderHistory();
 }
 

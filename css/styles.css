@@ -122,6 +122,48 @@ textarea.fi{resize:vertical;min-height:65px}
 .pm-title{font-size:14px;font-weight:bold;color:var(--accent2);margin-bottom:3px}
 .pm-meta{font-size:12px;color:var(--text3);font-family:sans-serif}
 .pm-conflict{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:6px;background:var(--warning-bg);color:var(--warning);font-size:12px;font-family:sans-serif;font-weight:bold;border:1px solid #f0d060}
+/* Calendar page */
+.cal-view-toggle{display:inline-flex;gap:4px}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;font-family:sans-serif}
+.cal-week-col{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;min-height:320px}
+.cal-week-col.cal-today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.cal-week-head{background:var(--bg3);padding:8px 10px;border-bottom:1px solid var(--border);text-align:center}
+.cal-week-dayname{font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em}
+.cal-week-daynum{font-size:18px;font-weight:bold;color:var(--accent2)}
+.cal-today .cal-week-daynum{color:var(--accent)}
+.cal-week-body{flex:1;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.cal-week-empty{color:var(--text3);font-size:11px;text-align:center;padding:8px 0}
+.cal-chip{background:var(--info-bg);border-left:3px solid var(--accent);border-radius:4px;padding:5px 7px;font-size:11px;line-height:1.35;font-family:sans-serif}
+.cal-chip-big .cal-chip-time{font-weight:bold;color:var(--accent);font-size:10px}
+.cal-chip-big .cal-chip-title{font-weight:bold;color:var(--text);margin-top:1px;word-break:break-word}
+.cal-chip-big .cal-chip-loc{font-size:10px;color:var(--text3);margin-top:2px}
+.cal-chip-mini{padding:2px 6px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;border-left-width:2px}
+.cal-more{font-size:10px;color:var(--text3);padding:1px 6px;margin-top:2px}
+.cal-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;font-family:sans-serif}
+.cal-month-head{background:var(--bg3);padding:8px;text-align:center;font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em}
+.cal-month-cell{background:var(--bg2);min-height:100px;padding:6px;cursor:pointer;transition:background .1s;display:flex;flex-direction:column;overflow:hidden}
+.cal-month-cell:hover{background:var(--info-bg)}
+.cal-month-cell.cal-today{background:#fff9e0}
+.cal-month-cell.cal-today:hover{background:#fff3c0}
+.cal-month-cell.cal-month-other{background:var(--bg3);opacity:.55}
+.cal-month-daynum{font-size:13px;font-weight:bold;color:var(--accent2);margin-bottom:3px}
+.cal-today .cal-month-daynum{color:var(--accent);font-size:14px}
+.cal-quarter{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-family:sans-serif}
+.cal-mini-month{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.cal-mini-title{font-size:14px;font-weight:bold;color:var(--accent2);text-align:center;margin-bottom:8px}
+.cal-mini-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.cal-mini-head{text-align:center;font-size:9px;font-weight:bold;color:var(--text3);padding:3px 0}
+.cal-mini-cell{aspect-ratio:1;background:var(--bg2);border:1px solid transparent;border-radius:4px;padding:2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;min-height:36px}
+.cal-mini-cell:hover{background:var(--info-bg);border-color:var(--accent)}
+.cal-mini-cell.cal-today{background:#fff9e0;border-color:var(--accent)}
+.cal-mini-cell.cal-mini-other{color:var(--text3);opacity:.5}
+.cal-mini-num{font-size:11px;font-weight:500}
+.cal-mini-events{font-size:9px;color:var(--accent);letter-spacing:-1px;line-height:1;margin-top:1px;font-weight:bold}
+@media(max-width:900px){
+  .cal-quarter{grid-template-columns:1fr}
+  .cal-week{grid-template-columns:1fr;gap:8px}
+  .cal-week-col{min-height:auto}
+}
 /* Comments */
 .comment{padding:10px 14px;border-bottom:1px solid var(--border);font-family:sans-serif}
 .comment:last-child{border-bottom:none}
