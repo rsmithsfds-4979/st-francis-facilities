@@ -522,7 +522,7 @@ function renderPM(){
 function renderContacts(){
   const el=document.getElementById('contacts-list');
   if(!el)return;
-  const typePlural={Contractor:'Contractors',Staff:'Staff',Volunteer:'Volunteers'};
+  const typePlural={Contractor:'Contractors',Vendor:'Vendors',Staff:'Staff',Volunteer:'Volunteers'};
   const typeLabel=typePlural[currentContactType]||'Directory';
   const titleEl=document.getElementById('contacts-title');
   if(titleEl)titleEl.textContent=typeLabel;
@@ -624,7 +624,7 @@ function populateBuildingDropdowns(){
   const vf=document.getElementById('inv-f-vendor');
   if(vf){
     while(vf.options.length>1)vf.remove(1);
-    contacts.filter(c=>c.type==='Contractor').forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;vf.appendChild(o);});
+    contacts.filter(c=>c.type==='Contractor'||c.type==='Vendor').sort((a,b)=>a.name.localeCompare(b.name)).forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;vf.appendChild(o);});
   }
 }
 

@@ -417,7 +417,7 @@ function openInvoiceModal(inv){
       <div class="fg"><label>Vendor *</label>
         <select class="fi" id="inv-vendor">
           <option value="">Select...</option>
-          ${contacts.filter(c=>c.type==='Contractor').map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          ${contacts.filter(c=>c.type==='Contractor'||c.type==='Vendor').sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
           <option ${v('vendor')==='Other'?'selected':''}>Other</option>
         </select>
       </div>
@@ -520,6 +520,7 @@ function openContactModal(contact){
       <div class="fg"><label>Type *</label>
         <select class="fi" id="ct-type" onchange="toggleCOISection(this.value)">
           <option ${sel('type','Contractor')||(!contact&&currentContactType==='Contractor'?'selected':'')}>Contractor</option>
+          <option ${sel('type','Vendor')||(!contact&&currentContactType==='Vendor'?'selected':'')}>Vendor</option>
           <option ${sel('type','Staff')||(!contact&&currentContactType==='Staff'?'selected':'')}>Staff</option>
           <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
         </select>
@@ -718,7 +719,7 @@ function openSupplyModal(supply){
       <div class="fg"><label>Preferred vendor</label>
         <select class="fi" id="sup-vendor">
           <option value="">—</option>
-          ${contacts.filter(c=>c.type==='Contractor').map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          ${contacts.filter(c=>c.type==='Contractor'||c.type==='Vendor').sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
           ${supply?.vendor&&!contacts.find(c=>c.name===supply.vendor)?`<option selected>${supply.vendor}</option>`:''}
           <option ${v('vendor')==='Other'?'selected':''}>Other</option>
         </select>
