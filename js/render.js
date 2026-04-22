@@ -1,5 +1,31 @@
 // Render functions for dashboard, buildings, rooms, assets, work orders, PM, contacts, invoices, history
 
+// ---- CALENDAR HELPERS ----
+function eventDate(e){
+  if(!e?.start)return null;
+  if(e.allDay){
+    // "YYYY-MM-DD" — parse as local date (not UTC) so all-day events land on the right calendar day
+    const[y,m,d]=e.start.split('-').map(Number);
+    return new Date(y,m-1,d);
+  }
+  return new Date(e.start);
+}
+function eventsOnDate(date){
+  if(!date)return[];
+  const y=date.getFullYear(),m=date.getMonth(),d=date.getDate();
+  return gcalEvents.filter(e=>{
+    const ed=eventDate(e);
+    return ed&&ed.getFullYear()===y&&ed.getMonth()===m&&ed.getDate()===d;
+  });
+}
+function fmtEventWhen(e){
+  const d=eventDate(e);
+  if(!d)return'';
+  const dateStr=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  if(e.allDay)return dateStr+' · All day';
+  return dateStr+' · '+d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+}
+
 // ---- RENDER DASHBOARD ----
 function renderDash(){
   const open=workOrders.filter(w=>w.status!=='Completed').length;
@@ -50,6 +76,24 @@ function renderDash(){
         <div style="flex:1;min-width:0"><div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.title}</div><div style="font-size:11px;color:var(--text3)">${p.next_due||'No date'} · ${p.assigned_to||'Unassigned'}</div></div>
         ${sb(p.status)}</div>`).join('')
       :'<div style="text-align:center;padding:20px;color:var(--text3);font-family:sans-serif;font-size:13px">No upcoming PM tasks</div>';
+  }
+
+  const gc=document.getElementById('d-gcal-rows');
+  if(gc){
+    const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;
+    if(!configured){
+      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">Not configured. Go to <a onclick="go(\'settings\')" style="color:var(--accent);cursor:pointer">Settings</a> to connect a Google Calendar.</div>';
+    }else if(!gcalEvents.length){
+      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No upcoming events in the next 90 days.</div>';
+    }else{
+      gc.innerHTML=gcalEvents.slice(0,6).map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+        <span style="font-size:16px">📅</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.title}</div>
+          <div style="font-size:11px;color:var(--text3)">${fmtEventWhen(e)}${e.location?' · '+e.location:''}</div>
+        </div>
+      </div>`).join('');
+    }
   }
 
   const aa=document.getElementById('d-asset-alerts');
@@ -255,13 +299,17 @@ function renderPM(){
   const el=document.getElementById('pm-list');
   if(!el)return;
   if(!pmTasks.length){el.innerHTML='<div class="empty-state"><p>No PM tasks yet.</p></div>';return;}
-  el.innerHTML=pmTasks.map(p=>`<div class="pm-card">
+  el.innerHTML=pmTasks.map(p=>{
+    const due=parseDate(p.next_due);
+    const conflicts=due?eventsOnDate(due):[];
+    return`<div class="pm-card">
     <div style="width:38px;height:38px;border-radius:8px;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🔧</div>
     <div class="pm-info">
       <div class="pm-title">${p.title}</div>
       <div class="pm-meta">${p.building} · ${p.frequency} · ${p.assigned_to||'Unassigned'}</div>
       <div class="pm-meta">Next due: <strong>${p.next_due||'Not set'}</strong>${p.last_completed?' · Last done: '+p.last_completed:''}</div>
       ${p.description?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${p.description}</div>`:''}
+      ${conflicts.length?`<div class="pm-conflict">⚠️ Parish event that day: ${conflicts.map(e=>e.title).join(', ')}</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0">
       ${sb(p.status)}
@@ -269,7 +317,8 @@ function renderPM(){
       <button class="btn btn-edit btn-sm" onclick="editPM('${p.id}')">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDeletePM('${p.id}')">Del</button>
     </div>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 }
 
 // ---- RENDER CONTACTS ----
@@ -735,6 +784,15 @@ function renderCOIReport(){
 
 // ---- RENDER SETTINGS ----
 function renderSettings(){
+  const statusEl=document.getElementById('gcal-status');
+  if(statusEl){
+    const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;
+    if(configured){
+      statusEl.innerHTML=`✓ Connected to <strong>${appSettings.gcal_calendar_id}</strong>. Loaded ${gcalEvents.length} upcoming event${gcalEvents.length===1?'':'s'} for the next 90 days.`;
+    }else{
+      statusEl.innerHTML=`<span style="color:var(--text3)">Not configured. Click <strong>Configure</strong> to connect a Google Calendar (read-only).</span>`;
+    }
+  }
   const el=document.getElementById('categories-list');
   if(!el)return;
   if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}

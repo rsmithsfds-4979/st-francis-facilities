@@ -88,6 +88,10 @@
       </div>
     </div>
     <div class="card">
+      <div class="card-header"><div class="card-title">Parish Calendar — upcoming events</div><button class="card-link" onclick="go('settings')">Configure →</button></div>
+      <div id="d-gcal-rows"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="card">
       <div class="card-header"><div class="card-title">Assets needing attention</div><button class="card-link" onclick="go('assets')">View all →</button></div>
       <div id="d-asset-alerts"><div class="loading">Loading...</div></div>
     </div>
@@ -301,6 +305,13 @@
       </div>
       <div id="categories-list"><div class="loading">Loading...</div></div>
     </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Google Calendar Integration</div>
+        <button class="btn btn-sm" onclick="openGCalSettingsModal()">Configure</button>
+      </div>
+      <div id="gcal-status" style="padding:14px 18px;font-family:sans-serif;font-size:13px"></div>
+    </div>
   </div>
 </div>
 
@@ -340,6 +351,9 @@
 </div>
 <div class="modal-overlay" id="budget-modal" onclick="outsideClose(event,'budget-modal')">
   <div class="modal"><h3 id="budget-modal-h">Set Annual Budget</h3><div class="modal-sub">One target amount per calendar year.</div><div id="budget-body"></div></div>
+</div>
+<div class="modal-overlay" id="gcal-modal" onclick="outsideClose(event,'gcal-modal')">
+  <div class="modal"><h3 id="gcal-modal-h">Google Calendar Integration</h3><div class="modal-sub">Read-only access to a public Google Calendar.</div><div id="gcal-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

@@ -607,6 +607,57 @@ function submitCategory(){
 
 function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
 
+// ---- GOOGLE CALENDAR SETTINGS MODAL ----
+function openGCalSettingsModal(){
+  const apiKey=appSettings.gcal_api_key||'';
+  const calId=appSettings.gcal_calendar_id||'';
+  document.getElementById('gcal-modal-h').textContent='Google Calendar Integration';
+  document.getElementById('gcal-body').innerHTML=`
+    <div style="background:var(--info-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-family:sans-serif;font-size:12px;color:var(--text2);line-height:1.5">
+      Paste your Google Cloud API key and the parish calendar ID. The calendar must be set to <strong>public</strong> in Google Calendar settings. For security, restrict the API key in Google Cloud Console to HTTP referrers from this site.
+    </div>
+    <div class="fg"><label>Google API key *</label><input type="text" class="fi" id="gcal-key" placeholder="AIzaSy..." value="${apiKey}"></div>
+    <div class="fg"><label>Calendar ID *</label><input type="text" class="fi" id="gcal-id" placeholder="parishcalendar@example.org" value="${calId}"></div>
+    <div id="gcal-test-result" style="font-size:12px;font-family:sans-serif;margin-bottom:12px"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('gcal-modal')">Cancel</button>
+      <button class="btn" onclick="testGCalConnection()">Test Connection</button>
+      <button class="btn btn-primary" onclick="submitGCalSettings()">Save</button>
+    </div>`;
+  document.getElementById('gcal-modal').classList.add('open');
+}
+
+async function testGCalConnection(){
+  const apiKey=document.getElementById('gcal-key')?.value.trim();
+  const calendarId=document.getElementById('gcal-id')?.value.trim();
+  const result=document.getElementById('gcal-test-result');
+  if(!apiKey||!calendarId){result.innerHTML='<span style="color:var(--danger)">Enter both fields first.</span>';return;}
+  result.innerHTML='<span style="color:var(--text3)">Testing…</span>';
+  try{
+    const params=new URLSearchParams({key:apiKey,maxResults:'1',timeMin:new Date().toISOString()});
+    const res=await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`);
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    result.innerHTML=`<span style="color:var(--success)">✓ Connection works. Found ${data.items?.length||0} upcoming event${data.items?.length===1?'':'s'} in test call.</span>`;
+  }catch(e){
+    result.innerHTML=`<span style="color:var(--danger)">✗ ${e.message||'Connection failed'}</span>`;
+  }
+}
+
+async function submitGCalSettings(){
+  const apiKey=document.getElementById('gcal-key')?.value.trim();
+  const calendarId=document.getElementById('gcal-id')?.value.trim();
+  if(!apiKey||!calendarId){showToast('Enter both API key and calendar ID');return;}
+  try{
+    await saveSetting('gcal_api_key',apiKey);
+    await saveSetting('gcal_calendar_id',calendarId);
+    await loadGCalEvents();
+    closeModal('gcal-modal');
+    showToast('Calendar connected!');
+    renderSettings();renderDash();renderPM();
+  }catch(e){/* saveSetting already toasted */}
+}
+
 // ---- BUDGET MODAL ----
 function openBudgetModal(){
   const year=new Date().getFullYear();

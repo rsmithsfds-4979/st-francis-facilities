@@ -4,8 +4,61 @@
 async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets()]);
+  await loadSettings();
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents()]);
   renderHistory();renderDash();
+}
+
+async function loadSettings(){
+  try{
+    const{data,error}=await db.from('app_settings').select('*');
+    if(error)throw error;
+    appSettings={};
+    (data||[]).forEach(r=>{appSettings[r.key]=r.value;});
+  }catch(e){console.error(e);appSettings={};}
+}
+
+async function saveSetting(key,value){
+  try{
+    const{error}=await db.from('app_settings').upsert({key,value,updated_at:new Date().toISOString()},{onConflict:'key'});
+    if(error)throw error;
+    appSettings[key]=value;
+  }catch(e){console.error(e);showToast('Error saving setting');throw e;}
+}
+
+// Fetches upcoming events from a PUBLIC Google Calendar using a referrer-restricted API key.
+async function loadGCalEvents(){
+  const apiKey=appSettings.gcal_api_key;
+  const calendarId=appSettings.gcal_calendar_id;
+  if(!apiKey||!calendarId){gcalEvents=[];return;}
+  try{
+    const now=new Date();
+    const in90=new Date(now.getTime()+90*24*60*60*1000);
+    const params=new URLSearchParams({
+      key:apiKey,
+      timeMin:now.toISOString(),
+      timeMax:in90.toISOString(),
+      singleEvents:'true',
+      orderBy:'startTime',
+      maxResults:'100',
+    });
+    const url=`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.error)throw new Error(data.error.message);
+    gcalEvents=(data.items||[]).map(e=>({
+      id:e.id,
+      title:e.summary||'(no title)',
+      start:e.start?.dateTime||e.start?.date||null,
+      end:e.end?.dateTime||e.end?.date||null,
+      allDay:!e.start?.dateTime,
+      location:e.location||'',
+      description:e.description||'',
+    })).filter(e=>e.start);
+  }catch(e){
+    console.error('GCal fetch failed:',e);
+    gcalEvents=[];
+  }
 }
 
 async function loadBudgets(){
