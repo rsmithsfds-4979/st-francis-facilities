@@ -542,13 +542,25 @@ function renderContacts(){
         const addrParts=[c.address,c.city,c.state,c.zip].filter(Boolean);
         const addrLine=addrParts.length?(c.address?c.address+', ':'')+[c.city,c.state,c.zip].filter(Boolean).join(' '):'';
         const isContractor=c.type==='Contractor';
+        const isVendor=c.type==='Vendor';
+        const websiteHref=c.website?(c.website.match(/^https?:\/\//i)?c.website:'https://'+c.website):'';
+        const websiteLabel=c.website?c.website.replace(/^https?:\/\//i,''):'';
+        const people=Array.isArray(c.people)?c.people:[];
         return`<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);font-family:sans-serif">
           <div style="width:40px;height:40px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:var(--info);flex-shrink:0">${(c.name||'?').substring(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
             <div style="font-size:12px;color:var(--text3)">${c.role}${c.phone?' · '+c.phone:''}${c.email?' · '+c.email:''}</div>
             ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
+            ${c.website?`<div style="font-size:12px;margin-top:2px">🌐 <a href="${websiteHref}" target="_blank" style="color:var(--accent)">${websiteLabel}</a></div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}
+            ${(isContractor||isVendor)&&people.length?`<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:6px">
+              <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em;margin-bottom:4px">Points of Contact</div>
+              ${people.map(p=>`<div style="font-size:12px;color:var(--text2);padding:2px 0">
+                <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
+                ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
+              </div>`).join('')}
+            </div>`:''}
             ${isContractor?(c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="badge ${coiExpired?'b-red':coiSoon?'b-amber':'b-green'}" style="font-size:11px">
                 ${coiExpired?'🚨 COI EXPIRED':'⚡ COI'}: ${c.coi_expiry}

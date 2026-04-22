@@ -284,7 +284,7 @@ async function loadContacts(){
   try{
     const{data,error}=await db.from('contacts').select('*').order('type').order('name');
     if(error)throw error;
-    contacts=data||[];
+    contacts=(data||[]).map(c=>({...c,people:normalizeIdArray(c.people)}));
   }catch(e){console.error(e);contacts=[];}
   renderContacts();populateContactDropdowns();
 }

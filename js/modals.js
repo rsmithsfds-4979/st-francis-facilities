@@ -553,7 +553,7 @@ function openContactModal(contact){
     </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
-        <select class="fi" id="ct-type" onchange="toggleCOISection(this.value)">
+        <select class="fi" id="ct-type" onchange="toggleTypeSections(this.value)">
           <option ${sel('type','Contractor')||(!contact&&currentContactType==='Contractor'?'selected':'')}>Contractor</option>
           <option ${sel('type','Vendor')||(!contact&&currentContactType==='Vendor'?'selected':'')}>Vendor</option>
           <option ${sel('type','Staff')||(!contact&&currentContactType==='Staff'?'selected':'')}>Staff</option>
@@ -563,6 +563,7 @@ function openContactModal(contact){
       <div class="fg"><label>Phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
+    <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Street address</label><input type="text" class="fi" id="ct-address" placeholder="123 Main St" value="${v('address')}"></div>
     <div class="form-row">
       <div class="fg"><label>City</label><input type="text" class="fi" id="ct-city" value="${v('city')}"></div>
@@ -570,6 +571,13 @@ function openContactModal(contact){
     </div>
     <div class="fg"><label>Zip</label><input type="text" class="fi" id="ct-zip" value="${v('zip')}"></div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
+    <div id="people-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor'||(contact?.type||currentContactType)==='Vendor')?'block':'none'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif">Points of Contact</div>
+        <button type="button" class="btn btn-sm" onclick="addPerson()">+ Add Person</button>
+      </div>
+      <div id="people-list"></div>
+    </div>
     <div id="coi-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor')?'block':'none'}">
       <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Certificate of Insurance</div>
       <div class="form-row">
@@ -587,17 +595,53 @@ function openContactModal(contact){
       <button class="btn" onclick="closeModal('contact-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitContact()">${contact?'Save Changes':'Add Contact'}</button>
     </div>`;
+  peopleDraft=Array.isArray(contact?.people)?contact.people.map(p=>({...p})):[];
+  renderPeopleList();
   document.getElementById('contact-modal').classList.add('open');
 }
+
+// Local draft of the points-of-contact list while the contact modal is open.
+// Persisted to contact.people on save.
+let peopleDraft=[];
+
+function renderPeopleList(){
+  const el=document.getElementById('people-list');
+  if(!el)return;
+  if(!peopleDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No points of contact yet.</div>';return;}
+  el.innerHTML=peopleDraft.map((p,i)=>`
+    <div class="person-row" data-i="${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">
+      <input type="text" class="fi person-name" placeholder="Name" value="${(p.name||'').replace(/"/g,'&quot;')}">
+      <input type="text" class="fi person-title" placeholder="Title (Sales Rep, A/P, etc.)" value="${(p.title||'').replace(/"/g,'&quot;')}">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removePerson(${i})" title="Remove">✕</button>
+      <input type="text" class="fi person-phone" placeholder="Phone" value="${(p.phone||'').replace(/"/g,'&quot;')}" style="grid-column:1">
+      <input type="text" class="fi person-email" placeholder="Email" value="${(p.email||'').replace(/"/g,'&quot;')}" style="grid-column:2/4">
+      <input type="text" class="fi person-notes" placeholder="Notes (optional)" value="${(p.notes||'').replace(/"/g,'&quot;')}" style="grid-column:1/4">
+    </div>`).join('');
+}
+
+function capturePeopleDraft(){
+  peopleDraft=[...document.querySelectorAll('#people-list .person-row')].map(r=>({
+    name:r.querySelector('.person-name')?.value.trim()||'',
+    title:r.querySelector('.person-title')?.value.trim()||'',
+    phone:r.querySelector('.person-phone')?.value.trim()||'',
+    email:r.querySelector('.person-email')?.value.trim()||'',
+    notes:r.querySelector('.person-notes')?.value.trim()||'',
+  }));
+}
+
+function addPerson(){capturePeopleDraft();peopleDraft.push({});renderPeopleList();}
+function removePerson(i){capturePeopleDraft();peopleDraft.splice(i,1);renderPeopleList();}
 
 function previewCOI(event){
   const file=event.target.files[0];
   if(file)document.getElementById('coi-preview').textContent='✓ '+file.name+' ready to upload';
 }
 
-function toggleCOISection(type){
-  const el=document.getElementById('coi-section');
-  if(el)el.style.display=type==='Contractor'?'block':'none';
+function toggleTypeSections(type){
+  const coi=document.getElementById('coi-section');
+  if(coi)coi.style.display=type==='Contractor'?'block':'none';
+  const people=document.getElementById('people-section');
+  if(people)people.style.display=(type==='Contractor'||type==='Vendor')?'block':'none';
 }
 
 async function submitContact(){
@@ -613,15 +657,24 @@ async function submitContact(){
     const coiFile=document.getElementById('coi-file-input')?.files[0];
     if(coiFile)coi_url=await uploadFile(coiFile,'coi');
   }
+  // Capture latest person-row input values before saving
+  capturePeopleDraft();
+  const isVendor=type==='Vendor';
+  // People only apply to Contractor/Vendor; wiped for Staff/Volunteer. Drop empty rows.
+  const people=(isContractor||isVendor)
+    ?peopleDraft.filter(p=>p.name||p.title||p.phone||p.email||p.notes)
+    :[];
   saveContact({
     name,role,type,
     phone:document.getElementById('ct-phone')?.value.trim(),
     email:document.getElementById('ct-email')?.value.trim(),
+    website:document.getElementById('ct-website')?.value.trim(),
     address:document.getElementById('ct-address')?.value.trim(),
     city:document.getElementById('ct-city')?.value.trim(),
     state:document.getElementById('ct-state')?.value.trim(),
     zip:document.getElementById('ct-zip')?.value.trim(),
     notes:document.getElementById('ct-notes')?.value.trim(),
+    people,
     coi_expiry:isContractor?document.getElementById('ct-coi-exp')?.value.trim():null,
     coi_insurer:isContractor?document.getElementById('ct-coi-ins')?.value.trim():null,
     coi_policy_number:isContractor?document.getElementById('ct-coi-pol')?.value.trim():null,
