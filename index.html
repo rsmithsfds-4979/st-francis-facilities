@@ -352,6 +352,13 @@
     </div>
     <div class="card">
       <div class="card-header">
+        <div class="card-title">Room Types</div>
+        <button class="btn btn-primary btn-sm" onclick="openRoomTypeModal()">+ Add Room Type</button>
+      </div>
+      <div id="room-types-list"><div class="loading">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
         <div class="card-title">Google Calendar Integration</div>
         <button class="btn btn-sm" onclick="openGCalSettingsModal()">Configure</button>
       </div>
@@ -405,6 +412,9 @@
 </div>
 <div class="modal-overlay" id="utility-modal" onclick="outsideClose(event,'utility-modal')">
   <div class="modal"><h3 id="utility-modal-h">Add Utility Reading</h3><div class="modal-sub">Log electric, water, or gas usage for a billing period.</div><div id="utility-body"></div></div>
+</div>
+<div class="modal-overlay" id="room-type-modal" onclick="outsideClose(event,'room-type-modal')">
+  <div class="modal"><h3 id="room-type-modal-h">Add Room Type</h3><div class="modal-sub">Manage the room type list used across all buildings.</div><div id="room-type-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

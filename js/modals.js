@@ -477,10 +477,12 @@ function openRoomModal(room){
     ...rooms.filter(r=>r.building_id===currentBuildingId).map(r=>r.floor).filter(Boolean),
   ];
   const uniqueFloors=[...new Set(suggestedFloors)];
-  const roomTypes=['Worship','Classroom','Office','Kitchen','Restroom','Storage','Mechanical','Meeting','Hall','Exterior','Other'];
   const sel=(val)=>room?.room_type===val?'selected':'';
   document.getElementById('room-body').innerHTML=`
-    <div class="fg"><label>Room / Space name *</label><input type="text" class="fi" id="room-name" placeholder="e.g. Classroom 209, Server Room, Boiler Room" value="${v('name')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Room / Space name *</label><input type="text" class="fi" id="room-name" placeholder="e.g. Classroom, Boiler Room" value="${v('name')}"></div>
+      <div class="fg"><label>Room number</label><input type="text" class="fi" id="room-number" placeholder="e.g. 209, 105B" value="${v('room_number')}"></div>
+    </div>
     <div class="form-row">
       <div class="fg"><label>Floor / Level</label>
         <input type="text" class="fi" id="room-floor" list="room-floor-options" placeholder="Pick or type a floor" value="${v('floor')||''}">
@@ -491,9 +493,12 @@ function openRoomModal(room){
       <div class="fg"><label>Room type</label>
         <select class="fi" id="room-type">
           <option value="">Select...</option>
-          ${roomTypes.map(t=>`<option ${sel(t)}>${t}</option>`).join('')}
+          ${roomTypes.map(t=>`<option ${sel(t.name)}>${t.name}</option>`).join('')}
         </select>
       </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin:-4px 0 10px">
+      Floor suggestions come from the building's <em>Floors / Levels</em> field. Room type options are managed in <strong>Settings → Room Types</strong>.
     </div>
     <div class="form-row">
       <div class="fg"><label>Capacity</label><input type="number" class="fi" id="room-capacity" placeholder="Max occupants" value="${v('capacity')||''}"></div>
@@ -522,6 +527,7 @@ async function submitRoom(){
   const sqftVal=document.getElementById('room-sqft')?.value;
   saveRoom({
     name,
+    room_number:document.getElementById('room-number')?.value.trim()||null,
     floor:document.getElementById('room-floor')?.value.trim(),
     room_type:document.getElementById('room-type')?.value||null,
     capacity:capVal?Number(capVal):null,
@@ -1191,6 +1197,41 @@ async function submitGCalSettings(){
     showToast('Calendar connected!');
     renderSettings();renderDash();renderPM();
   }catch(e){/* saveSetting already toasted */}
+}
+
+// ---- ROOM TYPE MODAL ----
+function openRoomTypeModal(rt){
+  editingRoomTypeId=rt?rt.id:null;
+  document.getElementById('room-type-modal-h').textContent=rt?'Edit Room Type':'Add Room Type';
+  document.getElementById('room-type-body').innerHTML=`
+    <div class="fg"><label>Name *</label><input type="text" class="fi" id="rt-name" placeholder="e.g. Nursery, Library, Vestibule" value="${rt?.name||''}"></div>
+    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+      ${rt?'Renaming will update every room using this type.':'Used in the Room modal dropdown across all buildings.'}
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('room-type-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitRoomType()">${rt?'Save Changes':'Add Room Type'}</button>
+    </div>`;
+  document.getElementById('room-type-modal').classList.add('open');
+}
+
+function submitRoomType(){
+  const name=document.getElementById('rt-name')?.value.trim();
+  if(!name){showToast('Please enter a name');return;}
+  saveRoomType({name});
+}
+
+function editRoomType(id){const rt=roomTypes.find(x=>x.id===id);if(rt)openRoomTypeModal(rt);}
+
+function confirmDeleteRoomType(id,name){
+  const rt=roomTypes.find(x=>x.id===id);
+  const inUse=rt?rooms.filter(r=>r.room_type===rt.name).length:0;
+  document.getElementById('conf-h').textContent='Delete room type?';
+  document.getElementById('conf-msg').textContent=inUse>0
+    ?`"${name}" is used by ${inUse} room${inUse>1?'s':''}. Reassign them before deleting.`
+    :`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteRoomType(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
 }
 
 // ---- BUDGET MODAL ----

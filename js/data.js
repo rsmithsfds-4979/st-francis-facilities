@@ -1,5 +1,10 @@
 // Static seed data: default rooms, default assets, and Trimark service history
 
+const defaultRoomTypes=[
+  'Worship','Classroom','Office','Kitchen','Restroom','Storage',
+  'Mechanical','Meeting','Hall','Exterior','Other',
+];
+
 const defaultSupplies=[
   {name:'Toilet paper',category:'Restroom',unit:'case',unit_size:'48 rolls',reorder_level:2},
   {name:'Paper towels — kitchen rolls',category:'Kitchen',unit:'case',unit_size:'12 rolls',reorder_level:2},

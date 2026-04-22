@@ -513,7 +513,7 @@ function renderRooms(){
         r.square_footage?`${Number(r.square_footage).toLocaleString()} sq ft`:null,
       ].filter(Boolean).join(' · ');
       return`<div class="room-card" onclick="openRoom('${r.id}')">
-        <div class="room-name">${r.name}</div>
+        <div class="room-name">${r.name}${r.room_number?` <span style="color:var(--text3);font-weight:500">${r.room_number}</span>`:''}</div>
         ${specLine?`<div class="room-note" style="color:var(--text2)">${specLine}</div>`:''}
         ${r.notes?`<div class="room-note">${r.notes}</div>`:''}
         <div class="room-badges">
@@ -534,7 +534,7 @@ function openRoom(id){
   currentRoomId=id;
   const r=rooms.find(x=>x.id===id);
   if(!r)return;
-  document.getElementById('room-detail-title').textContent=r.name;
+  document.getElementById('room-detail-title').textContent=r.name+(r.room_number?` · ${r.room_number}`:'');
   const metaParts=[
     r.floor||null,
     r.room_type||null,
@@ -861,6 +861,25 @@ function populateBuildingDropdowns(){
 }
 
 function populateContactDropdowns(){}
+
+function renderRoomTypesList(){
+  const el=document.getElementById('room-types-list');
+  if(!el)return;
+  if(!roomTypes.length){el.innerHTML='<div class="empty-state"><p>No room types yet.</p></div>';return;}
+  el.innerHTML=roomTypes.map(rt=>{
+    const inUse=rooms.filter(r=>r.room_type===rt.name).length;
+    return`<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${rt.name}</div>
+        <div style="font-size:12px;color:var(--text3)">${inUse} room${inUse===1?'':'s'} using this type</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-edit btn-sm" onclick="editRoomType('${rt.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteRoomType('${rt.id}','${rt.name.replace(/'/g,"\\'")}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 function populateCategoryDropdown(){
   const el=document.getElementById('af-cat');
@@ -1274,6 +1293,7 @@ function renderSettings(){
       statusEl.innerHTML=`<span style="color:var(--text3)">Not configured. Click <strong>Configure</strong> to connect a Google Calendar (read-only).</span>`;
     }
   }
+  renderRoomTypesList();
   const el=document.getElementById('categories-list');
   if(!el)return;
   if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}

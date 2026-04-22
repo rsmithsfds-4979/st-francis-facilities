@@ -5,8 +5,67 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes()]);
   renderHistory();renderDash();
+}
+
+async function loadRoomTypes(){
+  try{
+    const{data,error}=await db.from('room_types').select('*').order('sort_order').order('name');
+    if(error)throw error;
+    if(!data||data.length===0)await seedRoomTypes();
+    else roomTypes=data;
+  }catch(e){console.error(e);roomTypes=[];}
+}
+
+async function seedRoomTypes(){
+  try{
+    const toInsert=defaultRoomTypes.map((name,i)=>({name,sort_order:i+1}));
+    const{data,error}=await db.from('room_types').insert(toInsert).select();
+    if(error)throw error;
+    roomTypes=data||[];
+  }catch(e){console.error(e);roomTypes=[];}
+}
+
+async function saveRoomType(d){
+  try{
+    if(editingRoomTypeId){
+      const old=roomTypes.find(r=>r.id===editingRoomTypeId);
+      const renamed=old&&old.name!==d.name;
+      const{data,error}=await db.from('room_types').update(d).eq('id',editingRoomTypeId).select();
+      if(error)throw error;
+      const i=roomTypes.findIndex(r=>r.id===editingRoomTypeId);
+      if(i>-1)roomTypes[i]=data[0];
+      // Rename cascade: update every room that used the old name
+      if(renamed){
+        await db.from('rooms').update({room_type:d.name}).eq('room_type',old.name);
+        rooms.forEach(r=>{if(r.room_type===old.name)r.room_type=d.name;});
+      }
+      showToast('Room type updated!');
+    }else{
+      const sort_order=(roomTypes.reduce((m,r)=>Math.max(m,r.sort_order||0),0))+1;
+      const{data,error}=await db.from('room_types').insert([{...d,sort_order}]).select();
+      if(error)throw error;
+      roomTypes.push(data[0]);
+      showToast('Room type added!');
+    }
+    editingRoomTypeId=null;closeModal('room-type-modal');
+    renderSettings();
+    if(currentBuildingId)renderRooms();
+  }catch(e){console.error(e);showToast('Error saving room type');}
+}
+
+async function deleteRoomType(id){
+  const rt=roomTypes.find(x=>x.id===id);
+  if(!rt)return;
+  const inUse=rooms.filter(r=>r.room_type===rt.name).length;
+  if(inUse>0){showToast(`Cannot delete — ${inUse} room${inUse>1?'s':''} still use "${rt.name}"`);return;}
+  try{
+    const{error}=await db.from('room_types').delete().eq('id',id);
+    if(error)throw error;
+    roomTypes=roomTypes.filter(x=>x.id!==id);
+    showToast('Room type deleted');renderSettings();
+  }catch(e){showToast('Error deleting');}
 }
 
 async function loadUtilities(){
