@@ -749,13 +749,41 @@ function renderContacts(){
 
 // ---- RENDER INVOICES ----
 function renderInvoices(){
+  // Populate filter dropdowns dynamically from the invoice dataset
+  const years=[...new Set(invoices.map(i=>{const d=parseDate(i.date);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
+  const blds=[...new Set(invoices.map(i=>i.building).filter(Boolean))].sort();
+  syncDropdown('inv-f-year',years,'All years');
+  syncDropdown('inv-f-bld',blds,'All buildings');
+
   const fv=document.getElementById('inv-f-vendor')?.value||'all';
-  const f=invoices.filter(i=>fv==='all'||i.vendor===fv);
+  const fy=document.getElementById('inv-f-year')?.value||'all';
+  const fb=document.getElementById('inv-f-bld')?.value||'all';
+
+  const f=invoices.filter(i=>{
+    if(fv!=='all'&&i.vendor!==fv)return false;
+    if(fb!=='all'&&i.building!==fb)return false;
+    if(fy!=='all'){
+      const d=parseDate(i.date);
+      if(!d||String(d.getFullYear())!==fy)return false;
+    }
+    return true;
+  });
+
   const total=f.reduce((a,i)=>a+Number(i.amount||0),0);
-  const yr=new Date().getFullYear();
-  const yTotal=f.filter(i=>(i.date||'').includes(yr)).reduce((a,i)=>a+Number(i.amount||0),0);
+  // "This Year" shows the selected year when one is picked, else the current calendar year
+  const displayYear=fy==='all'?new Date().getFullYear():Number(fy);
+  const yTotal=f.filter(i=>{const d=parseDate(i.date);return d&&d.getFullYear()===displayYear;}).reduce((a,i)=>a+Number(i.amount||0),0);
   const ti=document.getElementById('inv-total');if(ti)ti.textContent=fmt(total);
   const iy=document.getElementById('inv-year');if(iy)iy.textContent=fmt(yTotal);
+  const iyl=document.getElementById('inv-year-label');if(iyl)iyl.textContent=String(displayYear);
+  const iysl=document.getElementById('inv-year-stat-label');if(iysl)iysl.textContent=fy==='all'?'This Year':`Year Total`;
+  const itl=document.getElementById('inv-total-label');if(itl){
+    const parts=[];
+    if(fy!=='all')parts.push(fy);
+    if(fb!=='all')parts.push(fb);
+    if(fv!=='all')parts.push(fv);
+    itl.textContent=parts.length?parts.join(' · '):'all matching';
+  }
   const ic=document.getElementById('inv-count');if(ic)ic.textContent=f.length;
   const tb=document.getElementById('inv-table');
   if(tb)tb.innerHTML=f.length

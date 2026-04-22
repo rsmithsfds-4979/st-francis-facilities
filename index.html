@@ -216,14 +216,16 @@
   <div class="topbar">
     <div class="topbar-title">Vendor Invoices</div>
     <div class="topbar-actions">
+      <select class="btn" id="inv-f-year" onchange="renderInvoices()"><option value="all">All years</option></select>
+      <select class="btn" id="inv-f-bld" onchange="renderInvoices()"><option value="all">All buildings</option></select>
       <select class="btn" id="inv-f-vendor" onchange="renderInvoices()"><option value="all">All vendors</option></select>
       <button class="btn btn-primary" onclick="openInvoiceModal()">+ Add Invoice</button>
     </div>
   </div>
   <div class="content">
     <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
-      <div class="stat-card"><div class="stat-label">Total Invoiced</div><div class="stat-value" id="inv-total" style="color:var(--accent2)">—</div><div class="stat-delta">all vendors</div></div>
-      <div class="stat-card"><div class="stat-label">This Year</div><div class="stat-value" id="inv-year" style="color:var(--accent)">—</div><div class="stat-delta" id="inv-year-label">2025</div></div>
+      <div class="stat-card"><div class="stat-label">Total Invoiced</div><div class="stat-value" id="inv-total" style="color:var(--accent2)">—</div><div class="stat-delta" id="inv-total-label">all matching</div></div>
+      <div class="stat-card"><div class="stat-label" id="inv-year-stat-label">This Year</div><div class="stat-value" id="inv-year" style="color:var(--accent)">—</div><div class="stat-delta" id="inv-year-label">—</div></div>
       <div class="stat-card"><div class="stat-label">Invoices Logged</div><div class="stat-value" id="inv-count" style="color:var(--text2)">—</div><div class="stat-delta">total records</div></div>
     </div>
     <div class="card">
