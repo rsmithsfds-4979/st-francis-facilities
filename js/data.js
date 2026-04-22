@@ -1,5 +1,32 @@
 // Static seed data: default rooms, default assets, and Trimark service history
 
+const defaultSupplies=[
+  {name:'Toilet paper',category:'Restroom',unit:'case',unit_size:'48 rolls',reorder_level:2},
+  {name:'Paper towels — kitchen rolls',category:'Kitchen',unit:'case',unit_size:'12 rolls',reorder_level:2},
+  {name:'Paper towels — multifold',category:'Restroom',unit:'case',unit_size:'4000 sheets',reorder_level:1},
+  {name:'Hand soap — foam refill',category:'Restroom',unit:'bottle',unit_size:'1 gal',reorder_level:2},
+  {name:'Hand sanitizer',category:'General',unit:'bottle',unit_size:'1 gal',reorder_level:2},
+  {name:'Dish soap',category:'Kitchen',unit:'bottle',unit_size:'1 gal',reorder_level:1},
+  {name:'Dishwasher detergent',category:'Kitchen',unit:'case',unit_size:'100 pods',reorder_level:1},
+  {name:'Trash bags — 13 gal',category:'General',unit:'case',unit_size:'1000 ct',reorder_level:1},
+  {name:'Trash bags — 33 gal',category:'General',unit:'case',unit_size:'100 ct',reorder_level:1},
+  {name:'Trash bags — 55 gal',category:'General',unit:'case',unit_size:'50 ct',reorder_level:1},
+  {name:'Disinfectant cleaner',category:'Cleaning',unit:'bottle',unit_size:'1 gal',reorder_level:2},
+  {name:'Glass cleaner',category:'Cleaning',unit:'bottle',unit_size:'32 oz',reorder_level:2},
+  {name:'Floor cleaner',category:'Cleaning',unit:'bottle',unit_size:'1 gal',reorder_level:1},
+  {name:'Bleach',category:'Cleaning',unit:'bottle',unit_size:'1 gal',reorder_level:1},
+  {name:'Toilet bowl cleaner',category:'Restroom',unit:'bottle',unit_size:'32 oz',reorder_level:2},
+  {name:'Urinal cakes',category:'Restroom',unit:'case',unit_size:'12 ct',reorder_level:1},
+  {name:'Disposable gloves — nitrile',category:'General',unit:'box',unit_size:'100 ct',reorder_level:2},
+  {name:'Sponges',category:'Cleaning',unit:'pack',unit_size:'24 ct',reorder_level:1},
+  {name:'Mop heads',category:'Cleaning',unit:'each',unit_size:'—',reorder_level:2},
+  {name:'Air freshener',category:'General',unit:'can',unit_size:'12 oz',reorder_level:1},
+  {name:'Paper napkins',category:'Kitchen',unit:'case',unit_size:'5000 ct',reorder_level:1},
+  {name:'Coffee filters',category:'Kitchen',unit:'pack',unit_size:'300 ct',reorder_level:1},
+  {name:'Vacuum bags',category:'Cleaning',unit:'pack',unit_size:'6 ct',reorder_level:1},
+  {name:'Sanitary receptacle liners',category:'Restroom',unit:'box',unit_size:'250 ct',reorder_level:1},
+];
+
 const defaultCategories=[
   {name:'HVAC',icon:'❄️'},
   {name:'Kitchen',icon:'🍳'},

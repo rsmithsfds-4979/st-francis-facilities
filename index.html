@@ -29,6 +29,7 @@
   <div class="nav-section">
     <div class="nav-label">Assets</div>
     <div class="nav-item" onclick="go('assets',this)"><span>Asset Registry</span></div>
+    <div class="nav-item" onclick="go('supplies',this)"><span>Supplies</span></div>
     <div class="nav-item" onclick="go('invoices',this)"><span>Vendor Invoices</span></div>
   </div>
   <div class="nav-section">
@@ -74,6 +75,7 @@
     </div>
     <div id="d-coi-alerts"></div>
     <div id="d-warranty-alerts"></div>
+    <div id="d-supply-alerts"></div>
     <div class="two-col">
       <div class="card">
         <div class="card-header"><div class="card-title">Recent Work Orders</div><button class="card-link" onclick="go('workorders')">View all →</button></div>
@@ -187,6 +189,22 @@
       <select class="btn" id="af-status" onchange="renderAssets()"><option value="all">All statuses</option><option>Active</option><option>Maintenance</option><option>Retired</option></select>
     </div>
     <div id="asset-list"><div class="loading">Loading assets...</div></div>
+  </div>
+</div>
+
+<!-- SUPPLIES -->
+<div class="view" id="view-supplies">
+  <div class="topbar">
+    <div class="topbar-title">Supplies</div>
+    <div class="topbar-actions">
+      <select class="btn" id="sup-f-cat" onchange="renderSupplies()"><option value="all">All categories</option><option>Restroom</option><option>Kitchen</option><option>Cleaning</option><option>General</option></select>
+      <select class="btn" id="sup-f-stock" onchange="renderSupplies()"><option value="all">All stock</option><option value="low">Low / Out</option><option value="ok">Stocked</option></select>
+      <button class="btn btn-primary" onclick="openSupplyModal()">+ Add Supply</button>
+    </div>
+  </div>
+  <div class="content">
+    <input type="text" class="search-bar" id="sup-search" placeholder="Search supplies..." oninput="renderSupplies()">
+    <div id="supplies-list"><div class="loading">Loading supplies...</div></div>
   </div>
 </div>
 
@@ -375,6 +393,9 @@
 </div>
 <div class="modal-overlay" id="gcal-modal" onclick="outsideClose(event,'gcal-modal')">
   <div class="modal"><h3 id="gcal-modal-h">Google Calendar Integration</h3><div class="modal-sub">Read-only access to a public Google Calendar.</div><div id="gcal-body"></div></div>
+</div>
+<div class="modal-overlay" id="supply-modal" onclick="outsideClose(event,'supply-modal')">
+  <div class="modal"><h3 id="supply-modal-h">Add Supply</h3><div class="modal-sub">Track janitorial and consumable supplies.</div><div id="supply-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

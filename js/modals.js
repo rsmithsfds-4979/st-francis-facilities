@@ -39,7 +39,7 @@ function openWOModal(presetRoomId,presetBldId){
     <div class="fg">
       <label>Assets being serviced</label>
       <div id="asset-select-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
-        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 6px">Select the building first to filter assets, or scroll to find assets below</div>
+        <div class="asset-select-item" onclick="handleAddAssetInline('asset-select-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
         ${assets.filter(a=>!presetBldName||a.building===presetBldName).map(a=>`
           <div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')">
             <input type="checkbox" value="${a.id}" onclick="event.stopPropagation()">
@@ -72,9 +72,10 @@ function updateRoomDropdown(){
   }
   if(assetList&&bldName){
     const bldAssets=assets.filter(a=>a.building===bldName);
-    assetList.innerHTML=bldAssets.length
+    const addRow=`<div class="asset-select-item" onclick="handleAddAssetInline('asset-select-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>`;
+    assetList.innerHTML=addRow+(bldAssets.length
       ?bldAssets.map(a=>`<div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')"><input type="checkbox" value="${a.id}" onclick="event.stopPropagation()"><span style="font-size:14px">${catIcon[a.category]||'📦'}</span><div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div></div>`).join('')
-      :'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No assets found for this building</div>';
+      :'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No assets found for this building</div>');
   }
 }
 
@@ -82,6 +83,25 @@ function toggleAssetSelect(el,id){
   el.classList.toggle('selected');
   const cb=el.querySelector('input[type=checkbox]');
   if(cb)cb.checked=!cb.checked;
+}
+
+// Opens the Asset modal from another modal (e.g. WO or Invoice). After save, appends the
+// new asset to the given select list and auto-checks it. Stacks on top of the originating modal.
+function handleAddAssetInline(listId){
+  afterAssetSave=(newAsset)=>{
+    const list=document.getElementById(listId);
+    if(!list)return;
+    const div=document.createElement('div');
+    div.className='asset-select-item selected';
+    div.innerHTML=`
+      <input type="checkbox" value="${newAsset.id}" checked onclick="event.stopPropagation()">
+      <span style="font-size:14px">${catIcon[newAsset.category]||'📦'}</span>
+      <div><div style="font-weight:bold">${newAsset.description}</div><div style="font-size:11px;color:var(--text3)">${newAsset.room_number||newAsset.location||''}</div></div>`;
+    div.onclick=()=>toggleAssetSelect(div,newAsset.id);
+    list.appendChild(div);
+    div.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  openAssetModal();
 }
 
 // Opens the contact modal from the WO assign dropdown; after save, insert new name and select it.
@@ -125,8 +145,9 @@ async function openWODetail(id){
   document.getElementById('wod-sub').textContent=w.building+(w.location?' · '+w.location:'');
   let comments=[];
   try{const{data}=await db.from('wo_comments').select('*').eq('work_order_id',id).order('created_at');comments=data||[];}catch(e){}
-  // Get linked assets
+  // Get linked assets + invoices
   const linkedAssets=w.asset_ids?.length?assets.filter(a=>w.asset_ids.includes(a.id)):[];
+  const linkedInvoices=w.invoice_ids?.length?invoices.filter(i=>w.invoice_ids.includes(i.id)):[];
   document.getElementById('wod-body').innerHTML=`
     <div class="dr"><div class="dl">Priority</div><div>${pb(w.priority)}</div></div>
     <div class="dr"><div class="dl">Status</div><div>${sb(w.status)}</div></div>
@@ -134,6 +155,7 @@ async function openWODetail(id){
     <div class="dr"><div class="dl">Due date</div><div style="font-family:sans-serif">${w.due_date||'Not set'}</div></div>
     <div class="dr"><div class="dl">Completed</div><div style="font-family:sans-serif">${w.completed_date||'—'}</div></div>
     ${linkedAssets.length?`<div class="dr"><div class="dl">Assets</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:4px">${linkedAssets.map(a=>`<span class="badge b-blue">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}</div></div>`:''}
+    ${linkedInvoices.length?`<div class="dr"><div class="dl">Invoices</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:6px">${linkedInvoices.map(i=>`<span class="badge b-green" style="cursor:pointer" onclick="editInvoice('${i.id}');closeModal('wo-detail-modal')">${i.invoice_number||'(no #)'} · ${i.vendor} · ${fmt(i.amount)}${i.pdf_url?' 📄':''}</span>`).join('')}</div></div>`:''}
     ${w.notes?`<div class="dr"><div class="dl">Notes</div><div style="font-family:sans-serif;white-space:normal;line-height:1.5">${w.notes}</div></div>`:''}
     ${allPhotos(w).length?`<div style="margin:12px 0"><div class="photo-gallery">${allPhotos(w).map(u=>`<div class="photo-thumb" style="width:110px;height:110px"><img src="${u}" onclick="openLightbox('${u}')"></div>`).join('')}</div></div>`:''}
     <div style="margin-top:16px;font-size:11px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px">Comments & Updates</div>
@@ -422,6 +444,30 @@ function openInvoiceModal(inv){
       <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 ${inv?.pdf_url?'Upload new PDF (replaces current)':'Upload PDF (optional)'}<input type="file" id="inv-pdf-input" accept=".pdf" style="display:none" onchange="previewInvoicePDF(event)"></div>
       <div id="inv-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
     </div>
+    <div class="fg"><label>Assets this invoice covers</label>
+      <div id="inv-asset-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
+        <div class="asset-select-item" onclick="handleAddAssetInline('inv-asset-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
+        ${assets.map(a=>{
+          const checked=inv?.asset_ids?.includes(a.id);
+          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${a.id}')">
+            <input type="checkbox" value="${a.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
+            <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
+            <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.building} · ${a.room_number||a.location||''}</div></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="fg"><label>Related work orders</label>
+      <div id="inv-wo-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
+        ${workOrders.length?workOrders.map(w=>{
+          const checked=inv?.work_order_ids?.includes(w.id);
+          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${w.id}')">
+            <input type="checkbox" value="${w.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
+            <div style="flex:1;min-width:0"><div style="font-weight:bold">${w.issue}</div><div style="font-size:11px;color:var(--text3)">${w.building} · ${w.status}${w.assignee?' · '+w.assignee:''}</div></div>
+          </div>`;
+        }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No work orders yet</div>'}
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('invoice-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitInvoice()">${inv?'Save Changes':'Add Invoice'}</button>
@@ -444,7 +490,18 @@ async function submitInvoice(){
   let pdf_url=editingInvId?invoices.find(x=>x.id===editingInvId)?.pdf_url:null;
   const pdfFile=document.getElementById('inv-pdf-input')?.files[0];
   if(pdfFile)pdf_url=await uploadFile(pdfFile,'invoices');
-  saveInvoice({invoice_number:document.getElementById('inv-num')?.value.trim(),date:document.getElementById('inv-date')?.value.trim(),vendor,building:document.getElementById('inv-bld')?.value,description,amount,status:document.getElementById('inv-status')?.value,pdf_url});
+  const asset_ids=[...document.querySelectorAll('#inv-asset-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  const work_order_ids=[...document.querySelectorAll('#inv-wo-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  saveInvoice({
+    invoice_number:document.getElementById('inv-num')?.value.trim(),
+    date:document.getElementById('inv-date')?.value.trim(),
+    vendor,building:document.getElementById('inv-bld')?.value,
+    description,amount,
+    status:document.getElementById('inv-status')?.value,
+    pdf_url,
+    asset_ids:asset_ids.length?asset_ids:[],
+    work_order_ids:work_order_ids.length?work_order_ids:[],
+  });
   closeModal('invoice-modal');
 }
 
@@ -606,6 +663,75 @@ function submitCategory(){
 }
 
 function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
+
+// ---- SUPPLY MODAL ----
+function openSupplyModal(supply){
+  editingSupplyId=supply?supply.id:null;
+  document.getElementById('supply-modal-h').textContent=supply?'Edit Supply':'Add Supply';
+  const v=k=>supply?.[k]||'';
+  const sel=(k,val)=>supply?.[k]===val?'selected':'';
+  document.getElementById('supply-body').innerHTML=`
+    <div class="fg"><label>Item name *</label><input type="text" class="fi" id="sup-name" placeholder="e.g. Toilet paper, Hand soap" value="${v('name')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Category</label>
+        <select class="fi" id="sup-cat">
+          <option value="">Select...</option>
+          <option ${sel('category','Restroom')}>Restroom</option>
+          <option ${sel('category','Kitchen')}>Kitchen</option>
+          <option ${sel('category','Cleaning')}>Cleaning</option>
+          <option ${sel('category','General')}>General</option>
+        </select>
+      </div>
+      <div class="fg"><label>Unit</label><input type="text" class="fi" id="sup-unit" placeholder="case, box, bottle" value="${v('unit')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Unit size</label><input type="text" class="fi" id="sup-size" placeholder="e.g. 48 rolls, 1 gal" value="${v('unit_size')}"></div>
+      <div class="fg"><label>Preferred vendor</label>
+        <select class="fi" id="sup-vendor">
+          <option value="">—</option>
+          ${contacts.filter(c=>c.type==='Contractor').map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          ${supply?.vendor&&!contacts.find(c=>c.name===supply.vendor)?`<option selected>${supply.vendor}</option>`:''}
+          <option ${v('vendor')==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Current stock *</label><input type="number" step="0.01" class="fi" id="sup-stock" value="${supply?.current_stock??0}"></div>
+      <div class="fg"><label>Reorder when ≤</label><input type="number" step="0.01" class="fi" id="sup-reorder" value="${supply?.reorder_level??0}"></div>
+    </div>
+    <div class="fg"><label>Last ordered</label><input type="text" class="fi" id="sup-ordered" placeholder="e.g. Apr 15 2026" value="${v('last_ordered_date')}"></div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="sup-notes">${v('notes')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('supply-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSupply()">${supply?'Save Changes':'Add Supply'}</button>
+    </div>`;
+  document.getElementById('supply-modal').classList.add('open');
+}
+
+function submitSupply(){
+  const name=document.getElementById('sup-name')?.value.trim();
+  if(!name){showToast('Please enter a supply name');return;}
+  saveSupply({
+    name,
+    category:document.getElementById('sup-cat')?.value,
+    unit:document.getElementById('sup-unit')?.value.trim(),
+    unit_size:document.getElementById('sup-size')?.value.trim(),
+    vendor:document.getElementById('sup-vendor')?.value,
+    current_stock:parseFloat(document.getElementById('sup-stock')?.value)||0,
+    reorder_level:parseFloat(document.getElementById('sup-reorder')?.value)||0,
+    last_ordered_date:document.getElementById('sup-ordered')?.value.trim(),
+    notes:document.getElementById('sup-notes')?.value.trim(),
+  });
+}
+
+function editSupply(id){const s=supplies.find(x=>x.id===id);if(s)openSupplyModal(s);}
+
+function confirmDeleteSupply(id,name){
+  document.getElementById('conf-h').textContent='Delete supply?';
+  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteSupply(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
 
 // ---- GOOGLE CALENDAR SETTINGS MODAL ----
 function openGCalSettingsModal(){

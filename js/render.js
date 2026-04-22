@@ -228,6 +228,19 @@ function renderDash(){
   const wa=document.getElementById('d-warranty-alerts');
   if(wa)wa.innerHTML=warningA.map(a=>`<div style="background:var(--warning-bg);border:1px solid #f0d060;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px">⚠️ <strong>${a.description}</strong> warranty expires ${a.warranty_expiry}</div>`).join('');
 
+  const sa=document.getElementById('d-supply-alerts');
+  const lowSupplies=supplies.filter(s=>{const st=supplyStockStatus(s);return st.label!=='Stocked';});
+  if(sa)sa.innerHTML=lowSupplies.map(s=>{
+    const st=supplyStockStatus(s);
+    const bg=st.label==='Out'?'var(--danger-bg)':'var(--warning-bg)';
+    const bc=st.label==='Out'?'#f0a0a0':'#f0d060';
+    const emoji=st.label==='Out'?'🚨':'⚠️';
+    return`<div style="background:${bg};border:1px solid ${bc};border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px">
+      ${emoji} <strong>${s.name}</strong> running ${st.label.toLowerCase()} — ${Number(s.current_stock)||0} on hand (reorder at ${Number(s.reorder_level)||0})
+      <button class="btn btn-sm" style="margin-left:auto" onclick="editSupply('${s.id}')">Update stock</button>
+    </div>`;
+  }).join('');
+
   const wr=document.getElementById('d-wo-rows');
   if(wr)wr.innerHTML=workOrders.slice(0,5).length
     ?workOrders.slice(0,5).map(w=>`<tr onclick="openWODetail('${w.id}')" style="cursor:pointer"><td style="font-weight:bold">${w.issue}</td><td>${w.building}</td><td>${sb(w.status)}</td></tr>`).join('')
@@ -542,14 +555,19 @@ function renderInvoices(){
   const ic=document.getElementById('inv-count');if(ic)ic.textContent=f.length;
   const tb=document.getElementById('inv-table');
   if(tb)tb.innerHTML=f.length
-    ?f.map(i=>`<tr onclick="editInvoice('${i.id}')" style="cursor:pointer">
+    ?f.map(i=>{
+      const aCount=i.asset_ids?.length||0;
+      const wCount=i.work_order_ids?.length||0;
+      const links=[aCount?`${aCount} asset${aCount>1?'s':''}`:null,wCount?`${wCount} WO${wCount>1?'s':''}`:null].filter(Boolean).join(' · ');
+      return`<tr onclick="editInvoice('${i.id}')" style="cursor:pointer">
       <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}${i.pdf_url?` <a href="${i.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
       <td style="font-size:11px;color:var(--text3)">${i.date||'—'}</td>
       <td style="font-weight:bold">${i.vendor}</td>
-      <td>${i.description||''}</td>
+      <td>${i.description||''}${links?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${links}</div>`:''}</td>
       <td><span class="badge b-blue" style="font-size:10px">${i.building||''}</span></td>
       <td style="font-weight:bold">${fmt(i.amount)}</td>
-      <td>${sb(i.status)}</td></tr>`).join('')
+      <td>${sb(i.status)}</td></tr>`;
+    }).join('')
     :'<tr><td colspan="7" class="loading">No invoices yet</td></tr>';
 }
 
@@ -946,6 +964,49 @@ function renderCOIReport(){
     ${section('No COI on file',missing,'Every contractor has a COI expiry recorded.')}
     ${section('Current COIs',current,'No contractors with current COIs.','var(--success)')}
   `;
+}
+
+// ---- RENDER SUPPLIES ----
+function supplyStockStatus(s){
+  const cur=Number(s.current_stock)||0;
+  const lvl=Number(s.reorder_level)||0;
+  if(cur<=0)return{label:'Out',cls:'b-red'};
+  if(cur<=lvl)return{label:'Low',cls:'b-amber'};
+  return{label:'Stocked',cls:'b-green'};
+}
+
+function renderSupplies(){
+  const el=document.getElementById('supplies-list');
+  if(!el)return;
+  const q=(document.getElementById('sup-search')?.value||'').toLowerCase();
+  const fc=document.getElementById('sup-f-cat')?.value||'all';
+  const fs=document.getElementById('sup-f-stock')?.value||'all';
+  const filtered=supplies.filter(s=>{
+    const status=supplyStockStatus(s);
+    const matchQ=!q||(s.name||'').toLowerCase().includes(q)||(s.vendor||'').toLowerCase().includes(q)||(s.notes||'').toLowerCase().includes(q);
+    const matchC=fc==='all'||s.category===fc;
+    const matchS=fs==='all'||(fs==='low'&&status.label!=='Stocked')||(fs==='ok'&&status.label==='Stocked');
+    return matchQ&&matchC&&matchS;
+  });
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No supplies match.</p></div>';return;}
+  el.innerHTML=filtered.map(s=>{
+    const status=supplyStockStatus(s);
+    return`<div class="supply-card">
+      <div class="supply-info">
+        <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+          <div class="supply-name">${s.name}</div>
+          <span class="badge ${status.cls}" style="font-size:11px">${status.label}</span>
+        </div>
+        <div class="supply-meta">${[s.category,s.unit,s.unit_size].filter(Boolean).join(' · ')}</div>
+        <div class="supply-meta">Stock: <strong>${Number(s.current_stock)||0}</strong> · Reorder at: <strong>${Number(s.reorder_level)||0}</strong>${s.vendor?' · Vendor: '+s.vendor:''}${s.last_ordered_date?' · Last ordered: '+s.last_ordered_date:''}</div>
+        ${s.notes?`<div class="supply-meta" style="margin-top:4px">${s.notes}</div>`:''}
+      </div>
+      <div class="supply-actions">
+        <button class="btn btn-edit btn-sm" onclick="editSupply('${s.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteSupply('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ---- RENDER SETTINGS ----

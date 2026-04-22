@@ -5,8 +5,55 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies()]);
   renderHistory();renderDash();
+}
+
+async function loadSupplies(){
+  try{
+    const{data,error}=await db.from('supplies').select('*').order('category').order('name');
+    if(error)throw error;
+    if(!data||data.length===0)await seedSupplies();
+    else supplies=data;
+  }catch(e){console.error(e);supplies=[];}
+  renderSupplies();
+}
+
+async function seedSupplies(){
+  try{
+    const{data,error}=await db.from('supplies').insert(defaultSupplies).select();
+    if(error)throw error;
+    supplies=data||[];
+    showToast('Default supply list loaded — '+supplies.length+' items added!');
+  }catch(e){console.error(e);supplies=[];}
+}
+
+async function saveSupply(d){
+  try{
+    if(editingSupplyId){
+      const{data,error}=await db.from('supplies').update({...d,updated_at:new Date().toISOString()}).eq('id',editingSupplyId).select();
+      if(error)throw error;
+      const i=supplies.findIndex(s=>s.id===editingSupplyId);
+      if(i>-1)supplies[i]=data[0];
+      showToast('Supply updated!');
+    }else{
+      const{data,error}=await db.from('supplies').insert([d]).select();
+      if(error)throw error;
+      supplies.push(data[0]);
+      showToast('Supply added!');
+    }
+    editingSupplyId=null;closeModal('supply-modal');
+    renderSupplies();renderDash();
+  }catch(e){console.error(e);showToast('Error saving supply');}
+}
+
+async function deleteSupply(id){
+  try{
+    const{error}=await db.from('supplies').delete().eq('id',id);
+    if(error)throw error;
+    supplies=supplies.filter(s=>s.id!==id);
+    showToast('Supply deleted');renderSupplies();renderDash();
+  }catch(e){showToast('Error deleting');}
 }
 
 async function loadSettings(){
@@ -279,21 +326,28 @@ async function saveRoom(d){
 
 async function saveAsset(d){
   try{
+    let saved=null;
     if(editingAssetId){
       const{data,error}=await db.from('assets').update(d).eq('id',editingAssetId).select();
       if(error)throw error;
       const i=assets.findIndex(a=>a.id===editingAssetId);
       if(i>-1)assets[i]=data[0];
+      saved=data[0];
       showToast('Asset updated!');
     }else{
       const{data,error}=await db.from('assets').insert([d]).select();
       if(error)throw error;
       assets.unshift(data[0]);
+      saved=data[0];
       showToast('Asset added!');
     }
     editingAssetId=null;closeModal('asset-modal');
     renderAssets();renderDash();
     if(currentRoomId)renderRoomDetail(currentRoomId);
+    if(afterAssetSave&&saved){
+      const cb=afterAssetSave;afterAssetSave=null;
+      try{cb(saved);}catch(e){console.error(e);}
+    }
   }catch(e){console.error(e);showToast('Error saving asset');}
 }
 
@@ -418,20 +472,46 @@ async function deleteContact(id){
 
 async function saveInvoice(d){
   try{
+    // Capture the invoice's OLD work_order_ids before the write, so we can
+    // diff against the NEW list and keep the reciprocal links in sync.
+    const oldWOIds=editingInvId?(invoices.find(x=>x.id===editingInvId)?.work_order_ids||[]):[];
+    let saved;
     if(editingInvId){
       const{data,error}=await db.from('vendor_invoices').update(d).eq('id',editingInvId).select();
       if(error)throw error;
       const i=invoices.findIndex(x=>x.id===editingInvId);
       if(i>-1)invoices[i]=data[0];
+      saved=data[0];
       showToast('Invoice updated!');
     }else{
       const{data,error}=await db.from('vendor_invoices').insert([d]).select();
       if(error)throw error;
       invoices.unshift(data[0]);
+      saved=data[0];
       showToast('Invoice added!');
     }
-    editingInvId=null;closeModal('invoice-modal');renderInvoices();
-  }catch(e){showToast('Error saving invoice');}
+    await syncWOInvoiceLinks(saved.id,d.work_order_ids||[],oldWOIds);
+    editingInvId=null;closeModal('invoice-modal');renderInvoices();renderWO();
+  }catch(e){console.error(e);showToast('Error saving invoice');}
+}
+
+// Keeps work_orders.invoice_ids in sync when an invoice's work_order_ids changes.
+async function syncWOInvoiceLinks(invoiceId,newIds,oldIds){
+  const toAdd=newIds.filter(id=>!oldIds.includes(id));
+  const toRemove=oldIds.filter(id=>!newIds.includes(id));
+  for(const woId of toAdd){
+    const wo=workOrders.find(w=>w.id===woId);
+    if(!wo)continue;
+    const ids=Array.isArray(wo.invoice_ids)?[...wo.invoice_ids]:[];
+    if(!ids.includes(invoiceId))ids.push(invoiceId);
+    try{await db.from('work_orders').update({invoice_ids:ids}).eq('id',woId);wo.invoice_ids=ids;}catch(e){console.error(e);}
+  }
+  for(const woId of toRemove){
+    const wo=workOrders.find(w=>w.id===woId);
+    if(!wo)continue;
+    const ids=(Array.isArray(wo.invoice_ids)?wo.invoice_ids:[]).filter(x=>x!==invoiceId);
+    try{await db.from('work_orders').update({invoice_ids:ids}).eq('id',woId);wo.invoice_ids=ids;}catch(e){console.error(e);}
+  }
 }
 
 async function deleteInvoice(id){
@@ -679,6 +759,7 @@ function go(name,el){
   if(name==='coi-report')renderCOIReport();
   if(name==='finance')renderFinance();
   if(name==='calendar')loadCalEvents();
+  if(name==='supplies')renderSupplies();
   renderHistory();
 }
 
