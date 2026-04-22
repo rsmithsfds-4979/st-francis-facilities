@@ -665,8 +665,48 @@ function renderWO(){
 function renderPM(){
   const el=document.getElementById('pm-list');
   if(!el)return;
-  if(!pmTasks.length){el.innerHTML='<div class="empty-state"><p>No PM tasks yet.</p></div>';return;}
-  el.innerHTML=pmTasks.map(p=>{
+
+  // Populate Building filter from actual data
+  const blds=[...new Set(pmTasks.map(p=>p.building).filter(Boolean))].sort();
+  syncDropdown('pm-f-bld',blds,'All buildings');
+
+  const fs=document.getElementById('pm-f-status')?.value||'all';
+  const fb=document.getElementById('pm-f-bld')?.value||'all';
+  const sort=document.getElementById('pm-sort')?.value||'due-asc';
+  const q=(document.getElementById('pm-search')?.value||'').toLowerCase();
+
+  let filtered=pmTasks.filter(p=>{
+    if(fs!=='all'&&p.status!==fs)return false;
+    if(fb!=='all'&&p.building!==fb)return false;
+    if(q){
+      const hay=[p.title,p.building,p.assigned_to,p.description,p.frequency,p.status,p.next_due].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+
+  // Sort
+  const FAR=new Date(9999,0);
+  const NEAR=new Date(0);
+  const statusOrder={Overdue:0,Upcoming:1,Done:2};
+  const byTitle=(a,b)=>(a.title||'').localeCompare(b.title||'');
+  const cmps={
+    'due-asc':(a,b)=>((parseDate(a.next_due)||FAR)-(parseDate(b.next_due)||FAR))||byTitle(a,b),
+    'due-desc':(a,b)=>((parseDate(b.next_due)||NEAR)-(parseDate(a.next_due)||NEAR))||byTitle(a,b),
+    'title':byTitle,
+    'building':(a,b)=>(a.building||'').localeCompare(b.building||'')||byTitle(a,b),
+    'assigned':(a,b)=>(a.assigned_to||'').localeCompare(b.assigned_to||'')||byTitle(a,b),
+    'status':(a,b)=>((statusOrder[a.status]??9)-(statusOrder[b.status]??9))||byTitle(a,b),
+  };
+  filtered.sort(cmps[sort]||cmps['due-asc']);
+
+  if(!filtered.length){
+    el.innerHTML=pmTasks.length
+      ?'<div class="empty-state"><p>No PM tasks match these filters.</p></div>'
+      :'<div class="empty-state"><p>No PM tasks yet.</p></div>';
+    return;
+  }
+  el.innerHTML=filtered.map(p=>{
     const due=parseDate(p.next_due);
     const conflicts=due?eventsOnDate(due):[];
     return`<div class="pm-card">

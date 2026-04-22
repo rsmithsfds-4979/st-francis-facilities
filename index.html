@@ -148,9 +148,24 @@
 <div class="view" id="view-pm">
   <div class="topbar">
     <div class="topbar-title">PM Schedule</div>
-    <div class="topbar-actions"><button class="btn btn-primary" onclick="openPMModal()">+ Add PM Task</button></div>
+    <div class="topbar-actions">
+      <select class="btn" id="pm-f-status" onchange="renderPM()"><option value="all">All statuses</option><option>Upcoming</option><option>Overdue</option><option>Done</option></select>
+      <select class="btn" id="pm-f-bld" onchange="renderPM()"><option value="all">All buildings</option></select>
+      <select class="btn" id="pm-sort" onchange="renderPM()" title="Sort by">
+        <option value="due-asc">Next due · soonest</option>
+        <option value="due-desc">Next due · furthest</option>
+        <option value="title">Title (A–Z)</option>
+        <option value="building">Building</option>
+        <option value="assigned">Assigned to</option>
+        <option value="status">Status</option>
+      </select>
+      <button class="btn btn-primary" onclick="openPMModal()">+ Add PM Task</button>
+    </div>
   </div>
-  <div class="content"><div id="pm-list"><div class="loading">Loading...</div></div></div>
+  <div class="content">
+    <input type="text" class="search-bar" id="pm-search" placeholder="Search PM tasks…" oninput="renderPM()">
+    <div id="pm-list"><div class="loading">Loading...</div></div>
+  </div>
 </div>
 
 <!-- SERVICE HISTORY -->
