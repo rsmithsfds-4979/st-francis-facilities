@@ -486,6 +486,7 @@ function renderWO(){
       <td>${sb(w.status)}</td>
       <td style="white-space:nowrap" onclick="event.stopPropagation()">
         ${w.status!=='Completed'?`<button class="btn btn-sm btn-success" onclick="updateWOStatus('${w.id}','Completed')">✓</button>`:''}
+        <button class="btn btn-edit btn-sm" style="margin-left:4px" onclick="editWO('${w.id}')">Edit</button>
         <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="confirmDeleteWO('${w.id}')">Del</button>
       </td></tr>`).join('')
     :'<tr><td colspan="8" class="loading">No work orders match this filter</td></tr>';

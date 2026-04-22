@@ -9,7 +9,7 @@ let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],room
 let appSettings={},gcalEvents=[];
 // Calendar page view state
 let calView='month',calDate=new Date();
-let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null;
+let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null,editingWOId=null;
 let currentBuildingId=null,currentRoomId=null,currentContactType='Contractor';
 // One-shot callbacks fired after the next successful save (used by inline "+ Add new…" flows).
 let afterContactSave=null,afterAssetSave=null;

@@ -1,15 +1,22 @@
 // All modal open/submit/edit/delete-confirm functions
 
 // ---- WORK ORDER MODAL ----
+// Opens the Work Order modal. Pass presetRoomId/presetBldId to pre-fill for a new WO, or
+// pass an existing wo object to edit it. (Callers disambiguate by argument type.)
 function openWOModal(presetRoomId,presetBldId){
-  document.getElementById('wo-modal-h').textContent='New Work Order';
+  // Argument overload: if the first arg is a work-order object, treat as edit.
+  const wo=(presetRoomId&&typeof presetRoomId==='object'&&presetRoomId.id)?presetRoomId:null;
+  if(wo){presetRoomId=wo.room_id||null;presetBldId=null;}
+  editingWOId=wo?wo.id:null;
+  document.getElementById('wo-modal-h').textContent=wo?'Edit Work Order':'New Work Order';
   const presetRoom=presetRoomId?rooms.find(r=>r.id===presetRoomId):null;
   const presetBld=presetBldId?buildings.find(b=>b.id===presetBldId):null;
-  const presetBldName=presetBld?.name||presetRoom?.building_name||'';
+  const presetBldName=wo?.building||presetBld?.name||presetRoom?.building_name||'';
   const bldRooms=presetBldName?rooms.filter(r=>r.building_name===presetBldName):[];
+  const checkedAssetIds=wo?.asset_ids||[];
 
   document.getElementById('wo-body').innerHTML=`
-    <div class="fg"><label>Issue description *</label><input type="text" class="fi" id="f-issue" placeholder="Brief description of the problem"></div>
+    <div class="fg"><label>Issue description *</label><input type="text" class="fi" id="f-issue" placeholder="Brief description of the problem" value="${wo?.issue?wo.issue.replace(/"/g,'&quot;'):''}"></div>
     <div class="form-row">
       <div class="fg"><label>Building *</label>
         <select class="fi" id="f-bld" onchange="updateRoomDropdown()">
@@ -20,44 +27,54 @@ function openWOModal(presetRoomId,presetBldId){
       <div class="fg"><label>Room / Location</label>
         <select class="fi" id="f-room">
           <option value="">Select room...</option>
-          ${bldRooms.map(r=>`<option value="${r.id}" ${r.id===presetRoomId?'selected':''}>${r.name}</option>`).join('')}
+          ${bldRooms.map(r=>`<option value="${r.id}" ${r.id===(wo?.room_id||presetRoomId)?'selected':''}>${r.name}</option>`).join('')}
         </select>
       </div>
     </div>
     <div class="form-row">
-      <div class="fg"><label>Priority *</label><select class="fi" id="f-pri"><option value="">Select...</option><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></select></div>
-      <div class="fg"><label>Due date</label><input type="text" class="fi" id="f-due" placeholder="e.g. May 15 2025"></div>
+      <div class="fg"><label>Priority *</label><select class="fi" id="f-pri"><option value="">Select...</option>${['Low','Medium','High','Critical'].map(p=>`<option ${wo?.priority===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="fg"><label>Due date</label><input type="text" class="fi" id="f-due" placeholder="e.g. May 15 2025" value="${wo?.due_date||''}"></div>
     </div>
     <div class="fg"><label>Assign to *</label>
       <select class="fi" id="f-assign" onchange="handleAssignChange(this)">
         <option value="">Select...</option>
-        ${contacts.map(c=>`<option>${c.name}</option>`).join('')}
+        ${contacts.map(c=>`<option ${wo?.assignee===c.name?'selected':''}>${c.name}</option>`).join('')}
         <option value="__add_new__">+ Add new contact…</option>
-        <option>Other</option>
+        <option ${wo?.assignee==='Other'?'selected':''}>Other</option>
       </select>
     </div>
     <div class="fg">
       <label>Assets being serviced</label>
       <div id="asset-select-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
         <div class="asset-select-item" onclick="handleAddAssetInline('asset-select-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
-        ${assets.filter(a=>!presetBldName||a.building===presetBldName).map(a=>`
-          <div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')">
-            <input type="checkbox" value="${a.id}" onclick="event.stopPropagation()">
+        ${assets.filter(a=>!presetBldName||a.building===presetBldName).map(a=>{
+          const checked=checkedAssetIds.includes(a.id);
+          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${a.id}')">
+            <input type="checkbox" value="${a.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
             <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
             <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>
-    <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details..."></textarea></div>
+    <div class="form-row">
+      <div class="fg"><label>Status</label>
+        <select class="fi" id="f-status">
+          ${['Open','In Progress','Completed'].map(s=>`<option ${(wo?.status||'Open')===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Completed date</label><input type="text" class="fi" id="f-completed" placeholder="e.g. Apr 22 2026" value="${wo?.completed_date||''}"></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details...">${wo?.notes||''}</textarea></div>
     <div class="fg"><label>Photos (optional)</label>
       <div class="photo-gallery" id="wo-photo-gallery"></div>
       <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click to attach photos<input type="file" id="wo-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('wo',event,'wo-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('wo-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitWO()">Save Work Order</button>
+      <button class="btn btn-primary" onclick="submitWO()">${wo?'Save Changes':'Save Work Order'}</button>
     </div>`;
-  initPhotoState('wo',[]);
+  initPhotoState('wo',wo?allPhotos(wo):[]);
   renderPhotoGallery('wo','wo-photo-gallery');
   document.getElementById('wo-modal').classList.add('open');
 }
@@ -129,14 +146,24 @@ async function submitWO(){
   if(!issue||!building||!priority||!assignee){showToast('Please fill in all required fields');return;}
   const roomId=document.getElementById('f-room')?.value||null;
   const room=roomId?rooms.find(r=>r.id===roomId):null;
-  // Get selected asset IDs
   const selectedAssets=[...document.querySelectorAll('#asset-select-list input[type=checkbox]:checked')].map(cb=>cb.value);
   const photo_urls=await finalizePhotos('wo','work-orders');
-  saveWO({issue,building,location:room?room.name:document.getElementById('f-room')?.value||'',
-    room_id:roomId,due_date:document.getElementById('f-due')?.value.trim(),
-    priority,assignee,notes:document.getElementById('f-notes')?.value.trim(),
-    status:'Open',photo_urls,photo_url:photo_urls[0]||null,asset_ids:selectedAssets.length?selectedAssets:null});
-  closeModal('wo-modal');
+  const status=document.getElementById('f-status')?.value||'Open';
+  let completed_date=document.getElementById('f-completed')?.value.trim();
+  // Auto-stamp completed_date when status flips to Completed without one set
+  if(status==='Completed'&&!completed_date)completed_date=new Date().toLocaleDateString();
+  saveWO({
+    issue,building,
+    location:room?room.name:document.getElementById('f-room')?.value||'',
+    room_id:roomId,
+    due_date:document.getElementById('f-due')?.value.trim(),
+    priority,assignee,
+    notes:document.getElementById('f-notes')?.value.trim(),
+    status,
+    completed_date:status==='Completed'?completed_date:null,
+    photo_urls,photo_url:photo_urls[0]||null,
+    asset_ids:selectedAssets,
+  });
 }
 
 async function openWODetail(id){
@@ -168,10 +195,18 @@ async function openWODetail(id){
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('wo-detail-modal')">Close</button>
+      <button class="btn btn-edit" onclick="editWO('${w.id}')">Edit</button>
       ${w.status!=='Completed'?`<button class="btn btn-success" onclick="updateWOStatus('${w.id}','Completed');closeModal('wo-detail-modal')">✓ Mark Done</button>`:''}
       <button class="btn btn-primary" onclick="submitComment('${w.id}')">Add Comment</button>
     </div>`;
   document.getElementById('wo-detail-modal').classList.add('open');
+}
+
+function editWO(id){
+  const w=workOrders.find(x=>x.id===id);
+  if(!w)return;
+  closeModal('wo-detail-modal');
+  openWOModal(w);
 }
 
 function submitComment(woId){

@@ -248,11 +248,25 @@ async function loadAssets(){
   renderAssets();
 }
 
+// Coerces a jsonb / text column that should hold an array of ids into a real array.
+// Supabase usually deserializes jsonb → JS array, but legacy rows or schema drift can
+// surface strings or nulls — this normalizes them.
+function normalizeIdArray(v){
+  if(Array.isArray(v))return v;
+  if(typeof v==='string'){try{const p=JSON.parse(v);return Array.isArray(p)?p:[];}catch(e){return[];}}
+  return[];
+}
+
 async function loadWorkOrders(){
   try{
     const{data,error}=await db.from('work_orders').select('*').order('created_at',{ascending:false});
     if(error)throw error;
-    workOrders=data||[];
+    workOrders=(data||[]).map(w=>({
+      ...w,
+      asset_ids:normalizeIdArray(w.asset_ids),
+      invoice_ids:normalizeIdArray(w.invoice_ids),
+      photo_urls:normalizeIdArray(w.photo_urls),
+    }));
   }catch(e){console.error(e);workOrders=[];}
   renderWO();
 }
@@ -279,7 +293,11 @@ async function loadInvoices(){
   try{
     const{data,error}=await db.from('vendor_invoices').select('*').order('date',{ascending:false});
     if(error)throw error;
-    invoices=data||[];
+    invoices=(data||[]).map(i=>({
+      ...i,
+      asset_ids:normalizeIdArray(i.asset_ids),
+      work_order_ids:normalizeIdArray(i.work_order_ids),
+    }));
   }catch(e){console.error(e);invoices=[];}
   renderInvoices();
 }
@@ -362,12 +380,23 @@ async function deleteAsset(id){
 
 async function saveWO(d){
   try{
-    const{data,error}=await db.from('work_orders').insert([d]).select();
-    if(error)throw error;
-    workOrders.unshift(data[0]);
-    showToast('Work order saved!');renderWO();renderDash();
+    if(editingWOId){
+      const{data,error}=await db.from('work_orders').update(d).eq('id',editingWOId).select();
+      if(error)throw error;
+      const i=workOrders.findIndex(w=>w.id===editingWOId);
+      if(i>-1)workOrders[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
+      showToast('Work order updated!');
+    }else{
+      const{data,error}=await db.from('work_orders').insert([d]).select();
+      if(error)throw error;
+      const row={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
+      workOrders.unshift(row);
+      showToast('Work order saved!');
+    }
+    editingWOId=null;closeModal('wo-modal');
+    renderWO();renderDash();renderHistory();
     if(currentRoomId)renderRoomDetail(currentRoomId);
-  }catch(e){showToast('Error saving work order');}
+  }catch(e){console.error(e);showToast('Error saving work order');}
 }
 
 async function updateWOStatus(id,status){
