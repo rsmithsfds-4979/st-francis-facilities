@@ -45,17 +45,7 @@ function openWOModal(presetRoomId,presetBldId){
     </div>
     <div class="fg">
       <label>Assets being serviced</label>
-      <div id="asset-select-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
-        <div class="asset-select-item" onclick="handleAddAssetInline('asset-select-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
-        ${assets.filter(a=>!presetBldName||a.building===presetBldName).map(a=>{
-          const checked=checkedAssetIds.includes(a.id);
-          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${a.id}')">
-            <input type="checkbox" value="${a.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
-            <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
-            <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div>
-          </div>`;
-        }).join('')}
-      </div>
+      ${assetPickerFiltersHTML('asset-select-list')}
     </div>
     <div class="form-row">
       <div class="fg"><label>Status</label>
@@ -76,24 +66,23 @@ function openWOModal(presetRoomId,presetBldId){
     </div>`;
   initPhotoState('wo',wo?allPhotos(wo):[]);
   renderPhotoGallery('wo','wo-photo-gallery');
+  initAssetPicker('asset-select-list',checkedAssetIds,presetBldName||'all');
+  const bldSel=document.getElementById('asset-select-list-bld');
+  if(bldSel&&presetBldName)bldSel.value=presetBldName;
+  renderAssetPicker('asset-select-list');
   document.getElementById('wo-modal').classList.add('open');
 }
 
 function updateRoomDropdown(){
   const bldName=document.getElementById('f-bld')?.value;
   const roomSel=document.getElementById('f-room');
-  const assetList=document.getElementById('asset-select-list');
   if(roomSel){
     const bldRooms=bldName?rooms.filter(r=>r.building_name===bldName):[];
     roomSel.innerHTML='<option value="">Select room...</option>'+bldRooms.map(r=>`<option value="${r.id}">${r.name}${r.floor?' ('+r.floor+')':''}</option>`).join('');
   }
-  if(assetList&&bldName){
-    const bldAssets=assets.filter(a=>a.building===bldName);
-    const addRow=`<div class="asset-select-item" onclick="handleAddAssetInline('asset-select-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>`;
-    assetList.innerHTML=addRow+(bldAssets.length
-      ?bldAssets.map(a=>`<div class="asset-select-item" onclick="toggleAssetSelect(this,'${a.id}')"><input type="checkbox" value="${a.id}" onclick="event.stopPropagation()"><span style="font-size:14px">${catIcon[a.category]||'📦'}</span><div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location}</div></div></div>`).join('')
-      :'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No assets found for this building</div>');
-  }
+  // Sync the asset picker's building filter so it narrows automatically
+  const pickerBld=document.getElementById('asset-select-list-bld');
+  if(pickerBld){pickerBld.value=bldName||'all';renderAssetPicker('asset-select-list');}
 }
 
 function toggleAssetSelect(el,id){
@@ -102,21 +91,96 @@ function toggleAssetSelect(el,id){
   if(cb)cb.checked=!cb.checked;
 }
 
-// Opens the Asset modal from another modal (e.g. WO or Invoice). After save, appends the
-// new asset to the given select list and auto-checks it. Stacks on top of the originating modal.
+// ---- ASSET PICKER (shared between WO and Invoice modals) ----
+// State per list id: checked = Set<assetId>
+const _pickerState={};
+
+function initAssetPicker(listId,initialCheckedIds,initialBuilding){
+  _pickerState[listId]={
+    checked:new Set(initialCheckedIds||[]),
+    initialBuilding:initialBuilding||'all',
+  };
+}
+
+function renderAssetPicker(listId){
+  const state=_pickerState[listId];
+  if(!state)return;
+  const search=(document.getElementById(listId+'-search')?.value||'').toLowerCase();
+  const building=document.getElementById(listId+'-bld')?.value||'all';
+  const category=document.getElementById(listId+'-cat')?.value||'all';
+
+  const filtered=assets.filter(a=>{
+    if(building!=='all'&&a.building!==building)return false;
+    if(category!=='all'&&a.category!==category)return false;
+    if(search){
+      const hay=[a.description,a.serial,a.room_number,a.location,a.manufacturer].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(search))return false;
+    }
+    return true;
+  }).sort((a,b)=>
+    (a.building||'').localeCompare(b.building||'')||
+    (a.category||'').localeCompare(b.category||'')||
+    (a.description||'').localeCompare(b.description||'')
+  );
+
+  const el=document.getElementById(listId);
+  if(!el)return;
+  el.innerHTML=`
+    <div class="asset-select-item" onclick="handleAddAssetInline('${listId}')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
+    ${filtered.length?filtered.map(a=>{
+      const isChecked=state.checked.has(a.id);
+      return`<div class="asset-select-item ${isChecked?'selected':''}" onclick="togglePickerItem('${listId}','${a.id}',this)">
+        <input type="checkbox" ${isChecked?'checked':''} onclick="event.stopPropagation();togglePickerItem('${listId}','${a.id}',this.closest('.asset-select-item'))">
+        <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
+        <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.building} · ${a.room_number||a.location||''} · ${a.category||''}</div></div>
+      </div>`;
+    }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:12px;text-align:center">No assets match.</div>'}`;
+}
+
+function togglePickerItem(listId,assetId,rowEl){
+  const state=_pickerState[listId];
+  if(!state)return;
+  if(state.checked.has(assetId))state.checked.delete(assetId);
+  else state.checked.add(assetId);
+  const isNow=state.checked.has(assetId);
+  if(rowEl){
+    rowEl.classList.toggle('selected',isNow);
+    const cb=rowEl.querySelector('input[type=checkbox]');
+    if(cb)cb.checked=isNow;
+  }
+}
+
+function getPickerChecked(listId){
+  const state=_pickerState[listId];
+  return state?[...state.checked]:[];
+}
+
+// Returns the HTML for the filter bar + list container. Caller assigns listId.
+function assetPickerFiltersHTML(listId){
+  return`
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+      <input type="text" class="fi" id="${listId}-search" placeholder="Search assets…" style="flex:1;min-width:140px;padding:6px 10px;font-size:12px" oninput="renderAssetPicker('${listId}')">
+      <select class="fi" id="${listId}-bld" style="flex:0 0 auto;padding:6px 10px;font-size:12px" onchange="renderAssetPicker('${listId}')">
+        <option value="all">All buildings</option>
+        ${buildings.map(b=>`<option>${b.name}</option>`).join('')}
+      </select>
+      <select class="fi" id="${listId}-cat" style="flex:0 0 auto;padding:6px 10px;font-size:12px" onchange="renderAssetPicker('${listId}')">
+        <option value="all">All categories</option>
+        ${categories.map(c=>`<option>${c.name}</option>`).join('')}
+      </select>
+    </div>
+    <div id="${listId}" style="max-height:260px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px"></div>`;
+}
+
+// Opens the Asset modal from another modal (e.g. WO or Invoice). After save, adds the new
+// asset to the picker's checked set and re-renders. Stacks on top of the originating modal.
 function handleAddAssetInline(listId){
   afterAssetSave=(newAsset)=>{
-    const list=document.getElementById(listId);
-    if(!list)return;
-    const div=document.createElement('div');
-    div.className='asset-select-item selected';
-    div.innerHTML=`
-      <input type="checkbox" value="${newAsset.id}" checked onclick="event.stopPropagation()">
-      <span style="font-size:14px">${catIcon[newAsset.category]||'📦'}</span>
-      <div><div style="font-weight:bold">${newAsset.description}</div><div style="font-size:11px;color:var(--text3)">${newAsset.room_number||newAsset.location||''}</div></div>`;
-    div.onclick=()=>toggleAssetSelect(div,newAsset.id);
-    list.appendChild(div);
-    div.scrollIntoView({behavior:'smooth',block:'nearest'});
+    const state=_pickerState[listId];
+    if(state)state.checked.add(newAsset.id);
+    renderAssetPicker(listId);
+    const el=document.getElementById(listId);
+    if(el)el.scrollTop=el.scrollHeight;
   };
   openAssetModal();
 }
@@ -146,7 +210,7 @@ async function submitWO(){
   if(!issue||!building||!priority||!assignee){showToast('Please fill in all required fields');return;}
   const roomId=document.getElementById('f-room')?.value||null;
   const room=roomId?rooms.find(r=>r.id===roomId):null;
-  const selectedAssets=[...document.querySelectorAll('#asset-select-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  const selectedAssets=getPickerChecked('asset-select-list');
   const photo_urls=await finalizePhotos('wo','work-orders');
   const status=document.getElementById('f-status')?.value||'Open';
   let completed_date=document.getElementById('f-completed')?.value.trim();
@@ -480,34 +544,71 @@ function openInvoiceModal(inv){
       <div id="inv-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
     </div>
     <div class="fg"><label>Assets this invoice covers</label>
-      <div id="inv-asset-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
-        <div class="asset-select-item" onclick="handleAddAssetInline('inv-asset-list')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
-        ${assets.map(a=>{
-          const checked=inv?.asset_ids?.includes(a.id);
-          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${a.id}')">
-            <input type="checkbox" value="${a.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
-            <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
-            <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.building} · ${a.room_number||a.location||''}</div></div>
-          </div>`;
-        }).join('')}
-      </div>
+      ${assetPickerFiltersHTML('inv-asset-list')}
     </div>
-    <div class="fg"><label>Related work orders</label>
-      <div id="inv-wo-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px">
-        ${workOrders.length?workOrders.map(w=>{
-          const checked=inv?.work_order_ids?.includes(w.id);
-          return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleAssetSelect(this,'${w.id}')">
-            <input type="checkbox" value="${w.id}" ${checked?'checked':''} onclick="event.stopPropagation()">
-            <div style="flex:1;min-width:0"><div style="font-weight:bold">${w.issue}</div><div style="font-size:11px;color:var(--text3)">${w.building} · ${w.status}${w.assignee?' · '+w.assignee:''}</div></div>
-          </div>`;
-        }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:8px">No work orders yet</div>'}
-      </div>
+    <div class="fg"><label>Related work orders
+      <span style="font-weight:normal;font-size:11px;color:var(--text3);margin-left:6px">
+        <input type="checkbox" id="inv-wo-showall" onchange="renderInvoiceWOPicker()" style="vertical-align:middle"> Show all (including already-invoiced)
+      </span>
+    </label>
+      <div id="inv-wo-list" style="max-height:200px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('invoice-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitInvoice()">${inv?'Save Changes':'Add Invoice'}</button>
     </div>`;
+  initAssetPicker('inv-asset-list',inv?.asset_ids||[],inv?.building||'all');
+  const pickerBld=document.getElementById('inv-asset-list-bld');
+  if(pickerBld&&inv?.building)pickerBld.value=inv.building;
+  renderAssetPicker('inv-asset-list');
+  _invWoCheckedState=new Set(inv?.work_order_ids||[]);
+  _invWoEditingId=editingInvId;
+  renderInvoiceWOPicker();
   document.getElementById('invoice-modal').classList.add('open');
+}
+
+// Work-order picker state for the invoice modal
+let _invWoCheckedState=new Set();
+let _invWoEditingId=null;
+
+function renderInvoiceWOPicker(){
+  const el=document.getElementById('inv-wo-list');
+  if(!el)return;
+  const showAll=document.getElementById('inv-wo-showall')?.checked;
+  // Filter: include a WO if (a) show-all is on, (b) it's checked on this invoice,
+  // (c) it has no linked invoices yet, or (d) the only linked invoice is the one being edited.
+  const visible=workOrders.filter(w=>{
+    if(showAll)return true;
+    if(_invWoCheckedState.has(w.id))return true;
+    const ids=Array.isArray(w.invoice_ids)?w.invoice_ids:[];
+    if(!ids.length)return true;
+    if(_invWoEditingId&&ids.length===1&&ids[0]===_invWoEditingId)return true;
+    return false;
+  }).sort((a,b)=>{
+    // Completed first, then Open, then In Progress — so recently-done work surfaces
+    const order={Completed:0,'In Progress':1,Open:2};
+    return(order[a.status]??9)-(order[b.status]??9)||(a.issue||'').localeCompare(b.issue||'');
+  });
+  el.innerHTML=visible.length?visible.map(w=>{
+    const checked=_invWoCheckedState.has(w.id);
+    const otherInvCount=(Array.isArray(w.invoice_ids)?w.invoice_ids.filter(id=>id!==_invWoEditingId):[]).length;
+    const linkHint=otherInvCount>0?`<span class="badge b-gray" style="font-size:9px;margin-left:6px">${otherInvCount} other invoice${otherInvCount>1?'s':''}</span>`:'';
+    return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleInvWO('${w.id}',this)">
+      <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleInvWO('${w.id}',this.closest('.asset-select-item'))">
+      <div style="flex:1;min-width:0"><div style="font-weight:bold">${w.issue}${linkHint}</div><div style="font-size:11px;color:var(--text3)">${w.building} · ${w.status}${w.assignee?' · '+w.assignee:''}${w.completed_date?' · done '+w.completed_date:''}</div></div>
+    </div>`;
+  }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:12px;text-align:center">No matching work orders.</div>';
+}
+
+function toggleInvWO(id,rowEl){
+  if(_invWoCheckedState.has(id))_invWoCheckedState.delete(id);
+  else _invWoCheckedState.add(id);
+  const isNow=_invWoCheckedState.has(id);
+  if(rowEl){
+    rowEl.classList.toggle('selected',isNow);
+    const cb=rowEl.querySelector('input[type=checkbox]');
+    if(cb)cb.checked=isNow;
+  }
 }
 
 function previewInvoicePDF(event){
@@ -525,8 +626,8 @@ async function submitInvoice(){
   let pdf_url=editingInvId?invoices.find(x=>x.id===editingInvId)?.pdf_url:null;
   const pdfFile=document.getElementById('inv-pdf-input')?.files[0];
   if(pdfFile)pdf_url=await uploadFile(pdfFile,'invoices');
-  const asset_ids=[...document.querySelectorAll('#inv-asset-list input[type=checkbox]:checked')].map(cb=>cb.value);
-  const work_order_ids=[...document.querySelectorAll('#inv-wo-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  const asset_ids=getPickerChecked('inv-asset-list');
+  const work_order_ids=[..._invWoCheckedState];
   saveInvoice({
     invoice_number:document.getElementById('inv-num')?.value.trim(),
     date:document.getElementById('inv-date')?.value.trim(),
