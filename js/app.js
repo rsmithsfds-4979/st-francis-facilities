@@ -992,5 +992,55 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),3000);
 }
 
+// ---- DRAG-AND-DROP UPLOADS ----
+// Routes drops onto any .photo-upload element into that zone's file input,
+// then fires the input's existing onchange handler. Globally prevents the
+// browser from opening a dropped file when dropped outside a dropzone.
+function setupDragDropUploads(){
+  ['dragenter','dragover'].forEach(type=>{
+    document.addEventListener(type,e=>{
+      const zone=e.target.closest?.('.photo-upload');
+      e.preventDefault();
+      if(zone)zone.classList.add('drag-over');
+    });
+  });
+  document.addEventListener('dragleave',e=>{
+    const zone=e.target.closest?.('.photo-upload');
+    if(zone&&!zone.contains(e.relatedTarget))zone.classList.remove('drag-over');
+  });
+  document.addEventListener('drop',e=>{
+    e.preventDefault();
+    const zone=e.target.closest?.('.photo-upload');
+    if(!zone)return;
+    zone.classList.remove('drag-over');
+    const input=zone.querySelector('input[type=file]');
+    if(!input||!e.dataTransfer?.files?.length)return;
+    try{
+      const dt=new DataTransfer();
+      for(const file of e.dataTransfer.files){
+        if(!fileMatchesAccept(file,input.accept))continue;
+        dt.items.add(file);
+      }
+      if(!dt.files.length){showToast('No matching file types');return;}
+      input.files=dt.files;
+      input.dispatchEvent(new Event('change'));
+    }catch(err){console.error(err);showToast('Drag-drop upload failed');}
+  });
+}
+
+function fileMatchesAccept(file,acceptAttr){
+  if(!acceptAttr)return true;
+  const accepts=acceptAttr.split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(!accepts.length)return true;
+  const fileType=(file.type||'').toLowerCase();
+  const ext='.'+(file.name.split('.').pop()||'').toLowerCase();
+  return accepts.some(a=>{
+    if(a.startsWith('.'))return ext===a;
+    if(a.endsWith('/*'))return fileType.startsWith(a.slice(0,-1));
+    return fileType===a;
+  });
+}
+
 // ---- INIT ----
+setupDragDropUploads();
 loadAll();

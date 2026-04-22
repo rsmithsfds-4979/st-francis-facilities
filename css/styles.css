@@ -186,8 +186,10 @@ textarea.fi{resize:vertical;min-height:65px}
 .comment-text{font-size:13px;color:var(--text)}
 .comment-time{font-size:10px;color:var(--text3);margin-top:2px}
 /* Photo */
-.photo-upload{border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;font-family:sans-serif;font-size:13px;color:var(--text3);transition:border-color .15s}
+.photo-upload{border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;font-family:sans-serif;font-size:13px;color:var(--text3);transition:border-color .15s,background .15s,color .15s}
 .photo-upload:hover{border-color:var(--accent)}
+.photo-upload.drag-over{border-color:var(--accent);background:var(--info-bg);color:var(--accent)}
+.photo-upload.drag-over *{pointer-events:none}
 .photo-preview{width:100%;max-height:180px;object-fit:cover;border-radius:8px;margin-top:8px}
 .photo-gallery{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .photo-thumb{position:relative;width:80px;height:80px;border-radius:8px;overflow:hidden;border:1px solid var(--border);flex-shrink:0}

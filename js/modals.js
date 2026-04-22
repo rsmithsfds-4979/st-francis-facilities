@@ -58,7 +58,7 @@ function openWOModal(presetRoomId,presetBldId){
     <div class="fg"><label>Notes</label><textarea class="fi" id="f-notes" placeholder="Any additional details...">${wo?.notes||''}</textarea></div>
     <div class="fg"><label>Photos (optional)</label>
       <div class="photo-gallery" id="wo-photo-gallery"></div>
-      <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click to attach photos<input type="file" id="wo-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('wo',event,'wo-photo-gallery')"></div>
+      <div class="photo-upload" onclick="document.getElementById('wo-photo-input').click()">📷 Click or drag photos here<input type="file" id="wo-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('wo',event,'wo-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('wo-modal')">Cancel</button>
@@ -335,7 +335,7 @@ function openAssetModal(asset,presetRoomId){
     <div class="fg"><label>Notes</label><textarea class="fi" id="a-notes">${v('notes')}</textarea></div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="a-photo-gallery"></div>
-      <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 Click to add photos<input type="file" id="a-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('asset',event,'a-photo-gallery')"></div>
+      <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 Click or drag photos here<input type="file" id="a-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('asset',event,'a-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('asset-modal')">Cancel</button>
@@ -424,7 +424,7 @@ function openBuildingModal(bld){
     </div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="bld-photo-gallery"></div>
-      <div class="photo-upload" onclick="document.getElementById('bld-photo-input').click()">📷 Click to add photos<input type="file" id="bld-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('building',event,'bld-photo-gallery')"></div>
+      <div class="photo-upload" onclick="document.getElementById('bld-photo-input').click()">📷 Click or drag photos here<input type="file" id="bld-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('building',event,'bld-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('building-modal')">Cancel</button>
@@ -507,7 +507,7 @@ function openRoomModal(room){
     <div class="fg"><label>Notes</label><textarea class="fi" id="room-notes" placeholder="Any relevant notes about this space...">${v('notes')}</textarea></div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="room-photo-gallery"></div>
-      <div class="photo-upload" onclick="document.getElementById('room-photo-input').click()">📷 Click to add photos<input type="file" id="room-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('room',event,'room-photo-gallery')"></div>
+      <div class="photo-upload" onclick="document.getElementById('room-photo-input').click()">📷 Click or drag photos here<input type="file" id="room-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('room',event,'room-photo-gallery')"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('room-modal')">Cancel</button>
@@ -641,7 +641,7 @@ function openInvoiceModal(inv){
     </div>
     <div class="fg"><label>Invoice PDFs</label>
       <div id="inv-pdf-list"></div>
-      <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 Click to add PDFs<input type="file" id="inv-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('invoice',event,'inv-pdf-list')"></div>
+      <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 Click or drag PDFs here<input type="file" id="inv-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('invoice',event,'inv-pdf-list')"></div>
     </div>
     <div class="fg"><label>Assets this invoice covers</label>
       ${assetPickerFiltersHTML('inv-asset-list')}
@@ -1022,7 +1022,7 @@ function openQuoteModal(quote){
     </div>
     <div class="fg"><label>Quote PDFs</label>
       <div id="qt-pdf-list"></div>
-      <div class="photo-upload" onclick="document.getElementById('qt-pdf-input').click()">📄 Click to add PDFs<input type="file" id="qt-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('quote',event,'qt-pdf-list')"></div>
+      <div class="photo-upload" onclick="document.getElementById('qt-pdf-input').click()">📄 Click or drag PDFs here<input type="file" id="qt-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('quote',event,'qt-pdf-list')"></div>
     </div>
     <div class="fg"><label>Related assets</label>
       ${assetPickerFiltersHTML('qt-asset-list')}
