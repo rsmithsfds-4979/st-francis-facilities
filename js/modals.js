@@ -469,9 +469,36 @@ function openRoomModal(room){
   document.getElementById('room-modal-h').textContent=room?'Edit Room':'Add Room / Space';
   const v=k=>room?.[k]||'';
   const bld=buildings.find(b=>b.id===currentBuildingId);
+  // Pull floor suggestions from the building's comma-separated floors list (if present),
+  // plus any floors already used by rooms in this building (so even custom ones show up).
+  const bldFloorText=bld?.floors||'';
+  const suggestedFloors=[
+    ...bldFloorText.split(',').map(s=>s.trim()).filter(Boolean),
+    ...rooms.filter(r=>r.building_id===currentBuildingId).map(r=>r.floor).filter(Boolean),
+  ];
+  const uniqueFloors=[...new Set(suggestedFloors)];
+  const roomTypes=['Worship','Classroom','Office','Kitchen','Restroom','Storage','Mechanical','Meeting','Hall','Exterior','Other'];
+  const sel=(val)=>room?.room_type===val?'selected':'';
   document.getElementById('room-body').innerHTML=`
     <div class="fg"><label>Room / Space name *</label><input type="text" class="fi" id="room-name" placeholder="e.g. Classroom 209, Server Room, Boiler Room" value="${v('name')}"></div>
-    <div class="fg"><label>Floor / Level</label><input type="text" class="fi" id="room-floor" placeholder="e.g. 1st Floor, Basement, Roof" value="${v('floor')||''}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Floor / Level</label>
+        <input type="text" class="fi" id="room-floor" list="room-floor-options" placeholder="Pick or type a floor" value="${v('floor')||''}">
+        <datalist id="room-floor-options">
+          ${uniqueFloors.map(f=>`<option value="${f.replace(/"/g,'&quot;')}">`).join('')}
+        </datalist>
+      </div>
+      <div class="fg"><label>Room type</label>
+        <select class="fi" id="room-type">
+          <option value="">Select...</option>
+          ${roomTypes.map(t=>`<option ${sel(t)}>${t}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Capacity</label><input type="number" class="fi" id="room-capacity" placeholder="Max occupants" value="${v('capacity')||''}"></div>
+      <div class="fg"><label>Square footage</label><input type="number" class="fi" id="room-sqft" placeholder="e.g. 320" value="${v('square_footage')||''}"></div>
+    </div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="room-notes" placeholder="Any relevant notes about this space...">${v('notes')}</textarea></div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="room-photo-gallery"></div>
@@ -491,7 +518,19 @@ async function submitRoom(){
   if(!name){showToast('Please enter a room name');return;}
   const bld=buildings.find(b=>b.id===currentBuildingId);
   const photo_urls=await finalizePhotos('room','rooms');
-  saveRoom({name,floor:document.getElementById('room-floor')?.value.trim(),notes:document.getElementById('room-notes')?.value.trim(),building_id:currentBuildingId,building_name:bld?.name||'',photo_urls});
+  const capVal=document.getElementById('room-capacity')?.value;
+  const sqftVal=document.getElementById('room-sqft')?.value;
+  saveRoom({
+    name,
+    floor:document.getElementById('room-floor')?.value.trim(),
+    room_type:document.getElementById('room-type')?.value||null,
+    capacity:capVal?Number(capVal):null,
+    square_footage:sqftVal?Number(sqftVal):null,
+    notes:document.getElementById('room-notes')?.value.trim(),
+    building_id:currentBuildingId,
+    building_name:bld?.name||'',
+    photo_urls,
+  });
   closeModal('room-modal');
 }
 

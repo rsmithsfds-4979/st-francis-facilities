@@ -507,8 +507,14 @@ function renderRooms(){
     ${roomList.map(r=>{
       const aCount=assets.filter(a=>a.room_id===r.id).length;
       const wCount=workOrders.filter(w=>w.room_id===r.id&&w.status!=='Completed').length;
+      const specLine=[
+        r.room_type?r.room_type:null,
+        r.capacity?`Cap ${r.capacity}`:null,
+        r.square_footage?`${Number(r.square_footage).toLocaleString()} sq ft`:null,
+      ].filter(Boolean).join(' · ');
       return`<div class="room-card" onclick="openRoom('${r.id}')">
         <div class="room-name">${r.name}</div>
+        ${specLine?`<div class="room-note" style="color:var(--text2)">${specLine}</div>`:''}
         ${r.notes?`<div class="room-note">${r.notes}</div>`:''}
         <div class="room-badges">
           ${aCount?`<span class="badge b-blue" style="font-size:10px">${aCount} assets</span>`:''}
@@ -529,7 +535,14 @@ function openRoom(id){
   const r=rooms.find(x=>x.id===id);
   if(!r)return;
   document.getElementById('room-detail-title').textContent=r.name;
-  document.getElementById('room-detail-meta').textContent=(r.floor||'')+(r.notes?' · '+r.notes:'');
+  const metaParts=[
+    r.floor||null,
+    r.room_type||null,
+    r.capacity?`Capacity ${r.capacity}`:null,
+    r.square_footage?`${Number(r.square_footage).toLocaleString()} sq ft`:null,
+    r.notes||null,
+  ].filter(Boolean);
+  document.getElementById('room-detail-meta').textContent=metaParts.join(' · ');
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-room-detail').classList.add('active');
   renderRoomDetail(id);
