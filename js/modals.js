@@ -639,10 +639,9 @@ function openInvoiceModal(inv){
         </select>
       </div>
     </div>
-    <div class="fg"><label>Invoice PDF</label>
-      ${inv?.pdf_url?`<div style="margin-bottom:8px"><a href="${inv.pdf_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current PDF</a></div>`:''}
-      <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 ${inv?.pdf_url?'Upload new PDF (replaces current)':'Upload PDF (optional)'}<input type="file" id="inv-pdf-input" accept=".pdf" style="display:none" onchange="previewInvoicePDF(event)"></div>
-      <div id="inv-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+    <div class="fg"><label>Invoice PDFs</label>
+      <div id="inv-pdf-list"></div>
+      <div class="photo-upload" onclick="document.getElementById('inv-pdf-input').click()">📄 Click to add PDFs<input type="file" id="inv-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('invoice',event,'inv-pdf-list')"></div>
     </div>
     <div class="fg"><label>Assets this invoice covers</label>
       ${assetPickerFiltersHTML('inv-asset-list')}
@@ -662,6 +661,8 @@ function openInvoiceModal(inv){
   const pickerBld=document.getElementById('inv-asset-list-bld');
   if(pickerBld&&inv?.building)pickerBld.value=inv.building;
   renderAssetPicker('inv-asset-list');
+  initPhotoState('invoice',allPDFs(inv));
+  renderPDFList('invoice','inv-pdf-list');
   _invWoCheckedState=new Set(inv?.work_order_ids||[]);
   _invWoEditingId=editingInvId;
   renderInvoiceWOPicker();
@@ -712,10 +713,6 @@ function toggleInvWO(id,rowEl){
   }
 }
 
-function previewInvoicePDF(event){
-  const file=event.target.files[0];
-  if(file)document.getElementById('inv-pdf-preview').textContent='✓ '+file.name+' ready to upload';
-}
 
 function editInvoice(id){const i=invoices.find(x=>x.id===id);if(i)openInvoiceModal(i);}
 
@@ -724,9 +721,7 @@ async function submitInvoice(){
   const description=document.getElementById('inv-desc')?.value.trim();
   const amount=parseFloat(document.getElementById('inv-amount')?.value||0);
   if(!vendor||!description){showToast('Please fill in vendor and description');return;}
-  let pdf_url=editingInvId?invoices.find(x=>x.id===editingInvId)?.pdf_url:null;
-  const pdfFile=document.getElementById('inv-pdf-input')?.files[0];
-  if(pdfFile)pdf_url=await uploadFile(pdfFile,'invoices');
+  const pdf_urls=await finalizePhotos('invoice','invoices');
   const asset_ids=getPickerChecked('inv-asset-list');
   const work_order_ids=[..._invWoCheckedState];
   saveInvoice({
@@ -735,7 +730,8 @@ async function submitInvoice(){
     vendor,building:document.getElementById('inv-bld')?.value,
     description,amount,
     status:document.getElementById('inv-status')?.value,
-    pdf_url,
+    pdf_urls,
+    pdf_url:pdf_urls[0]||null,
     asset_ids:asset_ids.length?asset_ids:[],
     work_order_ids:work_order_ids.length?work_order_ids:[],
   });

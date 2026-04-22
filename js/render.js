@@ -791,8 +791,14 @@ function renderInvoices(){
       const aCount=i.asset_ids?.length||0;
       const wCount=i.work_order_ids?.length||0;
       const links=[aCount?`${aCount} asset${aCount>1?'s':''}`:null,wCount?`${wCount} WO${wCount>1?'s':''}`:null].filter(Boolean).join(' · ');
+      const pdfs=allPDFs(i);
+      const pdfBadge=pdfs.length
+        ?(pdfs.length===1
+          ?`<a href="${pdfs[0]}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`
+          :`<span title="${pdfs.length} PDFs attached" style="color:var(--accent);font-size:11px;font-weight:bold">📄×${pdfs.length}</span>`)
+        :'';
       return`<tr onclick="editInvoice('${i.id}')" style="cursor:pointer">
-      <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}${i.pdf_url?` <a href="${i.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
+      <td style="font-size:11px;color:var(--text3)">${i.invoice_number||'—'}${pdfBadge?' '+pdfBadge:''}</td>
       <td style="font-size:11px;color:var(--text3)">${i.date||'—'}</td>
       <td style="font-weight:bold">${i.vendor}</td>
       <td>${i.description||''}${links?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${links}</div>`:''}</td>

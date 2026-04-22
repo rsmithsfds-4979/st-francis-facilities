@@ -428,6 +428,7 @@ async function loadInvoices(){
       ...i,
       asset_ids:normalizeIdArray(i.asset_ids),
       work_order_ids:normalizeIdArray(i.work_order_ids),
+      pdf_urls:normalizeIdArray(i.pdf_urls),
     }));
   }catch(e){console.error(e);invoices=[];}
   renderInvoices();
@@ -640,15 +641,17 @@ async function saveInvoice(d){
     if(editingInvId){
       const{data,error}=await db.from('vendor_invoices').update(d).eq('id',editingInvId).select();
       if(error)throw error;
+      const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       const i=invoices.findIndex(x=>x.id===editingInvId);
-      if(i>-1)invoices[i]=data[0];
-      saved=data[0];
+      if(i>-1)invoices[i]=normalized;
+      saved=normalized;
       showToast('Invoice updated!');
     }else{
       const{data,error}=await db.from('vendor_invoices').insert([d]).select();
       if(error)throw error;
-      invoices.unshift(data[0]);
-      saved=data[0];
+      const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
+      invoices.unshift(normalized);
+      saved=normalized;
       showToast('Invoice added!');
     }
     await syncWOInvoiceLinks(saved.id,d.work_order_ids||[],oldWOIds);
