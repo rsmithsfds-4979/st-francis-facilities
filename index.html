@@ -30,6 +30,7 @@
     <div class="nav-label">Assets</div>
     <div class="nav-item" onclick="go('assets',this)"><span>Asset Registry</span></div>
     <div class="nav-item" onclick="go('supplies',this)"><span>Supplies</span></div>
+    <div class="nav-item" onclick="go('quotes',this)"><span>Vendor Quotes</span></div>
     <div class="nav-item" onclick="go('invoices',this)"><span>Vendor Invoices</span></div>
   </div>
   <div class="nav-section">
@@ -208,6 +209,37 @@
   <div class="content">
     <input type="text" class="search-bar" id="sup-search" placeholder="Search supplies..." oninput="renderSupplies()">
     <div id="supplies-list"><div class="loading">Loading supplies...</div></div>
+  </div>
+</div>
+
+<!-- VENDOR QUOTES -->
+<div class="view" id="view-quotes">
+  <div class="topbar">
+    <div class="topbar-title">Vendor Quotes</div>
+    <div class="topbar-actions">
+      <select class="btn" id="qt-f-status" onchange="renderQuotes()">
+        <option value="all">All statuses</option><option>Pending</option><option>Accepted</option><option>Declined</option><option>Expired</option>
+      </select>
+      <select class="btn" id="qt-f-year" onchange="renderQuotes()"><option value="all">All years</option></select>
+      <select class="btn" id="qt-f-bld" onchange="renderQuotes()"><option value="all">All buildings</option></select>
+      <select class="btn" id="qt-f-vendor" onchange="renderQuotes()"><option value="all">All vendors</option></select>
+      <button class="btn btn-primary" onclick="openQuoteModal()">+ Add Quote</button>
+    </div>
+  </div>
+  <div class="content">
+    <input type="text" class="search-bar" id="qt-search" placeholder="Search description, vendor, notes…" oninput="renderQuotes()">
+    <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="qt-pending" style="color:var(--warning)">—</div><div class="stat-delta">awaiting decision</div></div>
+      <div class="stat-card"><div class="stat-label">Accepted YTD</div><div class="stat-value" id="qt-accepted" style="color:var(--success)">—</div><div class="stat-delta" id="qt-accepted-label">—</div></div>
+      <div class="stat-card"><div class="stat-label">Quotes Logged</div><div class="stat-value" id="qt-count" style="color:var(--text2)">—</div><div class="stat-delta">matching filters</div></div>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table class="table">
+        <colgroup><col style="width:9%"><col style="width:10%"><col style="width:14%"><col style="width:25%"><col style="width:10%"><col style="width:10%"><col style="width:11%"><col style="width:11%"></colgroup>
+        <thead><tr><th>Quote #</th><th>Date</th><th>Vendor</th><th>Description</th><th>Building</th><th>Amount</th><th>Valid Until</th><th>Status</th></tr></thead>
+        <tbody id="qt-table"><tr><td colspan="8" class="loading">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
   </div>
 </div>
 
@@ -418,6 +450,9 @@
 </div>
 <div class="modal-overlay" id="room-type-modal" onclick="outsideClose(event,'room-type-modal')">
   <div class="modal"><h3 id="room-type-modal-h">Add Room Type</h3><div class="modal-sub">Manage the room type list used across all buildings.</div><div id="room-type-body"></div></div>
+</div>
+<div class="modal-overlay" id="quote-modal" onclick="outsideClose(event,'quote-modal')">
+  <div class="modal"><h3 id="quote-modal-h">Add Quote</h3><div class="modal-sub">Log an estimate received from a contractor or vendor.</div><div id="quote-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

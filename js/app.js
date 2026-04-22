@@ -5,8 +5,43 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes()]);
   renderHistory();renderDash();
+}
+
+async function loadQuotes(){
+  try{
+    const{data,error}=await db.from('quotes').select('*').order('date',{ascending:false});
+    if(error)throw error;
+    quotes=(data||[]).map(q=>({...q,asset_ids:normalizeIdArray(q.asset_ids)}));
+  }catch(e){console.error(e);quotes=[];}
+}
+
+async function saveQuote(d){
+  try{
+    if(editingQuoteId){
+      const{data,error}=await db.from('quotes').update({...d,updated_at:new Date().toISOString()}).eq('id',editingQuoteId).select();
+      if(error)throw error;
+      const i=quotes.findIndex(q=>q.id===editingQuoteId);
+      if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)};
+      showToast('Quote updated!');
+    }else{
+      const{data,error}=await db.from('quotes').insert([d]).select();
+      if(error)throw error;
+      quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)});
+      showToast('Quote saved!');
+    }
+    editingQuoteId=null;closeModal('quote-modal');renderQuotes();
+  }catch(e){console.error(e);showToast('Error saving quote');}
+}
+
+async function deleteQuote(id){
+  try{
+    const{error}=await db.from('quotes').delete().eq('id',id);
+    if(error)throw error;
+    quotes=quotes.filter(q=>q.id!==id);
+    showToast('Quote deleted');renderQuotes();
+  }catch(e){showToast('Error deleting');}
 }
 
 async function loadRoomTypes(){
@@ -796,7 +831,7 @@ async function uploadFile(file,folder){
   try{
     const ext=file.name.split('.').pop();
     const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const bucket=(folder==='coi'||folder==='invoices')?'documents':'asset-photos';
+    const bucket=(folder==='coi'||folder==='invoices'||folder==='quotes')?'documents':'asset-photos';
     const{error}=await db.storage.from(bucket).upload(path,file);
     if(error)throw error;
     const{data}=db.storage.from(bucket).getPublicUrl(path);
@@ -886,6 +921,7 @@ function go(name,el){
   if(name==='finance')renderFinance();
   if(name==='calendar')loadCalEvents();
   if(name==='supplies')renderSupplies();
+  if(name==='quotes')renderQuotes();
   renderHistory();
 }
 

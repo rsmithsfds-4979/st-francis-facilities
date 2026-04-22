@@ -803,6 +803,68 @@ function renderInvoices(){
     :'<tr><td colspan="7" class="loading">No invoices yet</td></tr>';
 }
 
+// ---- RENDER VENDOR QUOTES ----
+function renderQuotes(){
+  // Populate filter dropdowns
+  const years=[...new Set(quotes.map(q=>{const d=parseDate(q.date);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
+  const blds=[...new Set(quotes.map(q=>q.building).filter(Boolean))].sort();
+  const vendors=[...new Set(quotes.map(q=>q.vendor).filter(Boolean))].sort();
+  syncDropdown('qt-f-year',years,'All years');
+  syncDropdown('qt-f-bld',blds,'All buildings');
+  syncDropdown('qt-f-vendor',vendors,'All vendors');
+
+  const fs=document.getElementById('qt-f-status')?.value||'all';
+  const fy=document.getElementById('qt-f-year')?.value||'all';
+  const fb=document.getElementById('qt-f-bld')?.value||'all';
+  const fv=document.getElementById('qt-f-vendor')?.value||'all';
+  const q=(document.getElementById('qt-search')?.value||'').toLowerCase();
+
+  const filtered=quotes.filter(qq=>{
+    if(fs!=='all'&&qq.status!==fs)return false;
+    if(fb!=='all'&&qq.building!==fb)return false;
+    if(fv!=='all'&&qq.vendor!==fv)return false;
+    if(fy!=='all'){
+      const d=parseDate(qq.date);
+      if(!d||String(d.getFullYear())!==fy)return false;
+    }
+    if(q){
+      const hay=[qq.quote_number,qq.vendor,qq.description,qq.building,qq.notes].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+
+  // Stats
+  const pendingTotal=filtered.filter(qq=>qq.status==='Pending').reduce((a,qq)=>a+Number(qq.amount||0),0);
+  const displayYear=fy==='all'?new Date().getFullYear():Number(fy);
+  const acceptedTotal=filtered.filter(qq=>{
+    if(qq.status!=='Accepted')return false;
+    const d=parseDate(qq.date);
+    return d&&d.getFullYear()===displayYear;
+  }).reduce((a,qq)=>a+Number(qq.amount||0),0);
+
+  const pEl=document.getElementById('qt-pending');if(pEl)pEl.textContent=fmt(pendingTotal);
+  const aEl=document.getElementById('qt-accepted');if(aEl)aEl.textContent=fmt(acceptedTotal);
+  const aLbl=document.getElementById('qt-accepted-label');if(aLbl)aLbl.textContent=`in ${displayYear}`;
+  const cEl=document.getElementById('qt-count');if(cEl)cEl.textContent=filtered.length;
+
+  // Table
+  const tb=document.getElementById('qt-table');
+  if(tb)tb.innerHTML=filtered.length?filtered.map(qq=>{
+    const aCount=(qq.asset_ids||[]).length;
+    return`<tr onclick="editQuote('${qq.id}')" style="cursor:pointer">
+      <td style="font-size:11px;color:var(--text3)">${qq.quote_number||'—'}${qq.pdf_url?` <a href="${qq.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
+      <td style="font-size:11px;color:var(--text3)">${qq.date||'—'}</td>
+      <td style="font-weight:bold">${qq.vendor||'—'}</td>
+      <td>${qq.description||''}${aCount?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${aCount} asset${aCount>1?'s':''}</div>`:''}</td>
+      <td><span class="badge b-blue" style="font-size:10px">${qq.building||''}</span></td>
+      <td style="font-weight:bold">${fmt(qq.amount)}</td>
+      <td style="font-size:11px;color:var(--text3)">${qq.valid_until||'—'}</td>
+      <td>${sb(qq.status||'Pending')}</td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="8" class="loading">No quotes match these filters.</td></tr>';
+}
+
 // ---- RENDER SERVICE HISTORY ----
 function renderHistory(){
   // Build a unified history list from static Trimark records + completed work orders.

@@ -984,6 +984,104 @@ function submitCategory(){
 
 function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
 
+// ---- QUOTE MODAL ----
+function openQuoteModal(quote){
+  editingQuoteId=quote?quote.id:null;
+  document.getElementById('quote-modal-h').textContent=quote?'Edit Quote':'Add Quote';
+  const v=k=>quote?.[k]||'';
+  const sel=(val)=>quote?.status===val?'selected':'';
+  document.getElementById('quote-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Quote number</label><input type="text" class="fi" id="qt-num" placeholder="e.g. BID-2026-01" value="${v('quote_number')}"></div>
+      <div class="fg"><label>Date received</label><input type="text" class="fi" id="qt-date" placeholder="e.g. 04/22/2026" value="${v('date')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Vendor *</label>
+        <select class="fi" id="qt-vendor">
+          <option value="">Select...</option>
+          ${contacts.filter(c=>c.type==='Contractor'||c.type==='Vendor').sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          <option ${v('vendor')==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+      <div class="fg"><label>Building</label>
+        <select class="fi" id="qt-bld">
+          <option value="">Select...</option>
+          <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
+          ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>Description *</label><input type="text" class="fi" id="qt-desc" placeholder="Scope of work being quoted" value="${v('description')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Amount *</label><input type="number" step="0.01" class="fi" id="qt-amount" placeholder="0.00" value="${v('amount')}"></div>
+      <div class="fg"><label>Valid until</label><input type="text" class="fi" id="qt-valid" placeholder="e.g. 06/30/2026" value="${v('valid_until')}"></div>
+    </div>
+    <div class="fg"><label>Status</label>
+      <select class="fi" id="qt-status">
+        <option ${!quote||quote.status==='Pending'?'selected':''}>Pending</option>
+        <option ${sel('Accepted')}>Accepted</option>
+        <option ${sel('Declined')}>Declined</option>
+        <option ${sel('Expired')}>Expired</option>
+      </select>
+    </div>
+    <div class="fg"><label>Quote PDF</label>
+      ${quote?.pdf_url?`<div style="margin-bottom:8px"><a href="${quote.pdf_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current PDF</a></div>`:''}
+      <div class="photo-upload" onclick="document.getElementById('qt-pdf-input').click()">📄 ${quote?.pdf_url?'Upload new PDF (replaces current)':'Upload PDF (optional)'}<input type="file" id="qt-pdf-input" accept=".pdf" style="display:none" onchange="previewQuotePDF(event)"></div>
+      <div id="qt-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+    </div>
+    <div class="fg"><label>Related assets</label>
+      ${assetPickerFiltersHTML('qt-asset-list')}
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="qt-notes">${v('notes')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('quote-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitQuote()">${quote?'Save Changes':'Save Quote'}</button>
+    </div>`;
+  initAssetPicker('qt-asset-list',quote?.asset_ids||[],quote?.building||'all');
+  const pickerBld=document.getElementById('qt-asset-list-bld');
+  if(pickerBld&&quote?.building)pickerBld.value=quote.building;
+  renderAssetPicker('qt-asset-list');
+  document.getElementById('quote-modal').classList.add('open');
+}
+
+function previewQuotePDF(event){
+  const file=event.target.files[0];
+  if(file)document.getElementById('qt-pdf-preview').textContent='✓ '+file.name+' ready to upload';
+}
+
+async function submitQuote(){
+  const vendor=document.getElementById('qt-vendor')?.value;
+  const description=document.getElementById('qt-desc')?.value.trim();
+  const amount=parseFloat(document.getElementById('qt-amount')?.value||0);
+  if(!vendor||!description){showToast('Please fill in vendor and description');return;}
+  let pdf_url=editingQuoteId?quotes.find(x=>x.id===editingQuoteId)?.pdf_url:null;
+  const pdfFile=document.getElementById('qt-pdf-input')?.files[0];
+  if(pdfFile)pdf_url=await uploadFile(pdfFile,'quotes');
+  const asset_ids=getPickerChecked('qt-asset-list');
+  saveQuote({
+    quote_number:document.getElementById('qt-num')?.value.trim()||null,
+    date:document.getElementById('qt-date')?.value.trim()||null,
+    vendor,
+    building:document.getElementById('qt-bld')?.value||null,
+    description,
+    amount,
+    valid_until:document.getElementById('qt-valid')?.value.trim()||null,
+    status:document.getElementById('qt-status')?.value||'Pending',
+    pdf_url,
+    asset_ids,
+    notes:document.getElementById('qt-notes')?.value.trim()||null,
+  });
+}
+
+function editQuote(id){const q=quotes.find(x=>x.id===id);if(q)openQuoteModal(q);}
+
+function confirmDeleteQuote(id){
+  document.getElementById('conf-h').textContent='Delete quote?';
+  document.getElementById('conf-msg').textContent='This quote will be permanently removed.';
+  document.getElementById('conf-ok').onclick=()=>{deleteQuote(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
 // ---- SUPPLY MODAL ----
 function openSupplyModal(supply){
   editingSupplyId=supply?supply.id:null;
