@@ -595,18 +595,82 @@ function renderInvoices(){
 
 // ---- RENDER SERVICE HISTORY ----
 function renderHistory(){
+  // Build a unified history list from static Trimark records + completed work orders.
+  const entries=[];
+  (typeof serviceHistory!=='undefined'?serviceHistory:[]).forEach(h=>{
+    entries.push({
+      kind:'legacy',
+      ref:h.inv,
+      date:h.date,
+      desc:h.desc,
+      equip:h.equip,
+      building:h.building,
+      vendor:'Trimark Mechanical',
+      amount:h.amount,
+      click:`showHistDetail('${h.inv}')`,
+    });
+  });
+  workOrders.filter(w=>w.status==='Completed').forEach(w=>{
+    const linkedInvs=Array.isArray(w.invoice_ids)?invoices.filter(i=>w.invoice_ids.includes(i.id)):[];
+    const linkedAssets=Array.isArray(w.asset_ids)?assets.filter(a=>w.asset_ids.includes(a.id)):[];
+    const totalCost=linkedInvs.reduce((a,i)=>a+(Number(i.amount)||0),0);
+    entries.push({
+      kind:'wo',
+      ref:'WO',
+      date:w.completed_date||'—',
+      desc:w.issue+(w.notes?' — '+w.notes:''),
+      equip:linkedAssets.map(a=>a.description).join(', ')||(w.location||'—'),
+      building:w.building,
+      vendor:w.assignee||'—',
+      amount:totalCost,
+      click:`openWODetail('${w.id}')`,
+    });
+  });
+
+  // Populate filter dropdowns from the data
+  const years=[...new Set(entries.map(e=>{const d=parseDate(e.date);return d?d.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
+  const bldSet=[...new Set(entries.map(e=>e.building).filter(Boolean))].sort();
+  const vendorSet=[...new Set(entries.map(e=>e.vendor).filter(Boolean))].sort();
+  syncDropdown('hist-f-year',years,'All years');
+  syncDropdown('hist-f-bld',bldSet,'All buildings');
+  syncDropdown('hist-f-vendor',vendorSet,'All vendors');
+
   const fy=document.getElementById('hist-f-year')?.value||'all';
   const fb=document.getElementById('hist-f-bld')?.value||'all';
-  const f=serviceHistory.filter(h=>(fy==='all'||h.date.includes('/'+fy))&&(fb==='all'||h.building===fb));
+  const fv=document.getElementById('hist-f-vendor')?.value||'all';
+
+  const filtered=entries.filter(e=>{
+    const d=parseDate(e.date);
+    const yr=d?d.getFullYear():null;
+    return(fy==='all'||String(yr)===fy)&&(fb==='all'||e.building===fb)&&(fv==='all'||e.vendor===fv);
+  });
+  filtered.sort((a,b)=>{
+    const da=parseDate(a.date),db=parseDate(b.date);
+    if(da&&db)return db-da;
+    if(db)return 1;
+    if(da)return -1;
+    return 0;
+  });
+
   const tb=document.getElementById('hist-table');
-  if(tb)tb.innerHTML=[...f].reverse().map(h=>`<tr onclick="showHistDetail('${h.inv}')" style="cursor:pointer">
-    <td style="font-size:11px;color:var(--text3)">${h.inv}</td>
-    <td style="font-size:11px;color:var(--text3)">${h.date}</td>
-    <td style="line-height:1.4;font-weight:bold;padding-top:9px;padding-bottom:9px">${h.desc}</td>
-    <td style="font-size:11px;color:var(--text3)">${h.equip}</td>
-    <td><span class="badge b-blue" style="font-size:10px">${h.building}</span></td>
-    <td style="font-weight:bold">${h.amount>0?fmt(h.amount):'—'}</td>
-  </tr>`).join('');
+  if(tb)tb.innerHTML=filtered.length?filtered.map(e=>`<tr onclick="${e.click}" style="cursor:pointer">
+    <td style="font-size:11px;color:var(--text3)">${e.ref}</td>
+    <td style="font-size:11px;color:var(--text3)">${e.date}</td>
+    <td style="line-height:1.4;font-weight:bold;padding-top:9px;padding-bottom:9px">${e.desc}</td>
+    <td style="font-size:11px;color:var(--text3)">${e.equip}</td>
+    <td><span class="badge b-blue" style="font-size:10px">${e.building||''}</span></td>
+    <td style="font-size:11px;color:var(--text3)">${e.vendor}</td>
+    <td style="font-weight:bold">${e.amount>0?fmt(e.amount):'—'}</td>
+  </tr>`).join(''):'<tr><td colspan="7" class="loading">No service history yet.</td></tr>';
+}
+
+// Replaces an option list while preserving the current selection if still valid.
+function syncDropdown(id,values,allLabel){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const cur=el.value;
+  el.innerHTML=`<option value="all">${allLabel}</option>`+values.map(v=>`<option>${v}</option>`).join('');
+  if(cur&&(cur==='all'||values.includes(cur)||values.map(String).includes(cur)))el.value=cur;
 }
 
 // ---- POPULATE DROPDOWNS ----

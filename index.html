@@ -155,17 +155,18 @@
 <!-- SERVICE HISTORY -->
 <div class="view" id="view-history">
   <div class="topbar">
-    <div class="topbar-title">Trimark Service History</div>
+    <div class="topbar-title">Service History</div>
     <div class="topbar-actions">
-      <select class="btn" id="hist-f-year" onchange="renderHistory()"><option value="all">All years</option><option>2020</option><option>2022</option><option>2023</option></select>
-      <select class="btn" id="hist-f-bld" onchange="renderHistory()"><option value="all">All buildings</option><option>Church</option><option>Education Center</option><option>Rectory</option></select>
+      <select class="btn" id="hist-f-year" onchange="renderHistory()"><option value="all">All years</option></select>
+      <select class="btn" id="hist-f-bld" onchange="renderHistory()"><option value="all">All buildings</option></select>
+      <select class="btn" id="hist-f-vendor" onchange="renderHistory()"><option value="all">All vendors</option></select>
     </div>
   </div>
   <div class="content">
     <div class="card">
       <div class="table-wrap"><table class="table">
-        <colgroup><col style="width:9%"><col style="width:10%"><col style="width:37%"><col style="width:19%"><col style="width:10%"><col style="width:15%"></colgroup>
-        <thead><tr><th>Invoice</th><th>Date</th><th>Work performed</th><th>Equipment</th><th>Building</th><th>Amount</th></tr></thead>
+        <colgroup><col style="width:9%"><col style="width:10%"><col style="width:30%"><col style="width:17%"><col style="width:10%"><col style="width:12%"><col style="width:12%"></colgroup>
+        <thead><tr><th>Ref</th><th>Date</th><th>Work performed</th><th>Equipment</th><th>Building</th><th>Vendor</th><th>Amount</th></tr></thead>
         <tbody id="hist-table"></tbody>
       </table></div>
     </div>
