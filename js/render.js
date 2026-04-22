@@ -229,17 +229,34 @@ function renderDash(){
   if(wa)wa.innerHTML=warningA.map(a=>`<div style="background:var(--warning-bg);border:1px solid #f0d060;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px">⚠️ <strong>${a.description}</strong> warranty expires ${a.warranty_expiry}</div>`).join('');
 
   const sa=document.getElementById('d-supply-alerts');
-  const lowSupplies=supplies.filter(s=>{const st=supplyStockStatus(s);return st.label!=='Stocked';});
-  if(sa)sa.innerHTML=lowSupplies.map(s=>{
-    const st=supplyStockStatus(s);
-    const bg=st.label==='Out'?'var(--danger-bg)':'var(--warning-bg)';
-    const bc=st.label==='Out'?'#f0a0a0':'#f0d060';
-    const emoji=st.label==='Out'?'🚨':'⚠️';
-    return`<div style="background:${bg};border:1px solid ${bc};border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px">
-      ${emoji} <strong>${s.name}</strong> running ${st.label.toLowerCase()} — ${Number(s.current_stock)||0} on hand (reorder at ${Number(s.reorder_level)||0})
-      <button class="btn btn-sm" style="margin-left:auto" onclick="editSupply('${s.id}')">Update stock</button>
-    </div>`;
-  }).join('');
+  const lowSupplies=supplies.filter(s=>supplyStockStatus(s).label!=='Stocked');
+  if(sa){
+    if(!lowSupplies.length){sa.innerHTML='';}
+    else{
+      sa.innerHTML=`<div class="card" style="margin-bottom:16px">
+        <div class="card-header">
+          <div class="card-title">Supplies running low · ${lowSupplies.length}</div>
+          <button class="card-link" onclick="go('supplies')">View all →</button>
+        </div>
+        <div style="max-height:260px;overflow-y:auto">
+          ${lowSupplies.map(s=>{
+            const st=supplyStockStatus(s);
+            const emoji=st.label==='Out'?'🚨':'⚠️';
+            const badgeCls=st.label==='Out'?'b-red':'b-amber';
+            return`<div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+              <span style="font-size:14px">${emoji}</span>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
+                <div style="font-size:11px;color:var(--text3)">${Number(s.current_stock)||0} on hand · reorder at ${Number(s.reorder_level)||0}</div>
+              </div>
+              <span class="badge ${badgeCls}" style="font-size:10px">${st.label}</span>
+              <button class="btn btn-sm" onclick="editSupply('${s.id}')">Update</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+  }
 
   const wr=document.getElementById('d-wo-rows');
   if(wr)wr.innerHTML=workOrders.slice(0,5).length
