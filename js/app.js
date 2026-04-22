@@ -13,7 +13,7 @@ async function loadQuotes(){
   try{
     const{data,error}=await db.from('quotes').select('*').order('date',{ascending:false});
     if(error)throw error;
-    quotes=(data||[]).map(q=>({...q,asset_ids:normalizeIdArray(q.asset_ids)}));
+    quotes=(data||[]).map(q=>({...q,asset_ids:normalizeIdArray(q.asset_ids),pdf_urls:normalizeIdArray(q.pdf_urls)}));
   }catch(e){console.error(e);quotes=[];}
 }
 
@@ -23,12 +23,12 @@ async function saveQuote(d){
       const{data,error}=await db.from('quotes').update({...d,updated_at:new Date().toISOString()}).eq('id',editingQuoteId).select();
       if(error)throw error;
       const i=quotes.findIndex(q=>q.id===editingQuoteId);
-      if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)};
+      if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       showToast('Quote updated!');
     }else{
       const{data,error}=await db.from('quotes').insert([d]).select();
       if(error)throw error;
-      quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)});
+      quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)});
       showToast('Quote saved!');
     }
     editingQuoteId=null;closeModal('quote-modal');renderQuotes();
@@ -804,6 +804,59 @@ function photoCount(obj){
 function allPhotos(obj){
   if(obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0)return obj.photo_urls;
   return obj?.photo_url?[obj.photo_url]:[];
+}
+
+// Same pattern for PDFs: pdf_urls[] with fallback to single pdf_url
+function allPDFs(obj){
+  if(obj?.pdf_urls&&Array.isArray(obj.pdf_urls)&&obj.pdf_urls.length>0)return obj.pdf_urls;
+  return obj?.pdf_url?[obj.pdf_url]:[];
+}
+
+// PDF list UI (reuses photoStates for pending/existing/removed tracking)
+function addPendingPDFs(key,event,listId){
+  const s=photoStates[key];
+  if(!s)return;
+  Array.from(event.target.files||[]).forEach(f=>s.pending.push(f));
+  renderPDFList(key,listId);
+  event.target.value='';
+}
+
+function renderPDFList(key,listId){
+  const s=photoStates[key];
+  const el=document.getElementById(listId);
+  if(!el||!s)return;
+  const kept=s.existing.filter(u=>!s.removed.includes(u));
+  const escape=str=>(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const rows=[];
+  kept.forEach((u,i)=>{
+    const filename=decodeURIComponent((u.split('/').pop()||'document.pdf').split('?')[0]);
+    rows.push(`<div class="pdf-row">
+      <a href="${u}" target="_blank" class="pdf-link" onclick="event.stopPropagation()">📄 ${escape(filename)}</a>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removePDFExisting('${key}',${i},'${listId}')">✕</button>
+    </div>`);
+  });
+  s.pending.forEach((f,i)=>{
+    rows.push(`<div class="pdf-row">
+      <span class="pdf-link pdf-pending">📄 ${escape(f.name)} <span style="color:var(--success);font-size:11px">(ready to upload)</span></span>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removePDFPending('${key}',${i},'${listId}')">✕</button>
+    </div>`);
+  });
+  el.innerHTML=rows.length?rows.join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No PDFs attached.</div>';
+}
+
+function removePDFExisting(key,idx,listId){
+  const s=photoStates[key];
+  if(!s)return;
+  const kept=s.existing.filter(u=>!s.removed.includes(u));
+  if(idx>=0&&idx<kept.length)s.removed.push(kept[idx]);
+  renderPDFList(key,listId);
+}
+
+function removePDFPending(key,idx,listId){
+  const s=photoStates[key];
+  if(!s)return;
+  s.pending.splice(idx,1);
+  renderPDFList(key,listId);
 }
 
 async function saveBudget(d){

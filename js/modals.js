@@ -1024,10 +1024,9 @@ function openQuoteModal(quote){
         <option ${sel('Expired')}>Expired</option>
       </select>
     </div>
-    <div class="fg"><label>Quote PDF</label>
-      ${quote?.pdf_url?`<div style="margin-bottom:8px"><a href="${quote.pdf_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current PDF</a></div>`:''}
-      <div class="photo-upload" onclick="document.getElementById('qt-pdf-input').click()">📄 ${quote?.pdf_url?'Upload new PDF (replaces current)':'Upload PDF (optional)'}<input type="file" id="qt-pdf-input" accept=".pdf" style="display:none" onchange="previewQuotePDF(event)"></div>
-      <div id="qt-pdf-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+    <div class="fg"><label>Quote PDFs</label>
+      <div id="qt-pdf-list"></div>
+      <div class="photo-upload" onclick="document.getElementById('qt-pdf-input').click()">📄 Click to add PDFs<input type="file" id="qt-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('quote',event,'qt-pdf-list')"></div>
     </div>
     <div class="fg"><label>Related assets</label>
       ${assetPickerFiltersHTML('qt-asset-list')}
@@ -1041,12 +1040,9 @@ function openQuoteModal(quote){
   const pickerBld=document.getElementById('qt-asset-list-bld');
   if(pickerBld&&quote?.building)pickerBld.value=quote.building;
   renderAssetPicker('qt-asset-list');
+  initPhotoState('quote',allPDFs(quote));
+  renderPDFList('quote','qt-pdf-list');
   document.getElementById('quote-modal').classList.add('open');
-}
-
-function previewQuotePDF(event){
-  const file=event.target.files[0];
-  if(file)document.getElementById('qt-pdf-preview').textContent='✓ '+file.name+' ready to upload';
 }
 
 async function submitQuote(){
@@ -1054,9 +1050,7 @@ async function submitQuote(){
   const description=document.getElementById('qt-desc')?.value.trim();
   const amount=parseFloat(document.getElementById('qt-amount')?.value||0);
   if(!vendor||!description){showToast('Please fill in vendor and description');return;}
-  let pdf_url=editingQuoteId?quotes.find(x=>x.id===editingQuoteId)?.pdf_url:null;
-  const pdfFile=document.getElementById('qt-pdf-input')?.files[0];
-  if(pdfFile)pdf_url=await uploadFile(pdfFile,'quotes');
+  const pdf_urls=await finalizePhotos('quote','quotes');
   const asset_ids=getPickerChecked('qt-asset-list');
   saveQuote({
     quote_number:document.getElementById('qt-num')?.value.trim()||null,
@@ -1067,7 +1061,8 @@ async function submitQuote(){
     amount,
     valid_until:document.getElementById('qt-valid')?.value.trim()||null,
     status:document.getElementById('qt-status')?.value||'Pending',
-    pdf_url,
+    pdf_urls,
+    pdf_url:pdf_urls[0]||null,
     asset_ids,
     notes:document.getElementById('qt-notes')?.value.trim()||null,
   });

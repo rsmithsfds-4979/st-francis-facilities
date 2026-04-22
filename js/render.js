@@ -852,8 +852,14 @@ function renderQuotes(){
   const tb=document.getElementById('qt-table');
   if(tb)tb.innerHTML=filtered.length?filtered.map(qq=>{
     const aCount=(qq.asset_ids||[]).length;
+    const pdfs=allPDFs(qq);
+    const pdfBadge=pdfs.length
+      ?(pdfs.length===1
+        ?`<a href="${pdfs[0]}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`
+        :`<span title="${pdfs.length} PDFs attached" style="color:var(--accent);font-size:11px;font-weight:bold">📄×${pdfs.length}</span>`)
+      :'';
     return`<tr onclick="editQuote('${qq.id}')" style="cursor:pointer">
-      <td style="font-size:11px;color:var(--text3)">${qq.quote_number||'—'}${qq.pdf_url?` <a href="${qq.pdf_url}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`:''}</td>
+      <td style="font-size:11px;color:var(--text3)">${qq.quote_number||'—'}${pdfBadge?' '+pdfBadge:''}</td>
       <td style="font-size:11px;color:var(--text3)">${qq.date||'—'}</td>
       <td style="font-weight:bold">${qq.vendor||'—'}</td>
       <td>${qq.description||''}${aCount?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${aCount} asset${aCount>1?'s':''}</div>`:''}</td>
