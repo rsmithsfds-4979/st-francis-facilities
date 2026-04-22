@@ -518,7 +518,7 @@ function openContactModal(contact){
     </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
-        <select class="fi" id="ct-type">
+        <select class="fi" id="ct-type" onchange="toggleCOISection(this.value)">
           <option ${sel('type','Contractor')||(!contact&&currentContactType==='Contractor'?'selected':'')}>Contractor</option>
           <option ${sel('type','Staff')||(!contact&&currentContactType==='Staff'?'selected':'')}>Staff</option>
           <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
@@ -527,8 +527,14 @@ function openContactModal(contact){
       <div class="fg"><label>Phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
+    <div class="fg"><label>Street address</label><input type="text" class="fi" id="ct-address" placeholder="123 Main St" value="${v('address')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>City</label><input type="text" class="fi" id="ct-city" value="${v('city')}"></div>
+      <div class="fg"><label>State</label><input type="text" class="fi" id="ct-state" value="${v('state')}"></div>
+    </div>
+    <div class="fg"><label>Zip</label><input type="text" class="fi" id="ct-zip" value="${v('zip')}"></div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
-    <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
+    <div id="coi-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor')?'block':'none'}">
       <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Certificate of Insurance</div>
       <div class="form-row">
         <div class="fg"><label>COI Expiry date</label><input type="text" class="fi" id="ct-coi-exp" placeholder="e.g. Dec 31 2025" value="${v('coi_expiry')}"></div>
@@ -553,15 +559,38 @@ function previewCOI(event){
   if(file)document.getElementById('coi-preview').textContent='✓ '+file.name+' ready to upload';
 }
 
+function toggleCOISection(type){
+  const el=document.getElementById('coi-section');
+  if(el)el.style.display=type==='Contractor'?'block':'none';
+}
+
 async function submitContact(){
   const name=document.getElementById('ct-name')?.value.trim();
   const role=document.getElementById('ct-role')?.value.trim();
   const type=document.getElementById('ct-type')?.value;
   if(!name||!role){showToast('Please fill in name and role');return;}
-  let coi_url=editingContactId?contacts.find(c=>c.id===editingContactId)?.coi_url:null;
-  const coiFile=document.getElementById('coi-file-input')?.files[0];
-  if(coiFile)coi_url=await uploadFile(coiFile,'coi');
-  saveContact({name,role,type,phone:document.getElementById('ct-phone')?.value.trim(),email:document.getElementById('ct-email')?.value.trim(),notes:document.getElementById('ct-notes')?.value.trim(),coi_expiry:document.getElementById('ct-coi-exp')?.value.trim(),coi_insurer:document.getElementById('ct-coi-ins')?.value.trim(),coi_policy_number:document.getElementById('ct-coi-pol')?.value.trim(),coi_url});
+  // COI fields only persisted for Contractors; wiped for other types to keep data clean.
+  const isContractor=type==='Contractor';
+  let coi_url=null;
+  if(isContractor){
+    coi_url=editingContactId?contacts.find(c=>c.id===editingContactId)?.coi_url:null;
+    const coiFile=document.getElementById('coi-file-input')?.files[0];
+    if(coiFile)coi_url=await uploadFile(coiFile,'coi');
+  }
+  saveContact({
+    name,role,type,
+    phone:document.getElementById('ct-phone')?.value.trim(),
+    email:document.getElementById('ct-email')?.value.trim(),
+    address:document.getElementById('ct-address')?.value.trim(),
+    city:document.getElementById('ct-city')?.value.trim(),
+    state:document.getElementById('ct-state')?.value.trim(),
+    zip:document.getElementById('ct-zip')?.value.trim(),
+    notes:document.getElementById('ct-notes')?.value.trim(),
+    coi_expiry:isContractor?document.getElementById('ct-coi-exp')?.value.trim():null,
+    coi_insurer:isContractor?document.getElementById('ct-coi-ins')?.value.trim():null,
+    coi_policy_number:isContractor?document.getElementById('ct-coi-pol')?.value.trim():null,
+    coi_url:isContractor?coi_url:null,
+  });
   closeModal('contact-modal');
 }
 

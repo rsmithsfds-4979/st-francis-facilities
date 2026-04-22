@@ -205,6 +205,7 @@ function renderDash(){
   const now=new Date();
   const in60=new Date(now.getTime()+60*24*60*60*1000);
   const coiAlerts=contacts.filter(c=>{
+    if(c.type!=='Contractor')return false;
     if(!c.coi_expiry)return false;
     const d=new Date(c.coi_expiry);
     return d<in60;
@@ -537,19 +538,23 @@ function renderContacts(){
         const coiExp=c.coi_expiry?new Date(c.coi_expiry):null;
         const coiExpired=coiExp&&coiExp<now;
         const coiSoon=coiExp&&!coiExpired&&coiExp<new Date(now.getTime()+60*24*60*60*1000);
+        const addrParts=[c.address,c.city,c.state,c.zip].filter(Boolean);
+        const addrLine=addrParts.length?(c.address?c.address+', ':'')+[c.city,c.state,c.zip].filter(Boolean).join(' '):'';
+        const isContractor=c.type==='Contractor';
         return`<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);font-family:sans-serif">
           <div style="width:40px;height:40px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:var(--info);flex-shrink:0">${(c.name||'?').substring(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
             <div style="font-size:12px;color:var(--text3)">${c.role}${c.phone?' · '+c.phone:''}${c.email?' · '+c.email:''}</div>
+            ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}
-            ${c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${isContractor?(c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="badge ${coiExpired?'b-red':coiSoon?'b-amber':'b-green'}" style="font-size:11px">
                 ${coiExpired?'🚨 COI EXPIRED':'⚡ COI'}: ${c.coi_expiry}
               </span>
               ${c.coi_insurer?`<span style="font-size:11px;color:var(--text3)">${c.coi_insurer}</span>`:''}
               ${c.coi_url?`<a href="${c.coi_url}" target="_blank" style="font-size:11px;color:var(--accent)">📄 View COI</a>`:''}
-            </div>`:'<div style="margin-top:4px;font-size:11px;color:var(--text3)">No COI on file</div>'}
+            </div>`:'<div style="margin-top:4px;font-size:11px;color:var(--text3)">No COI on file</div>'):''}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="btn btn-edit btn-sm" onclick="editContact('${c.id}')">Edit</button>
