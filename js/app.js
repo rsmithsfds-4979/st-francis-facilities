@@ -232,7 +232,7 @@ async function loadBuildings(){
     const{data,error}=await db.from('buildings').select('*').order('name');
     if(error)throw error;
     if(!data||data.length===0){await seedBuildings();}
-    else buildings=(data||[]).map(b=>({...b,photo_urls:normalizeIdArray(b.photo_urls)}));
+    else buildings=(data||[]).map(b=>({...b,photo_urls:normalizeIdArray(b.photo_urls),tracked_utilities:b.tracked_utilities==null?null:normalizeIdArray(b.tracked_utilities)}));
   }catch(e){console.error(e);buildings=[];}
   await loadRooms();
   renderBuildingNav();
@@ -346,12 +346,12 @@ async function saveBuilding(d){
       const{data,error}=await db.from('buildings').update(d).eq('id',editingBldId).select();
       if(error)throw error;
       const i=buildings.findIndex(b=>b.id===editingBldId);
-      if(i>-1)buildings[i]={...data[0],photo_urls:normalizeIdArray(data[0].photo_urls)};
+      if(i>-1)buildings[i]={...data[0],photo_urls:normalizeIdArray(data[0].photo_urls),tracked_utilities:data[0].tracked_utilities==null?null:normalizeIdArray(data[0].tracked_utilities)};
       showToast('Building updated!');
     }else{
       const{data,error}=await db.from('buildings').insert([d]).select();
       if(error)throw error;
-      buildings.push({...data[0],photo_urls:normalizeIdArray(data[0].photo_urls)});
+      buildings.push({...data[0],photo_urls:normalizeIdArray(data[0].photo_urls),tracked_utilities:data[0].tracked_utilities==null?null:normalizeIdArray(data[0].tracked_utilities)});
       showToast('Building added!');
     }
     editingBldId=null;closeModal('building-modal');

@@ -410,6 +410,18 @@ function openBuildingModal(bld){
       </div>
     </div>
     <div class="fg"><label>Key systems / shutoff locations</label><textarea class="fi" id="bld-systems" placeholder="e.g. Water main: rear janitor's closet. Gas shutoff: south exterior wall. Main electrical panel: Room 110.">${v('key_systems')}</textarea></div>
+    <div class="fg"><label>Utilities tracked at this building</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px;background:var(--bg3);border-radius:6px">
+        ${COMMON_UTILITIES.map(u=>{
+          const tracked=buildingTrackedUtilities(bld);
+          const checked=tracked.includes(u);
+          return`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-family:sans-serif">
+            <input type="checkbox" class="ut-check" value="${u}" ${checked?'checked':''}>${u}
+          </label>`;
+        }).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:sans-serif">Uncheck any that don't apply here (e.g. Water if on a well, Gas if all-electric).</div>
+    </div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="bld-photo-gallery"></div>
       <div class="photo-upload" onclick="document.getElementById('bld-photo-input').click()">📷 Click to add photos<input type="file" id="bld-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('building',event,'bld-photo-gallery')"></div>
@@ -429,6 +441,7 @@ async function submitBuilding(){
   const photo_urls=await finalizePhotos('building','buildings');
   const yearVal=document.getElementById('bld-year')?.value;
   const sqftVal=document.getElementById('bld-sqft')?.value;
+  const tracked_utilities=[...document.querySelectorAll('.ut-check:checked')].map(cb=>cb.value);
   saveBuilding({
     name,
     description:document.getElementById('bld-desc')?.value.trim(),
@@ -442,6 +455,7 @@ async function submitBuilding(){
     emergency_contact_name:document.getElementById('bld-em-name')?.value.trim(),
     emergency_contact_phone:document.getElementById('bld-em-phone')?.value.trim(),
     key_systems:document.getElementById('bld-systems')?.value.trim(),
+    tracked_utilities,
     photo_urls,
   });
   closeModal('building-modal');
@@ -999,22 +1013,16 @@ function openUtilityModal(reading){
   editingUtilityId=reading?reading.id:null;
   document.getElementById('utility-modal-h').textContent=reading?'Edit Utility Reading':'Add Utility Reading';
   const v=k=>reading?.[k]??'';
-  const sel=(k,val)=>reading?.[k]===val?'selected':'';
-  const defaultUnit=reading?.usage_unit||({Electric:'kWh',Water:'gal',Gas:'therm'}[reading?.utility_type]||'kWh');
+  const defaultBldId=reading?.building_id||currentBuildingId||buildings[0]?.id;
   document.getElementById('utility-body').innerHTML=`
     <div class="form-row">
       <div class="fg"><label>Building *</label>
-        <select class="fi" id="ur-bld">
-          ${buildings.map(b=>`<option value="${b.id}" ${(reading?.building_id||currentBuildingId)===b.id?'selected':''}>${b.name}</option>`).join('')}
+        <select class="fi" id="ur-bld" onchange="refreshUtilityTypeOptions()">
+          ${buildings.map(b=>`<option value="${b.id}" ${defaultBldId===b.id?'selected':''}>${b.name}</option>`).join('')}
         </select>
       </div>
       <div class="fg"><label>Utility *</label>
-        <select class="fi" id="ur-type" onchange="onUtilityTypeChange()">
-          <option ${sel('utility_type','Electric')}>Electric</option>
-          <option ${sel('utility_type','Water')}>Water</option>
-          <option ${sel('utility_type','Gas')}>Gas</option>
-          <option ${sel('utility_type','Other')}>Other</option>
-        </select>
+        <select class="fi" id="ur-type" onchange="onUtilityTypeChange()"></select>
       </div>
     </div>
     <div class="form-row">
@@ -1038,15 +1046,34 @@ function openUtilityModal(reading){
       <button class="btn" onclick="closeModal('utility-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitUtility()">${reading?'Save Changes':'Save Reading'}</button>
     </div>`;
+  refreshUtilityTypeOptions(reading?.utility_type);
   document.getElementById('utility-modal').classList.add('open');
+}
+
+// Rebuilds the Utility-type dropdown based on the currently selected building's tracked list.
+// Preserves the reading's existing type on edit even if it's no longer in the tracked list.
+function refreshUtilityTypeOptions(preferredType){
+  const typeSel=document.getElementById('ur-type');
+  const bldId=document.getElementById('ur-bld')?.value;
+  if(!typeSel)return;
+  const b=buildings.find(x=>x.id===bldId);
+  const tracked=buildingTrackedUtilities(b);
+  const prior=preferredType||typeSel.value;
+  // Ensure the currently-selected type stays in the list (for editing readings whose type
+  // has since been untracked).
+  const options=[...tracked];
+  if(prior&&!options.includes(prior))options.push(prior);
+  if(!options.includes('Other'))options.push('Other');
+  typeSel.innerHTML=options.map(o=>`<option ${prior===o?'selected':''}>${o}</option>`).join('');
+  onUtilityTypeChange();
 }
 
 function onUtilityTypeChange(){
   const type=document.getElementById('ur-type')?.value;
   const unitEl=document.getElementById('ur-unit');
   if(!unitEl)return;
-  const defaults={Electric:'kWh',Water:'gal',Gas:'therm'};
-  if(!unitEl.value||Object.values(defaults).includes(unitEl.value))unitEl.value=defaults[type]||'';
+  const knownDefaults=Object.values(UTILITY_UNIT_DEFAULTS);
+  if(!unitEl.value||knownDefaults.includes(unitEl.value))unitEl.value=UTILITY_UNIT_DEFAULTS[type]||'';
 }
 
 function submitUtility(){

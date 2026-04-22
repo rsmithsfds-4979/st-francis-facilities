@@ -393,12 +393,21 @@ function renderBuildingUtilities(){
   const b=buildings.find(x=>x.id===currentBuildingId);
   const el=document.getElementById('bld-utilities-area');
   if(!b||!el)return;
-  const readings=utilityReadings.filter(u=>u.building_id===b.id);
-  const tabs=['All','Electric','Water','Gas'];
+  const tracked=buildingTrackedUtilities(b);
+  // If the building isn't tracking any utilities, show a gentle prompt instead of an empty card.
+  if(!tracked.length){
+    el.innerHTML=`<div class="card"><div class="card-header"><div class="card-title">Utilities</div><button class="btn btn-sm" onclick="editCurrentBuilding()">Configure</button></div>
+      <div style="padding:14px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No utilities configured for this building. Click <strong>Configure</strong> to pick which ones to track.</div>
+    </div>`;
+    return;
+  }
+  // Reset tab if the previously-selected one is no longer tracked
+  if(_utilTab!=='All'&&!tracked.includes(_utilTab))_utilTab='All';
+  const tabs=['All',...tracked];
   el.innerHTML=`<div class="card">
     <div class="card-header">
       <div class="card-title">Utilities</div>
-      <div style="display:flex;gap:4px">
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
         ${tabs.map(t=>`<button class="btn btn-sm ${_utilTab===t?'btn-primary':''}" onclick="setUtilityTab('${t}')">${t}</button>`).join('')}
         <button class="btn btn-primary btn-sm" style="margin-left:6px" onclick="openUtilityModal()">+ Add Reading</button>
       </div>
@@ -418,7 +427,9 @@ function renderUtilityChart(){
   const canvas=document.getElementById('util-chart');
   if(!canvas)return;
   if(_utilChart){_utilChart.destroy();_utilChart=null;}
-  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'||u.utility_type===_utilTab));
+  const b=buildings.find(x=>x.id===currentBuildingId);
+  const tracked=buildingTrackedUtilities(b);
+  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'?tracked.includes(u.utility_type):u.utility_type===_utilTab));
   if(!readings.length){
     canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
     return;
@@ -433,11 +444,11 @@ function renderUtilityChart(){
     sub[r.utility_type]=(sub[r.utility_type]||0)+(Number(r.cost)||0);
   });
   const months=Object.keys(bucket).sort();
-  const types=_utilTab==='All'?['Electric','Water','Gas']:[_utilTab];
-  const palette={Electric:'#2d5a8e',Water:'#1a4a8a',Gas:'#8a4400'};
+  const types=_utilTab==='All'?tracked:[_utilTab];
+  const palette={Electric:'#2d5a8e',Water:'#1a4a8a',Gas:'#8a4400',Sewer:'#666',Propane:'#8a6200',Trash:'#5c5c58',Internet:'#2d7a4a'};
   const datasets=types.map(t=>({
     label:t+' ($)',
-    data:months.map(m=>bucket[m][t]||0),
+    data:months.map(m=>(bucket[m]||{})[t]||0),
     backgroundColor:palette[t]||'#5c5c58',
   }));
   _utilChart=new Chart(canvas.getContext('2d'),{
@@ -458,7 +469,9 @@ function renderUtilityChart(){
 function renderUtilityTable(){
   const el=document.getElementById('util-table');
   if(!el)return;
-  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'||u.utility_type===_utilTab))
+  const b=buildings.find(x=>x.id===currentBuildingId);
+  const tracked=buildingTrackedUtilities(b);
+  const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'?tracked.includes(u.utility_type):u.utility_type===_utilTab))
     .sort((a,b)=>{const da=parseDate(a.period_end),db=parseDate(b.period_end);return(db||0)-(da||0);});
   if(!readings.length){el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No readings logged yet.</div>';return;}
   el.innerHTML=`<div class="table-wrap"><table class="table">

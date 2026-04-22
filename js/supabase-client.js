@@ -17,6 +17,15 @@ let afterContactSave=null,afterAssetSave=null;
 // Shared formatters / badge helpers
 // catIcon is populated from the categories table on load; falls back to 📦 for unknown categories.
 let catIcon={};
+
+// Common utility types shown in the building "Utilities tracked" checklist.
+// A building's tracked_utilities column is a subset of these (plus optional customs).
+const COMMON_UTILITIES=['Electric','Water','Gas','Sewer','Propane','Trash','Internet'];
+const UTILITY_UNIT_DEFAULTS={Electric:'kWh',Water:'gal',Gas:'therm',Sewer:'gal',Propane:'gal',Trash:'',Internet:''};
+
+function buildingTrackedUtilities(b){
+  return Array.isArray(b?.tracked_utilities)?b.tracked_utilities:['Electric','Water','Gas'];
+}
 const fmt=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const pb=p=>{const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};return`<span class="badge ${m[p]||'b-gray'}">${p}</span>`};
 const sb=s=>{const m={Open:'b-amber','In Progress':'b-blue',Completed:'b-green',Active:'b-green',Maintenance:'b-amber',Retired:'b-gray',Upcoming:'b-blue',Overdue:'b-red',Done:'b-green',Paid:'b-green',Unpaid:'b-amber'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`};
