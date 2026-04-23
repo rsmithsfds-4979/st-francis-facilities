@@ -1987,54 +1987,73 @@ function renderProjectsFinanceReport(){
   const today=new Date().toLocaleDateString();
   const scope=fy==='all'?'All years':`Target year ${fy}`;
 
-  const rowHTML=p=>{
+  const rowHTML=(p,idx)=>{
     const trail=Array.isArray(p.approval_trail)?p.approval_trail:[];
     const latest=trail[trail.length-1];
-    return`<tr style="border-top:1px solid var(--border)">
-      <td style="padding:8px;vertical-align:top">
-        <div style="font-weight:bold;color:var(--accent2)">${p.title}</div>
-        <div style="font-size:11px;color:var(--text3);font-family:sans-serif">${[p.building,p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||'—'}</div>
-        ${p.description?`<div style="font-size:12px;color:var(--text2);font-family:sans-serif;margin-top:4px">${p.description}</div>`:''}
+    const meta=[p.building,p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||'—';
+    const zebra=idx%2===1?'background:var(--bg3)':'';
+    return`<tr style="border-top:1px solid var(--border);${zebra}">
+      <td style="padding:12px 14px;vertical-align:top">
+        <div style="font-weight:bold;color:var(--accent2);font-size:13px;line-height:1.35">${p.title}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5">${meta}</div>
+        ${p.description?`<div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5">${p.description}</div>`:''}
       </td>
-      <td style="padding:8px;vertical-align:top;font-size:11px">${p.priority||'Medium'}</td>
-      <td style="padding:8px;vertical-align:top;font-size:11px">${p.status||'Proposed'}</td>
-      <td style="padding:8px;vertical-align:top;text-align:right;white-space:nowrap">${fmt(p.estimated_cost)}</td>
-      <td style="padding:8px;vertical-align:top;text-align:right;white-space:nowrap">${p.actual_cost?fmt(p.actual_cost):'—'}</td>
-      <td style="padding:8px;vertical-align:top;font-size:11px;font-family:sans-serif">
-        ${latest?`${latest.decision} · ${latest.approver||'—'}${latest.date?' · '+latest.date:''}`:'—'}
-        ${trail.length>1?`<div style="color:var(--text3);font-size:10px">+ ${trail.length-1} prior</div>`:''}
+      <td style="padding:12px 10px;vertical-align:top;font-size:12px;white-space:nowrap">${p.priority||'Medium'}</td>
+      <td style="padding:12px 10px;vertical-align:top;font-size:12px;white-space:nowrap">${p.status||'Proposed'}</td>
+      <td style="padding:12px 10px;vertical-align:top;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${fmt(p.estimated_cost)}</td>
+      <td style="padding:12px 10px;vertical-align:top;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${p.actual_cost?fmt(p.actual_cost):'—'}</td>
+      <td style="padding:12px 14px;vertical-align:top;font-size:11px;line-height:1.5">
+        ${latest?`<div><strong>${latest.decision}</strong></div><div style="color:var(--text3);margin-top:2px">${latest.approver||'—'}${latest.date?' · '+latest.date:''}</div>`:'<span style="color:var(--text3)">—</span>'}
+        ${trail.length>1?`<div style="color:var(--text3);font-size:10px;margin-top:4px">+ ${trail.length-1} prior</div>`:''}
       </td>
     </tr>`;
   };
 
   const section=(label,list,showActual)=>list.length?`
-    <div style="margin-top:18px">
-      <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;font-family:sans-serif;margin-bottom:6px">${label} · ${list.length}</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--bg2);border-radius:8px;overflow:hidden">
+    <div style="margin-top:22px">
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:8px">${label} · ${list.length}</div>
+      <table class="finance-report-tbl" style="width:100%;border-collapse:separate;border-spacing:0;font-family:sans-serif;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <colgroup>
+          <col style="width:46%"><col style="width:8%"><col style="width:10%"><col style="width:11%"><col style="width:10%"><col style="width:15%">
+        </colgroup>
         <thead style="background:var(--bg3)">
-          <tr><th style="padding:8px;text-align:left">Project</th><th style="padding:8px;text-align:left">Priority</th><th style="padding:8px;text-align:left">Status</th><th style="padding:8px;text-align:right">Estimated</th><th style="padding:8px;text-align:right">Actual</th><th style="padding:8px;text-align:left">Latest decision</th></tr>
+          <tr style="text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--text3)">
+            <th style="padding:10px 14px;text-align:left;font-weight:bold">Project</th>
+            <th style="padding:10px;text-align:left;font-weight:bold">Priority</th>
+            <th style="padding:10px;text-align:left;font-weight:bold">Status</th>
+            <th style="padding:10px;text-align:right;font-weight:bold">Estimated</th>
+            <th style="padding:10px;text-align:right;font-weight:bold">Actual</th>
+            <th style="padding:10px 14px;text-align:left;font-weight:bold">Latest decision</th>
+          </tr>
         </thead>
-        <tbody>${list.map(rowHTML).join('')}</tbody>
+        <tbody>${list.map((p,i)=>rowHTML(p,i)).join('')}</tbody>
         <tfoot style="background:var(--bg3);font-weight:bold">
-          <tr><td colspan="3" style="padding:8px;text-align:right">Subtotal</td><td style="padding:8px;text-align:right">${fmt(sum(list))}</td><td style="padding:8px;text-align:right">${showActual?fmt(sumActual(list)):'—'}</td><td></td></tr>
+          <tr>
+            <td colspan="3" style="padding:10px 14px;text-align:right;text-transform:uppercase;letter-spacing:.06em;font-size:11px;color:var(--text3)">Subtotal</td>
+            <td style="padding:10px;text-align:right;font-variant-numeric:tabular-nums">${fmt(sum(list))}</td>
+            <td style="padding:10px;text-align:right;font-variant-numeric:tabular-nums">${showActual?fmt(sumActual(list)):'—'}</td>
+            <td></td>
+          </tr>
         </tfoot>
       </table>
     </div>`:'';
 
   el.innerHTML=`
-    <div class="report-header" style="margin-bottom:14px">
-      <div style="font-size:18px;font-weight:bold;color:var(--accent2)">Capital Projects · Finance Report</div>
-      <div style="font-size:12px;color:var(--text3);font-family:sans-serif">${scope} · generated ${today}</div>
+    <div style="font-family:sans-serif">
+      <div class="report-header" style="margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--accent)">
+        <div style="font-size:20px;font-weight:bold;color:var(--accent2);letter-spacing:.01em">Capital Projects · Finance Report</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">${scope} · generated ${today}</div>
+      </div>
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:6px">
+        <div class="stat-card"><div class="stat-label">Pipeline</div><div class="stat-value" style="color:var(--accent)">${pipeline.length}</div><div class="stat-delta">${fmt(sum(pipeline))}</div></div>
+        <div class="stat-card"><div class="stat-label">Approved+</div><div class="stat-value" style="color:var(--warning)">${fmt(sum(filtered.filter(p=>['Approved','Funded','Scheduled'].includes(p.status))))}</div><div class="stat-delta">committed / in progress</div></div>
+        <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--success)">${complete.length}</div><div class="stat-delta">actual ${fmt(sumActual(complete))}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Estimated</div><div class="stat-value">${fmt(sum(filtered))}</div><div class="stat-delta">all statuses in scope</div></div>
+      </div>
+      ${section('In Pipeline',pipeline,false)}
+      ${section('Complete',complete,true)}
+      ${section('Declined',declined,false)}
     </div>
-    <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:6px">
-      <div class="stat-card"><div class="stat-label">Pipeline</div><div class="stat-value" style="color:var(--accent)">${pipeline.length}</div><div class="stat-delta">${fmt(sum(pipeline))}</div></div>
-      <div class="stat-card"><div class="stat-label">Approved+</div><div class="stat-value" style="color:var(--warning)">${fmt(sum(filtered.filter(p=>['Approved','Funded','Scheduled'].includes(p.status))))}</div><div class="stat-delta">committed / in progress</div></div>
-      <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--success)">${complete.length}</div><div class="stat-delta">actual ${fmt(sumActual(complete))}</div></div>
-      <div class="stat-card"><div class="stat-label">Total Estimated</div><div class="stat-value">${fmt(sum(filtered))}</div><div class="stat-delta">all statuses in scope</div></div>
-    </div>
-    ${section('In Pipeline',pipeline,false)}
-    ${section('Complete',complete,true)}
-    ${section('Declined',declined,false)}
   `;
 }
 
