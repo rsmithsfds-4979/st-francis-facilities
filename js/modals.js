@@ -2039,7 +2039,7 @@ function openUtilityModal(reading){
     </div>
     <div class="form-row">
       <div class="fg"><label>Usage</label><input type="number" step="0.01" class="fi" id="ur-usage" value="${v('usage')}"></div>
-      <div class="fg"><label>Unit</label><input type="text" class="fi" id="ur-unit" placeholder="kWh, gal, therm, CCF" value="${v('usage_unit')||defaultUnit}"></div>
+      <div class="fg"><label>Unit</label><input type="text" class="fi" id="ur-unit" placeholder="kWh, gal, therm, CCF" value="${v('usage_unit')}"></div>
     </div>
     <div class="form-row">
       <div class="fg"><label>Cost ($)</label><input type="number" step="0.01" class="fi" id="ur-cost" value="${v('cost')}"></div>
