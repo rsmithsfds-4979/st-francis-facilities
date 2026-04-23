@@ -395,24 +395,24 @@
     <div class="topbar-title">Settings</div>
   </div>
   <div class="content">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Asset Categories</div>
-        <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button>
+    <div class="card collapsible" data-collapse-id="settings-categories">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Asset Categories</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openCategoryModal()">+ Add Category</button>
       </div>
       <div id="categories-list"><div class="loading">Loading...</div></div>
     </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Room Types</div>
-        <button class="btn btn-primary btn-sm" onclick="openRoomTypeModal()">+ Add Room Type</button>
+    <div class="card collapsible" data-collapse-id="settings-room-types">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Room Types</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openRoomTypeModal()">+ Add Room Type</button>
       </div>
       <div id="room-types-list"><div class="loading">Loading...</div></div>
     </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Google Calendar Integration</div>
-        <button class="btn btn-sm" onclick="openGCalSettingsModal()">Configure</button>
+    <div class="card collapsible" data-collapse-id="settings-gcal">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Google Calendar Integration</div>
+        <button class="btn btn-sm" onclick="event.stopPropagation();openGCalSettingsModal()">Configure</button>
       </div>
       <div id="gcal-status" style="padding:14px 18px;font-family:sans-serif;font-size:13px"></div>
     </div>

@@ -1532,6 +1532,7 @@ function renderSupplies(){
 
 // ---- RENDER SETTINGS ----
 function renderSettings(){
+  initCollapsibleCards();
   const statusEl=document.getElementById('gcal-status');
   if(statusEl){
     const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;

@@ -1184,6 +1184,22 @@ function fileMatchesAccept(file,acceptAttr){
   });
 }
 
+// ---- COLLAPSIBLE CARDS ----
+function toggleCard(el){
+  if(!el)return;
+  const collapsed=el.classList.toggle('collapsed');
+  const id=el.dataset.collapseId;
+  if(id){try{localStorage.setItem('card-'+id,collapsed?'1':'0');}catch(e){}}
+}
+
+function initCollapsibleCards(){
+  document.querySelectorAll('.card.collapsible[data-collapse-id]').forEach(el=>{
+    try{
+      if(localStorage.getItem('card-'+el.dataset.collapseId)==='1')el.classList.add('collapsed');
+    }catch(e){}
+  });
+}
+
 // ---- INIT ----
 setupDragDropUploads();
 loadAll();
