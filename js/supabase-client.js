@@ -5,7 +5,7 @@ const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // Shared state
-let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[];
+let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[],projects=[];
 let appSettings={},gcalEvents=[];
 // Calendar page view state
 let calView='month',calDate=new Date();
@@ -14,7 +14,7 @@ let pmMode='upcoming'; // 'upcoming' | 'history'
 let pmWindow='current'; // upcoming: 'current' (overdue + next 30d) | 'month' | 'quarter' | 'year' | 'all'
                         // history: 'all-done' | 'year'
 let pmYear=new Date().getFullYear();
-let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null,editingWOId=null,editingUtilityId=null,editingRoomTypeId=null,editingQuoteId=null,editingEventId=null,editingContactRoleId=null;
+let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null,editingWOId=null,editingUtilityId=null,editingRoomTypeId=null,editingQuoteId=null,editingEventId=null,editingContactRoleId=null,editingProjectId=null;
 let currentBuildingId=null,currentRoomId=null,currentContactType='Contractor';
 // One-shot callbacks fired after the next successful save (used by inline "+ Add new…" flows).
 let afterContactSave=null,afterAssetSave=null;
@@ -33,4 +33,4 @@ function buildingTrackedUtilities(b){
 }
 const fmt=n=>'$'+Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const pb=p=>{const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};return`<span class="badge ${m[p]||'b-gray'}">${p}</span>`};
-const sb=s=>{const m={Open:'b-amber','In Progress':'b-blue',Completed:'b-green',Active:'b-green',Maintenance:'b-amber',Retired:'b-gray',Upcoming:'b-blue',Overdue:'b-red',Done:'b-green',Paid:'b-green',Unpaid:'b-amber',Pending:'b-amber',Accepted:'b-green',Declined:'b-gray',Expired:'b-red'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`};
+const sb=s=>{const m={Open:'b-amber','In Progress':'b-blue',Completed:'b-green',Active:'b-green',Maintenance:'b-amber',Retired:'b-gray',Upcoming:'b-blue',Overdue:'b-red',Done:'b-green',Paid:'b-green',Unpaid:'b-amber',Pending:'b-amber',Accepted:'b-green',Declined:'b-gray',Expired:'b-red',Proposed:'b-gray',Approved:'b-blue',Funded:'b-amber',Scheduled:'b-amber',Complete:'b-green'};return`<span class="badge ${m[s]||'b-gray'}">${s}</span>`};

@@ -1583,6 +1583,258 @@ function confirmDeleteCalendarEvent(id){
   document.getElementById('confirm-overlay').classList.add('open');
 }
 
+// ---- PROJECT MODAL ----
+const PROJECT_STATUSES=['Proposed','Approved','Funded','Scheduled','Complete','Declined'];
+const PROJECT_PRIORITIES=['Critical','High','Medium','Low'];
+const PROJECT_FUNDING_SOURCES=['Operating Budget','Capital Campaign','Diocesan Grant','Named Donor','Fundraising','Insurance','Other'];
+
+function openProjectModal(project){
+  editingProjectId=project?project.id:null;
+  document.getElementById('project-modal-h').textContent=project?'Edit Project':'Add Project';
+  const v=k=>project?.[k]??'';
+  const selOpt=(opts,val)=>opts.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('');
+  document.getElementById('project-body').innerHTML=`
+    <div class="fg"><label>Title *</label><input type="text" class="fi" id="proj-title" placeholder="e.g. Church Roof Replacement" value="${(v('title')||'').replace(/"/g,'&quot;')}"></div>
+    <div class="form-row">
+      <div class="fg"><label>Status *</label>
+        <select class="fi" id="proj-status">${selOpt(PROJECT_STATUSES,project?.status||'Proposed')}</select>
+      </div>
+      <div class="fg"><label>Priority *</label>
+        <select class="fi" id="proj-priority">${selOpt(PROJECT_PRIORITIES,project?.priority||'Medium')}</select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Target year</label><input type="number" class="fi" id="proj-year" placeholder="e.g. 2027" value="${v('target_year')||''}"></div>
+      <div class="fg"><label>Building</label>
+        <select class="fi" id="proj-bld">
+          <option value="">—</option>
+          <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
+          ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Estimated cost ($)</label><input type="number" step="0.01" class="fi" id="proj-cost" value="${v('estimated_cost')||''}"></div>
+      <div class="fg"><label>Actual cost ($)</label><input type="number" step="0.01" class="fi" id="proj-actual" value="${v('actual_cost')||''}"></div>
+    </div>
+    <div class="fg"><label>Funding source</label>
+      <select class="fi" id="proj-funding">
+        <option value="">—</option>
+        ${PROJECT_FUNDING_SOURCES.map(f=>`<option ${v('funding_source')===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg"><label>Internal description</label><textarea class="fi" id="proj-desc" placeholder="Full details for planning, finance, and council use">${v('description')||''}</textarea></div>
+    <div class="fg"><label>Public description (for parish report)</label>
+      <textarea class="fi" id="proj-public" placeholder="Shorter, parishioner-friendly version. Leave blank to omit from the Parish Report.">${v('public_description')||''}</textarea>
+    </div>
+    <div class="fg"><label>Linked assets</label>
+      ${assetPickerFiltersHTML('proj-asset-list')}
+    </div>
+    <div class="fg"><label>Linked quotes</label>
+      <div id="proj-quote-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px"></div>
+    </div>
+    <div class="fg"><label>PDFs (proposals, renderings, minutes)</label>
+      <div id="proj-pdf-list"></div>
+      <div class="photo-upload" onclick="document.getElementById('proj-pdf-input').click()">📄 Click or drag PDFs here<input type="file" id="proj-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('project',event,'proj-pdf-list')"></div>
+    </div>
+    <div class="fg"><label>Photos</label>
+      <div class="photo-gallery" id="proj-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('proj-photo-input').click()">📷 Click or drag photos here<input type="file" id="proj-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('project',event,'proj-photo-gallery')"></div>
+    </div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="proj-notes">${v('notes')||''}</textarea></div>
+    ${project?renderProjectApprovalTrail(project):''}
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('project-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitProject()">${project?'Save Changes':'Add Project'}</button>
+    </div>`;
+  initAssetPicker('proj-asset-list',project?.asset_ids||[],project?.building||'all',false);
+  const pickerBld=document.getElementById('proj-asset-list-bld');
+  if(pickerBld&&project?.building&&project.building!=='All Buildings')pickerBld.value=project.building;
+  renderAssetPicker('proj-asset-list');
+  renderProjectQuotePicker(project?.quote_ids||[]);
+  initPhotoState('project',project?allPhotos(project):[]);
+  renderPhotoGallery('project','proj-photo-gallery');
+  // PDF state re-uses the same photoStates entry but we render a PDF list from it
+  photoStates['project-pdfs']={existing:(Array.isArray(project?.pdf_urls)?project.pdf_urls:[]).filter(Boolean),pending:[],pendingPreviews:[],removed:[]};
+  renderPDFList('project-pdfs','proj-pdf-list');
+  // Re-bind the PDF input to project-pdfs key
+  document.getElementById('proj-pdf-input').onchange=e=>addPendingPDFs('project-pdfs',e,'proj-pdf-list');
+  document.getElementById('project-modal').classList.add('open');
+}
+
+function renderProjectQuotePicker(selectedIds){
+  const el=document.getElementById('proj-quote-list');
+  if(!el)return;
+  const selected=new Set(selectedIds||[]);
+  if(!quotes.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px;font-family:sans-serif">No quotes logged yet. Add some from Vendor Quotes.</div>';return;}
+  el.innerHTML=quotes.map(q=>{
+    const checked=selected.has(q.id);
+    return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleProjQuote('${q.id}',this)">
+      <input type="checkbox" value="${q.id}" ${checked?'checked':''} onclick="event.stopPropagation();toggleProjQuote('${q.id}',this.closest('.asset-select-item'))">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:bold">${q.vendor||'—'}${q.quote_number?' #'+q.quote_number:''}</div>
+        <div style="font-size:11px;color:var(--text3)">${q.date||'—'} · ${fmt(q.amount)} · ${q.status||'Pending'}${q.description?' · '+q.description.substring(0,60):''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleProjQuote(id,rowEl){
+  const cb=rowEl.querySelector('input[type=checkbox]');
+  if(cb)cb.checked=!cb.checked;
+  rowEl.classList.toggle('selected',cb?.checked);
+}
+
+function renderProjectApprovalTrail(project){
+  const trail=Array.isArray(project?.approval_trail)?project.approval_trail:[];
+  if(!trail.length)return'';
+  return`<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:12px">
+    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:6px">Approval Trail</div>
+    ${trail.map(t=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;border-bottom:1px solid var(--border)">
+      <strong>${t.decision||'—'}</strong>${t.date?' · '+t.date:''}${t.approver?' · by '+t.approver:''}
+      ${t.notes?`<div style="color:var(--text3);margin-top:2px">${t.notes}</div>`:''}
+    </div>`).join('')}
+  </div>`;
+}
+
+async function submitProject(){
+  const title=document.getElementById('proj-title')?.value.trim();
+  if(!title){showToast('Title is required');return;}
+  const pdf_urls=await finalizePhotos('project-pdfs','quotes');
+  const photo_urls=await finalizePhotos('project','assets');
+  const asset_ids=getPickerChecked('proj-asset-list');
+  const quote_ids=[...document.querySelectorAll('#proj-quote-list input[type=checkbox]:checked')].map(cb=>cb.value);
+  const yearVal=document.getElementById('proj-year')?.value;
+  const costVal=document.getElementById('proj-cost')?.value;
+  const actualVal=document.getElementById('proj-actual')?.value;
+  saveProject({
+    title,
+    description:document.getElementById('proj-desc')?.value.trim()||null,
+    public_description:document.getElementById('proj-public')?.value.trim()||null,
+    estimated_cost:costVal?parseFloat(costVal):0,
+    actual_cost:actualVal?parseFloat(actualVal):0,
+    priority:document.getElementById('proj-priority')?.value||'Medium',
+    target_year:yearVal?Number(yearVal):null,
+    status:document.getElementById('proj-status')?.value||'Proposed',
+    building:document.getElementById('proj-bld')?.value||null,
+    funding_source:document.getElementById('proj-funding')?.value||null,
+    asset_ids,
+    quote_ids,
+    pdf_urls,
+    photo_urls,
+    notes:document.getElementById('proj-notes')?.value.trim()||null,
+  });
+}
+
+function editProject(id){const p=projects.find(x=>x.id===id);if(p)openProjectModal(p);}
+
+function confirmDeleteProject(id,title){
+  document.getElementById('conf-h').textContent='Delete project?';
+  document.getElementById('conf-msg').textContent=`"${title}" will be permanently removed. Linked work orders stay intact.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteProject(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// Status transition with a captured approval entry (approver, date, notes).
+// newStatus is one of: Approved, Funded, Scheduled, Complete, Declined.
+let _projApproveCtx=null;
+function openProjectApproveModal(id,newStatus){
+  const p=projects.find(x=>x.id===id);
+  if(!p){showToast('Project not found');return;}
+  _projApproveCtx={id,newStatus};
+  const headings={Approved:'Approve project',Funded:'Mark funded',Scheduled:'Mark scheduled',Complete:'Mark complete',Declined:'Decline project'};
+  const defaultApprover={Approved:'Finance Council',Funded:'Finance Council',Scheduled:'Facilities',Complete:'Facilities',Declined:'Finance Council'}[newStatus]||'';
+  document.getElementById('project-approve-modal-h').textContent=headings[newStatus]||'Update status';
+  document.getElementById('project-approve-sub').textContent=`${p.title} · moving to ${newStatus}`;
+  document.getElementById('project-approve-body').innerHTML=`
+    ${renderProjectApprovalTrail(p)}
+    <div class="form-row">
+      <div class="fg"><label>Approver / Body *</label><input type="text" class="fi" id="pa-approver" placeholder="e.g. Finance Council, Pastor, Facilities" value="${defaultApprover}"></div>
+      <div class="fg"><label>Date</label><input type="text" class="fi" id="pa-date" value="${new Date().toLocaleDateString()}"></div>
+    </div>
+    ${newStatus==='Complete'?`<div class="fg"><label>Actual cost (optional)</label><input type="number" step="0.01" class="fi" id="pa-actual" placeholder="Final total spent" value="${p.actual_cost||''}"></div>`:''}
+    <div class="fg"><label>Notes</label><textarea class="fi" id="pa-notes" placeholder="Any conditions, vote tally, signed-by, etc."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('project-approve-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitProjectApproval()">Save & update status</button>
+    </div>`;
+  document.getElementById('project-approve-modal').classList.add('open');
+}
+
+async function submitProjectApproval(){
+  if(!_projApproveCtx)return;
+  const{id,newStatus}=_projApproveCtx;
+  const p=projects.find(x=>x.id===id);
+  if(!p){showToast('Project not found');return;}
+  const approver=document.getElementById('pa-approver')?.value.trim();
+  if(!approver){showToast('Approver is required');return;}
+  const entry={
+    decision:newStatus,
+    approver,
+    date:document.getElementById('pa-date')?.value.trim()||new Date().toLocaleDateString(),
+    notes:document.getElementById('pa-notes')?.value.trim()||null,
+  };
+  const trail=[...(Array.isArray(p.approval_trail)?p.approval_trail:[]),entry];
+  const upd={status:newStatus,approval_trail:trail,updated_at:new Date().toISOString()};
+  if(newStatus==='Complete'){
+    const actualVal=document.getElementById('pa-actual')?.value;
+    if(actualVal)upd.actual_cost=parseFloat(actualVal);
+  }
+  try{
+    const{data,error}=await db.from('projects').update(upd).eq('id',id).select();
+    if(error)throw error;
+    const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
+    const i=projects.findIndex(x=>x.id===id);
+    if(i>-1)projects[i]=normalized;
+    showToast(`Project marked ${newStatus}`);
+    _projApproveCtx=null;
+    closeModal('project-approve-modal');
+    renderProjects();
+  }catch(e){console.error(e);showToast('Error updating project');}
+}
+
+// Creates a Work Order from a project so facilities can track execution.
+// The project's linked assets, building, and description carry over, and the WO
+// id is pushed back into project.work_order_ids for bidirectional traceability.
+async function createWOFromProject(id){
+  const p=projects.find(x=>x.id===id);
+  if(!p){showToast('Project not found');return;}
+  const woData={
+    issue:p.title,
+    building:p.building||null,
+    priority:p.priority||'Medium',
+    status:'Open',
+    assignee:'Facilities',
+    notes:[p.description,p.notes].filter(Boolean).join('\n\n')||null,
+    asset_ids:Array.isArray(p.asset_ids)?p.asset_ids:[],
+    project_id:p.id,
+  };
+  try{
+    const{data,error}=await db.from('work_orders').insert([woData]).select();
+    if(error){
+      // Fallback if project_id column doesn't exist on work_orders yet
+      if(String(error.message||'').toLowerCase().includes('project_id')){
+        delete woData.project_id;
+        const r2=await db.from('work_orders').insert([woData]).select();
+        if(r2.error)throw r2.error;
+        data[0]=r2.data[0];
+      }else throw error;
+    }
+    const newWO={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
+    workOrders.unshift(newWO);
+    // Link WO back onto the project
+    const linked=[...(Array.isArray(p.work_order_ids)?p.work_order_ids:[]),newWO.id];
+    const{data:pd,error:pe}=await db.from('projects').update({work_order_ids:linked,updated_at:new Date().toISOString()}).eq('id',id).select();
+    if(!pe&&pd?.[0]){
+      const normalized={...pd[0],asset_ids:normalizeIdArray(pd[0].asset_ids),quote_ids:normalizeIdArray(pd[0].quote_ids),work_order_ids:normalizeIdArray(pd[0].work_order_ids),approval_trail:normalizeIdArray(pd[0].approval_trail),pdf_urls:normalizeIdArray(pd[0].pdf_urls),photo_urls:normalizeIdArray(pd[0].photo_urls)};
+      const i=projects.findIndex(x=>x.id===id);
+      if(i>-1)projects[i]=normalized;
+    }
+    showToast('Work Order created from project');
+    renderProjects();renderWO();renderDash();
+  }catch(e){console.error(e);showToast('Error creating work order');}
+}
+
 // ---- QUOTE MODAL ----
 function openQuoteModal(quote){
   editingQuoteId=quote?quote.id:null;

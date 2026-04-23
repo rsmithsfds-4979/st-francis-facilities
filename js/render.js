@@ -1193,6 +1193,111 @@ function renderInvoices(){
     :'<tr><td colspan="7" class="loading">No invoices yet</td></tr>';
 }
 
+// ---- RENDER PROJECTS ----
+function renderProjects(){
+  const el=document.getElementById('proj-list');
+  const statsEl=document.getElementById('proj-stats');
+  if(!el)return;
+
+  // Populate filter dropdowns from data
+  const years=[...new Set(projects.map(p=>p.target_year).filter(Boolean))].sort((a,b)=>a-b);
+  const blds=[...new Set(projects.map(p=>p.building).filter(Boolean))].sort();
+  syncDropdown('proj-f-year',years,'All years');
+  syncDropdown('proj-f-bld',blds,'All buildings');
+
+  const fs=document.getElementById('proj-f-status')?.value||'all';
+  const fp=document.getElementById('proj-f-priority')?.value||'all';
+  const fy=document.getElementById('proj-f-year')?.value||'all';
+  const fb=document.getElementById('proj-f-bld')?.value||'all';
+  const q=(document.getElementById('proj-search')?.value||'').toLowerCase();
+
+  const filtered=projects.filter(p=>{
+    if(fs!=='all'&&p.status!==fs)return false;
+    if(fp!=='all'&&p.priority!==fp)return false;
+    if(fy!=='all'&&String(p.target_year)!==fy)return false;
+    if(fb!=='all'&&p.building!==fb)return false;
+    if(q){
+      const hay=[p.title,p.description,p.public_description,p.notes,p.funding_source,p.building].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
+
+  // Stats
+  const activeStatuses=['Proposed','Approved','Funded','Scheduled'];
+  const active=filtered.filter(p=>activeStatuses.includes(p.status));
+  const activeTotal=active.reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
+  const approvedFunded=filtered.filter(p=>p.status==='Approved'||p.status==='Funded'||p.status==='Scheduled');
+  const approvedFundedTotal=approvedFunded.reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
+  const completeTotal=filtered.filter(p=>p.status==='Complete').reduce((a,p)=>a+(Number(p.actual_cost)||p.estimated_cost||0),0);
+  if(statsEl){
+    statsEl.innerHTML=`
+      <div class="stat-card"><div class="stat-label">Active Projects</div><div class="stat-value" style="color:var(--accent)">${active.length}</div><div class="stat-delta">Proposed + Approved + Funded + Scheduled</div></div>
+      <div class="stat-card"><div class="stat-label">Active Total</div><div class="stat-value" style="color:var(--accent2)">${fmt(activeTotal)}</div><div class="stat-delta">estimated</div></div>
+      <div class="stat-card"><div class="stat-label">Approved+ Pipeline</div><div class="stat-value" style="color:var(--warning)">${fmt(approvedFundedTotal)}</div><div class="stat-delta">committed / in progress</div></div>
+      <div class="stat-card"><div class="stat-label">Completed Spend</div><div class="stat-value" style="color:var(--success)">${fmt(completeTotal)}</div><div class="stat-delta">actual where set, else estimate</div></div>
+    `;
+  }
+
+  if(!filtered.length){
+    el.innerHTML=projects.length?'<div class="empty-state"><p>No projects match these filters.</p></div>':'<div class="empty-state"><p>No projects yet. Click <strong>+ Add Project</strong> to start planning.</p></div>';
+    return;
+  }
+
+  // Group by status for scannability
+  const statusOrder=['Proposed','Approved','Funded','Scheduled','Complete','Declined'];
+  const groups={};
+  filtered.forEach(p=>{(groups[p.status]=groups[p.status]||[]).push(p);});
+  el.innerHTML=statusOrder.filter(s=>groups[s]?.length).map(s=>{
+    const groupTotal=groups[s].reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
+    return`
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px;display:flex;justify-content:space-between">
+        <span>${s} · ${groups[s].length}</span>
+        <span style="color:var(--text2)">${fmt(groupTotal)}</span>
+      </div>
+      ${groups[s].map(projectCardHTML).join('')}
+    `;
+  }).join('');
+}
+
+function projectCardHTML(p){
+  const prioColor={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'}[p.priority]||'b-gray';
+  const linked=[];
+  if(p.asset_ids?.length)linked.push(`${p.asset_ids.length} asset${p.asset_ids.length>1?'s':''}`);
+  if(p.quote_ids?.length)linked.push(`${p.quote_ids.length} quote${p.quote_ids.length>1?'s':''}`);
+  if(p.work_order_ids?.length)linked.push(`${p.work_order_ids.length} WO${p.work_order_ids.length>1?'s':''}`);
+  const canApprove=p.status==='Proposed';
+  const canFund=p.status==='Approved';
+  const canSchedule=p.status==='Funded';
+  const canComplete=p.status==='Scheduled';
+  const canCreateWO=['Approved','Funded','Scheduled'].includes(p.status);
+  return`<div class="card" style="margin-bottom:10px">
+    <div style="padding:14px 16px;display:flex;gap:14px;align-items:flex-start">
+      <div style="font-size:24px;line-height:1;flex-shrink:0">🏗️</div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+          <div style="font-size:15px;font-weight:bold;color:var(--accent2)">${p.title}</div>
+          <span class="badge ${prioColor}" style="font-size:10px">${p.priority||'Medium'}</span>
+          ${sb(p.status||'Proposed')}
+        </div>
+        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${[p.building,p.target_year&&`Target ${p.target_year}`,p.funding_source].filter(Boolean).join(' · ')||'—'}</div>
+        <div style="font-size:14px;font-weight:bold;margin-top:4px">${fmt(p.estimated_cost)}${p.actual_cost&&p.status==='Complete'?` <span style="font-size:12px;color:var(--text3)">· actual ${fmt(p.actual_cost)}</span>`:''}</div>
+        ${p.description?`<div style="font-size:12px;color:var(--text2);font-family:sans-serif;margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.description}</div>`:''}
+        ${linked.length?`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin-top:4px">🔗 ${linked.join(' · ')}</div>`:''}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
+        ${canApprove?`<button class="btn btn-success btn-sm" onclick="openProjectApproveModal('${p.id}','Approved')">✓ Approve</button>`:''}
+        ${canFund?`<button class="btn btn-sm" style="background:var(--warning-bg);color:var(--warning);border-color:#f0d060" onclick="openProjectApproveModal('${p.id}','Funded')">💰 Mark Funded</button>`:''}
+        ${canSchedule?`<button class="btn btn-sm" style="background:var(--info-bg);color:var(--info);border-color:#a6c8e8" onclick="openProjectApproveModal('${p.id}','Scheduled')">📅 Mark Scheduled</button>`:''}
+        ${canComplete?`<button class="btn btn-success btn-sm" onclick="openProjectApproveModal('${p.id}','Complete')">✓ Mark Complete</button>`:''}
+        ${canCreateWO?`<button class="btn btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent)" onclick="createWOFromProject('${p.id}')">+ Work Order</button>`:''}
+        <button class="btn btn-edit btn-sm" onclick="editProject('${p.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${p.id}','${(p.title||'').replace(/'/g,"\\'")}')">Del</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 // ---- RENDER VENDOR QUOTES ----
 function renderQuotes(){
   // Populate filter dropdowns

@@ -5,8 +5,54 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects()]);
   renderHistory();renderDash();
+}
+
+async function loadProjects(){
+  try{
+    const{data,error}=await db.from('projects').select('*').order('target_year',{ascending:true}).order('created_at',{ascending:false});
+    if(error)throw error;
+    projects=(data||[]).map(p=>({
+      ...p,
+      asset_ids:normalizeIdArray(p.asset_ids),
+      quote_ids:normalizeIdArray(p.quote_ids),
+      work_order_ids:normalizeIdArray(p.work_order_ids),
+      approval_trail:normalizeIdArray(p.approval_trail),
+      pdf_urls:normalizeIdArray(p.pdf_urls),
+      photo_urls:normalizeIdArray(p.photo_urls),
+    }));
+  }catch(e){console.error(e);projects=[];}
+}
+
+async function saveProject(d){
+  try{
+    if(editingProjectId){
+      const{data,error}=await db.from('projects').update({...d,updated_at:new Date().toISOString()}).eq('id',editingProjectId).select();
+      if(error)throw error;
+      const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
+      const i=projects.findIndex(p=>p.id===editingProjectId);
+      if(i>-1)projects[i]=normalized;
+      showToast('Project updated!');
+    }else{
+      const{data,error}=await db.from('projects').insert([d]).select();
+      if(error)throw error;
+      const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
+      projects.unshift(normalized);
+      showToast('Project saved!');
+    }
+    editingProjectId=null;closeModal('project-modal');
+    renderProjects();renderDash();
+  }catch(e){console.error(e);showToast('Error saving project');}
+}
+
+async function deleteProject(id){
+  try{
+    const{error}=await db.from('projects').delete().eq('id',id);
+    if(error)throw error;
+    projects=projects.filter(p=>p.id!==id);
+    showToast('Project deleted');renderProjects();
+  }catch(e){showToast('Error deleting');}
 }
 
 async function loadCalendarEvents(){
@@ -1324,6 +1370,9 @@ function go(name,el){
   if(name==='calendar')loadCalEvents();
   if(name==='supplies')renderSupplies();
   if(name==='quotes')renderQuotes();
+  if(name==='projects')renderProjects();
+  if(name==='projects-finance-report')renderProjectsFinanceReport();
+  if(name==='projects-parish-report')renderProjectsParishReport();
   renderHistory();
 }
 

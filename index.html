@@ -46,10 +46,16 @@
     <div class="nav-item" onclick="goContacts('Volunteer',this)"><span>Volunteers</span></div>
   </div>
   <div class="nav-section">
+    <div class="nav-label">Planning</div>
+    <div class="nav-item" onclick="go('projects',this)"><span>Projects</span></div>
+  </div>
+  <div class="nav-section">
     <div class="nav-label">Reports</div>
     <div class="nav-item" onclick="go('finance',this)"><span>Financial Dashboard</span></div>
     <div class="nav-item" onclick="go('pm-report',this)"><span>PM Compliance</span></div>
     <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor & COI</span></div>
+    <div class="nav-item" onclick="go('projects-finance-report',this)"><span>Projects · Finance</span></div>
+    <div class="nav-item" onclick="go('projects-parish-report',this)"><span>Projects · Parish</span></div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Admin</div>
@@ -409,6 +415,49 @@
   <div class="content" id="coir-content"><div class="loading">Loading...</div></div>
 </div>
 
+<!-- PROJECTS -->
+<div class="view" id="view-projects">
+  <div class="topbar">
+    <div class="topbar-title">Projects</div>
+    <div class="topbar-actions">
+      <select class="btn" id="proj-f-status" onchange="renderProjects()"><option value="all">All statuses</option><option>Proposed</option><option>Approved</option><option>Funded</option><option>Scheduled</option><option>Complete</option><option>Declined</option></select>
+      <select class="btn" id="proj-f-priority" onchange="renderProjects()"><option value="all">All priorities</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+      <select class="btn" id="proj-f-year" onchange="renderProjects()"><option value="all">All years</option></select>
+      <select class="btn" id="proj-f-bld" onchange="renderProjects()"><option value="all">All buildings</option></select>
+      <button class="btn btn-primary" onclick="openProjectModal()">+ Add Project</button>
+    </div>
+  </div>
+  <div class="content">
+    <input type="text" class="search-bar" id="proj-search" placeholder="Search title, description, notes…" oninput="renderProjects()">
+    <div id="proj-stats" class="stats-row" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div id="proj-list"><div class="loading">Loading...</div></div>
+  </div>
+</div>
+
+<!-- PROJECTS · FINANCE REPORT -->
+<div class="view" id="view-projects-finance-report">
+  <div class="topbar">
+    <div class="topbar-title">Projects · Finance Report</div>
+    <div class="topbar-actions no-print">
+      <select class="btn" id="pfr-f-year" onchange="renderProjectsFinanceReport()"><option value="all">All years</option></select>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content" id="pfr-content"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- PROJECTS · PARISH REPORT -->
+<div class="view" id="view-projects-parish-report">
+  <div class="topbar">
+    <div class="topbar-title">Projects · Parish Report</div>
+    <div class="topbar-actions no-print">
+      <select class="btn" id="ppr-f-year" onchange="renderProjectsParishReport()"><option value="all">All years</option></select>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+  <div class="content" id="ppr-content"><div class="loading">Loading...</div></div>
+</div>
+
 <!-- SETTINGS -->
 <div class="view" id="view-settings">
   <div class="topbar">
@@ -522,6 +571,12 @@
 </div>
 <div class="modal-overlay" id="coi-modal" onclick="outsideClose(event,'coi-modal')">
   <div class="modal"><h3 id="coi-modal-h">Add COI</h3><div class="modal-sub" id="coi-modal-sub"></div><div id="coi-body"></div></div>
+</div>
+<div class="modal-overlay" id="project-modal" onclick="outsideClose(event,'project-modal')">
+  <div class="modal" style="max-width:720px"><h3 id="project-modal-h">Add Project</h3><div class="modal-sub">Capital planning and budgeting for future work.</div><div id="project-body"></div></div>
+</div>
+<div class="modal-overlay" id="project-approve-modal" onclick="outsideClose(event,'project-approve-modal')">
+  <div class="modal"><h3 id="project-approve-modal-h">Record approval</h3><div class="modal-sub" id="project-approve-sub"></div><div id="project-approve-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">
