@@ -1064,7 +1064,11 @@ function renderContacts(){
               </span>
               ${c.coi_insurer?`<span style="font-size:11px;color:var(--text3)">${c.coi_insurer}</span>`:''}
               ${c.coi_url?`<a href="${c.coi_url}" target="_blank" style="font-size:11px;color:var(--accent)">📄 View COI</a>`:''}
-            </div>`:'<div style="margin-top:4px;font-size:11px;color:var(--text3)">No COI on file</div>'):''}
+              <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openCOIModal('${c.id}')">Update</button>
+            </div>`:`<div style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text3)">No COI on file</span>
+              <button class="btn btn-primary btn-sm" style="font-size:10px;padding:2px 8px" onclick="openCOIModal('${c.id}')">+ Add COI</button>
+            </div>`):''}
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="btn btn-edit btn-sm" onclick="editContact('${c.id}')">Edit</button>

@@ -1250,6 +1250,59 @@ async function submitContact(){
 
 function editContact(id){const c=contacts.find(x=>x.id===id);if(c)openContactModal(c);}
 
+// ---- QUICK COI MODAL ----
+function openCOIModal(contactId){
+  const contact=contacts.find(c=>c.id===contactId);
+  if(!contact)return;
+  const isUpdate=!!contact.coi_expiry;
+  document.getElementById('coi-modal-h').textContent=isUpdate?'Update COI':'Add COI';
+  document.getElementById('coi-modal-sub').textContent=`For ${contact.name}`;
+  document.getElementById('coi-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>COI Expiry date</label><input type="text" class="fi" id="coim-exp" placeholder="e.g. Dec 31 2026" value="${(contact.coi_expiry||'').replace(/"/g,'&quot;')}"></div>
+      <div class="fg"><label>Insurance company</label><input type="text" class="fi" id="coim-ins" placeholder="e.g. State Farm" value="${(contact.coi_insurer||'').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="fg"><label>Policy number</label><input type="text" class="fi" id="coim-pol" value="${(contact.coi_policy_number||'').replace(/"/g,'&quot;')}"></div>
+    <div class="fg"><label>COI Document</label>
+      ${contact.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current COI</a></div>`:''}
+      <div class="photo-upload" onclick="document.getElementById('coim-file').click()">📄 ${contact.coi_url?'Upload new COI (replaces current)':'Click or drag COI document here'}<input type="file" id="coim-file" accept=".pdf,image/*" style="display:none" onchange="previewCOIQuick(event)"></div>
+      <div id="coim-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('coi-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCOI('${contactId}')">Save COI</button>
+    </div>`;
+  document.getElementById('coi-modal').classList.add('open');
+}
+
+function previewCOIQuick(event){
+  const file=event.target.files[0];
+  if(file)document.getElementById('coim-preview').textContent='✓ '+file.name+' ready to upload';
+}
+
+async function submitCOI(contactId){
+  const contact=contacts.find(c=>c.id===contactId);
+  if(!contact)return;
+  let coi_url=contact.coi_url||null;
+  const coiFile=document.getElementById('coim-file')?.files[0];
+  if(coiFile)coi_url=await uploadFile(coiFile,'coi');
+  const upd={
+    coi_expiry:document.getElementById('coim-exp')?.value.trim()||null,
+    coi_insurer:document.getElementById('coim-ins')?.value.trim()||null,
+    coi_policy_number:document.getElementById('coim-pol')?.value.trim()||null,
+    coi_url,
+  };
+  try{
+    const{error}=await db.from('contacts').update(upd).eq('id',contactId);
+    if(error)throw error;
+    Object.assign(contact,upd);
+    closeModal('coi-modal');
+    showToast('COI saved');
+    renderContacts();
+    if(typeof renderDash==='function')renderDash();
+  }catch(e){console.error(e);showToast('Error saving COI');}
+}
+
 // ---- POINT-OF-CONTACT MODAL (add + edit + delete, no-full-contact-edit) ----
 // personIndex === undefined/null or < 0 means "add new". Otherwise edit that entry.
 function openPersonModal(contactId,personIndex){
