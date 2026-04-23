@@ -78,7 +78,7 @@ function combinedCalendarEvents(){
       id:'pm-'+p.id,
       title:titlePrefix+p.title+(scheduled?' (scheduled)':''),
       start:k,end:k,allDay:true,
-      description:[p.building,p.frequency,p.assigned_to&&'Assigned: '+p.assigned_to,scheduled&&p.scheduled_time&&'Time: '+p.scheduled_time,scheduled&&p.scheduled_with&&'With: '+p.scheduled_with].filter(Boolean).join(' · '),
+      description:[p.building,p.frequency,p.assigned_to&&'Assigned: '+p.assigned_to,scheduled&&p.scheduled_time&&'Time: '+p.scheduled_time,scheduled&&[p.scheduled_with,p.scheduled_contact_person].filter(Boolean).join(' — ')&&'With: '+[p.scheduled_with,p.scheduled_contact_person].filter(Boolean).join(' — ')].filter(Boolean).join(' · '),
       location:p.building||'',
       source:'pm',_ref:{type:'pm',id:p.id},
     });
@@ -701,25 +701,26 @@ async function savePM(d){
 
 // Logs a scheduled date/time/contact against a PM and optionally auto-creates a Work Order
 // to track the actual visit. PM remains Upcoming until marked Done.
-async function schedulePM(id,{date,time,withWhom,notes,createWO}){
+async function schedulePM(id,{date,time,withWhom,contactPerson,notes,createWO}){
   const pm=pmTasks.find(p=>p.id===id);
   if(!pm)return;
   try{
-    const upd={scheduled_date:date||null,scheduled_time:time||null,scheduled_with:withWhom||null,scheduled_notes:notes||null};
+    const upd={scheduled_date:date||null,scheduled_time:time||null,scheduled_with:withWhom||null,scheduled_contact_person:contactPerson||null,scheduled_notes:notes||null};
     const{error}=await db.from('pm_schedule').update(upd).eq('id',id);
     if(error)throw error;
     Object.assign(pm,upd);
     let toastMsg='PM scheduled';
     if(createWO){
       const dueStr=date?(time?`${date} ${time}`:date):'';
+      const whom=[withWhom,contactPerson].filter(Boolean).join(' — ');
       const woData={
         issue:pm.title+' (Scheduled PM)',
         building:pm.building||'All Buildings',
         priority:'Medium',
-        assignee:withWhom||pm.assigned_to||'—',
+        assignee:whom||pm.assigned_to||'—',
         due_date:dueStr,
         status:'Open',
-        notes:`Auto-created from PM schedule${notes?'. '+notes:''}`,
+        notes:`Auto-created from PM schedule${contactPerson?'. Contact: '+contactPerson:''}${notes?'. '+notes:''}`,
         asset_ids:Array.isArray(pm.asset_ids)?pm.asset_ids:[],
       };
       try{
@@ -740,7 +741,7 @@ async function clearPMSchedule(id){
   const pm=pmTasks.find(p=>p.id===id);
   if(!pm)return;
   try{
-    const upd={scheduled_date:null,scheduled_time:null,scheduled_with:null,scheduled_notes:null};
+    const upd={scheduled_date:null,scheduled_time:null,scheduled_with:null,scheduled_contact_person:null,scheduled_notes:null};
     const{error}=await db.from('pm_schedule').update(upd).eq('id',id);
     if(error)throw error;
     Object.assign(pm,upd);
@@ -817,6 +818,20 @@ async function saveContact(d){
       try{cb(saved);}catch(e){console.error(e);}
     }
   }catch(e){console.error(e);showToast('Error saving contact');}
+}
+
+// Appends a new point-of-contact person to a contact's people[] jsonb and persists.
+// Used from inline "+ Add new contact" flows (e.g. PM scheduling modal).
+async function addPersonToContact(contactId,person){
+  const c=contacts.find(x=>x.id===contactId);
+  if(!c)return null;
+  const people=Array.isArray(c.people)?[...c.people,person]:[person];
+  try{
+    const{error}=await db.from('contacts').update({people}).eq('id',contactId);
+    if(error)throw error;
+    c.people=people;
+    return person;
+  }catch(e){console.error(e);showToast('Error adding contact person');return null;}
 }
 
 async function deleteContact(id){

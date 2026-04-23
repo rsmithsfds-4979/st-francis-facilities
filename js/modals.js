@@ -697,32 +697,41 @@ function submitPM(){
 function editPM(id){const p=pmTasks.find(x=>x.id===id);if(p)openPMModal(p);}
 
 // ---- SCHEDULE PM MODAL ----
+// Two-step contact picker: pick a contact (vendor/contractor/staff), then pick a specific
+// person at that company from their people[] list (or add one inline).
+let _pmSchedContactId=null;    // selected contact id
+let _pmSchedPerson='';         // selected person name at that contact
+let _pmSchedPMId=null;
+
 function openPMScheduleModal(pmId){
   const pm=pmTasks.find(p=>p.id===pmId);
   if(!pm)return;
+  _pmSchedPMId=pmId;
+  // Pre-fill company from scheduled_with, falling back to pm.assigned_to
+  const preferName=pm.scheduled_with||pm.assigned_to||'';
+  const preferContact=contacts.find(c=>c.name===preferName);
+  _pmSchedContactId=preferContact?.id||'';
+  _pmSchedPerson=pm.scheduled_contact_person||'';
+
   document.getElementById('pm-schedule-modal-h').textContent=pm.scheduled_date?'Edit Schedule':'Schedule PM';
-  // Pre-fill: existing schedule, else defaults. Default scheduled_with to PM's assigned_to.
-  const schedDate=pm.scheduled_date||'';
-  const schedTime=pm.scheduled_time||'';
-  const schedWith=pm.scheduled_with||pm.assigned_to||'';
-  const schedNotes=pm.scheduled_notes||'';
   document.getElementById('pm-schedule-body').innerHTML=`
     <div style="padding:10px 12px;background:var(--info-bg);border-radius:6px;margin-bottom:14px;font-family:sans-serif;font-size:12px">
       Scheduling <strong>${pm.title}</strong> — ${pm.building} · ${pm.frequency||'—'}
       ${pm.next_due?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Normally due: ${pm.next_due}</div>`:''}
     </div>
     <div class="form-row">
-      <div class="fg"><label>Scheduled date *</label><input type="date" class="fi" id="pm-sched-date" value="${schedDate}"></div>
-      <div class="fg"><label>Time (optional)</label><input type="time" class="fi" id="pm-sched-time" value="${schedTime}"></div>
+      <div class="fg"><label>Scheduled date *</label><input type="date" class="fi" id="pm-sched-date" value="${pm.scheduled_date||''}"></div>
+      <div class="fg"><label>Time (optional)</label><input type="time" class="fi" id="pm-sched-time" value="${pm.scheduled_time||''}"></div>
     </div>
-    <div class="fg"><label>Scheduled with</label>
-      <input type="text" class="fi" id="pm-sched-with" list="pm-sched-with-opts" placeholder="Name of contact you spoke to" value="${schedWith.replace(/"/g,'&quot;')}">
-      <datalist id="pm-sched-with-opts">
-        ${contacts.map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}">`).join('')}
-      </datalist>
+    <div class="fg"><label>Scheduled with (company / person)</label>
+      <select class="fi" id="pm-sched-company" onchange="onPMSchedCompanyChange(this.value)">
+        <option value="">—</option>
+        ${[...contacts].sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option value="${c.id}" ${c.id===_pmSchedContactId?'selected':''}>${c.name}${c.type&&c.type!=='Staff'?' ('+c.type+')':''}</option>`).join('')}
+      </select>
     </div>
+    <div id="pm-sched-person-wrap"></div>
     <div class="fg"><label>Notes about the call / email</label>
-      <textarea class="fi" id="pm-sched-notes" placeholder="e.g. Called Mike 4/23, confirmed Spring PM, will bring new filters">${schedNotes}</textarea>
+      <textarea class="fi" id="pm-sched-notes" placeholder="e.g. Called Mike 4/23, confirmed Spring PM, will bring new filters">${pm.scheduled_notes||''}</textarea>
     </div>
     <div class="fg" style="display:flex;align-items:center;gap:8px;font-family:sans-serif;font-size:13px;padding:8px 12px;background:var(--bg3);border-radius:6px">
       <input type="checkbox" id="pm-sched-create-wo" ${pm.scheduled_date?'':'checked'} style="width:16px;height:16px;cursor:pointer">
@@ -733,16 +742,95 @@ function openPMScheduleModal(pmId){
       ${pm.scheduled_date?`<button class="btn btn-danger" onclick="clearPMSchedule('${pmId}')">Clear schedule</button>`:''}
       <button class="btn btn-primary" onclick="submitPMSchedule('${pmId}')">${pm.scheduled_date?'Save changes':'Save schedule'}</button>
     </div>`;
+  renderPMSchedulePersonPicker();
   document.getElementById('pm-schedule-modal').classList.add('open');
+}
+
+function onPMSchedCompanyChange(contactId){
+  _pmSchedContactId=contactId;
+  _pmSchedPerson=''; // reset person when company changes
+  renderPMSchedulePersonPicker();
+}
+
+function renderPMSchedulePersonPicker(){
+  const wrap=document.getElementById('pm-sched-person-wrap');
+  if(!wrap)return;
+  const contact=contacts.find(c=>c.id===_pmSchedContactId);
+  if(!contact){wrap.innerHTML='';return;}
+  const isOrg=contact.type==='Contractor'||contact.type==='Vendor';
+  const people=Array.isArray(contact.people)?contact.people:[];
+  if(!isOrg){
+    // Staff/Volunteer: the contact IS the person, no sub-picker needed
+    wrap.innerHTML=`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin:-6px 0 12px;padding-left:2px">You'll be scheduling with ${contact.name} directly.</div>`;
+    _pmSchedPerson='';
+    return;
+  }
+  wrap.innerHTML=`
+    <div class="fg"><label>Contact at ${contact.name}</label>
+      <select class="fi" id="pm-sched-person" onchange="onPMSchedPersonChange(this.value)">
+        <option value="">— (company only)</option>
+        ${people.map(p=>`<option value="${(p.name||'').replace(/"/g,'&quot;')}" ${_pmSchedPerson===p.name?'selected':''}>${p.name}${p.title?' — '+p.title:''}</option>`).join('')}
+        <option value="__add__">+ Add new contact at ${contact.name}…</option>
+      </select>
+    </div>
+    <div id="pm-sched-new-person" style="display:none;padding:10px 12px;background:var(--bg3);border-radius:6px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Add new contact at ${contact.name}</div>
+      <div class="form-row">
+        <div class="fg"><label>Name *</label><input type="text" class="fi" id="new-person-name" placeholder="Full name"></div>
+        <div class="fg"><label>Title</label><input type="text" class="fi" id="new-person-title" placeholder="Sales Rep, A/P, Service Manager…"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Phone</label><input type="text" class="fi" id="new-person-phone"></div>
+        <div class="fg"><label>Email</label><input type="text" class="fi" id="new-person-email"></div>
+      </div>
+      <div style="display:flex;gap:6px;justify-content:flex-end">
+        <button type="button" class="btn btn-sm" onclick="cancelAddSchedPerson()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveNewSchedPerson('${contact.id}')">Save person</button>
+      </div>
+    </div>`;
+}
+
+function onPMSchedPersonChange(val){
+  if(val==='__add__'){
+    const box=document.getElementById('pm-sched-new-person');
+    if(box){box.style.display='block';document.getElementById('new-person-name')?.focus();}
+  }else{
+    _pmSchedPerson=val;
+  }
+}
+
+function cancelAddSchedPerson(){
+  const box=document.getElementById('pm-sched-new-person');
+  if(box)box.style.display='none';
+  const sel=document.getElementById('pm-sched-person');
+  if(sel)sel.value=_pmSchedPerson||'';
+}
+
+async function saveNewSchedPerson(contactId){
+  const name=document.getElementById('new-person-name')?.value.trim();
+  if(!name){showToast('Name is required');return;}
+  const person={
+    name,
+    title:document.getElementById('new-person-title')?.value.trim()||'',
+    phone:document.getElementById('new-person-phone')?.value.trim()||'',
+    email:document.getElementById('new-person-email')?.value.trim()||'',
+  };
+  const saved=await addPersonToContact(contactId,person);
+  if(!saved)return;
+  _pmSchedPerson=name;
+  renderPMSchedulePersonPicker();
+  showToast('Contact added');
 }
 
 function submitPMSchedule(pmId){
   const date=document.getElementById('pm-sched-date')?.value;
   if(!date){showToast('Please pick a scheduled date');return;}
+  const company=contacts.find(c=>c.id===_pmSchedContactId)?.name||'';
   schedulePM(pmId,{
     date,
     time:document.getElementById('pm-sched-time')?.value||'',
-    withWhom:document.getElementById('pm-sched-with')?.value.trim()||'',
+    withWhom:company,
+    contactPerson:_pmSchedPerson||'',
     notes:document.getElementById('pm-sched-notes')?.value.trim()||'',
     createWO:!!document.getElementById('pm-sched-create-wo')?.checked,
   });

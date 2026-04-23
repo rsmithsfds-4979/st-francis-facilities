@@ -851,8 +851,9 @@ function pmCardHTML(p){
   const assetIds=Array.isArray(p.asset_ids)?p.asset_ids:[];
   const linkedAssets=assetIds.map(id=>assets.find(a=>a.id===id)).filter(Boolean);
   const isScheduled=!!p.scheduled_date&&p.status!=='Done';
+  const schedWith=[p.scheduled_with,p.scheduled_contact_person].filter(Boolean).join(' — ');
   const schedLine=isScheduled
-    ?`<div class="pm-scheduled">📅 Scheduled ${p.scheduled_date}${p.scheduled_time?' at '+p.scheduled_time:''}${p.scheduled_with?' · '+p.scheduled_with:''}</div>`
+    ?`<div class="pm-scheduled">📅 Scheduled ${p.scheduled_date}${p.scheduled_time?' at '+p.scheduled_time:''}${schedWith?' · '+schedWith:''}</div>`
     :'';
   return`<div class="pm-card${isScheduled?' pm-card-scheduled':''}">
     <div style="width:38px;height:38px;border-radius:8px;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🔧</div>
