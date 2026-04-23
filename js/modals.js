@@ -66,7 +66,7 @@ function openWOModal(presetRoomId,presetBldId){
     </div>`;
   initPhotoState('wo',wo?allPhotos(wo):[]);
   renderPhotoGallery('wo','wo-photo-gallery');
-  initAssetPicker('asset-select-list',checkedAssetIds,presetBldName||'all');
+  initAssetPicker('asset-select-list',checkedAssetIds,presetBldName||'all',true);
   const bldSel=document.getElementById('asset-select-list-bld');
   if(bldSel&&presetBldName)bldSel.value=presetBldName;
   renderAssetPicker('asset-select-list');
@@ -95,10 +95,11 @@ function toggleAssetSelect(el,id){
 // State per list id: checked = Set<assetId>
 const _pickerState={};
 
-function initAssetPicker(listId,initialCheckedIds,initialBuilding){
+function initAssetPicker(listId,initialCheckedIds,initialBuilding,requireBuilding){
   _pickerState[listId]={
     checked:new Set(initialCheckedIds||[]),
     initialBuilding:initialBuilding||'all',
+    requireBuilding:!!requireBuilding,
   };
 }
 
@@ -108,6 +109,17 @@ function renderAssetPicker(listId){
   const search=(document.getElementById(listId+'-search')?.value||'').toLowerCase();
   const building=document.getElementById(listId+'-bld')?.value||'all';
   const category=document.getElementById(listId+'-cat')?.value||'all';
+
+  const el=document.getElementById(listId);
+  if(!el)return;
+
+  // When requireBuilding is set (Work Order flow), don't show assets until a building is picked.
+  if(state.requireBuilding&&building==='all'){
+    el.innerHTML=`
+      <div class="asset-select-item" onclick="handleAddAssetInline('${listId}')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
+      <div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:20px;text-align:center">Select a building above to see its assets.</div>`;
+    return;
+  }
 
   const filtered=assets.filter(a=>{
     if(building!=='all'&&a.building!==building)return false;
@@ -123,8 +135,6 @@ function renderAssetPicker(listId){
     (a.description||'').localeCompare(b.description||'')
   );
 
-  const el=document.getElementById(listId);
-  if(!el)return;
   el.innerHTML=`
     <div class="asset-select-item" onclick="handleAddAssetInline('${listId}')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
     ${filtered.length?filtered.map(a=>{
@@ -579,6 +589,10 @@ function openPMModal(pm){
       </div>
     </div>
     <div class="fg"><label>Description</label><textarea class="fi" id="pm-desc">${v('description')}</textarea></div>
+    <div class="fg"><label>Assets covered by this PM</label>
+      ${assetPickerFiltersHTML('pm-asset-list')}
+      <div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin-top:4px">Group multiple assets under one PM — e.g. "HVAC PM" covers every HVAC unit, "Fire Inspection" covers extinguishers + kitchen suppression.</div>
+    </div>
     <div class="fg"><label>Status</label>
       <select class="fi" id="pm-status">
         <option ${!pm||pm.status==='Upcoming'?'selected':''}>Upcoming</option>
@@ -590,6 +604,11 @@ function openPMModal(pm){
       <button class="btn" onclick="closeModal('pm-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitPM()">${pm?'Save Changes':'Add PM Task'}</button>
     </div>`;
+  const pmBld=pm?.building&&pm.building!=='All Buildings'?pm.building:'all';
+  initAssetPicker('pm-asset-list',pm?.asset_ids||[],pmBld,false);
+  const pmBldSel=document.getElementById('pm-asset-list-bld');
+  if(pmBldSel&&pmBld!=='all')pmBldSel.value=pmBld;
+  renderAssetPicker('pm-asset-list');
   document.getElementById('pm-modal').classList.add('open');
 }
 
@@ -598,7 +617,15 @@ function submitPM(){
   const building=document.getElementById('pm-bld')?.value;
   const frequency=document.getElementById('pm-freq')?.value;
   if(!title||!building||!frequency){showToast('Please fill in title, building, frequency');return;}
-  savePM({title,building,frequency,next_due:document.getElementById('pm-due')?.value.trim(),assigned_to:document.getElementById('pm-assign')?.value,description:document.getElementById('pm-desc')?.value.trim(),status:document.getElementById('pm-status')?.value});
+  const asset_ids=getPickerChecked('pm-asset-list');
+  savePM({
+    title,building,frequency,
+    next_due:document.getElementById('pm-due')?.value.trim(),
+    assigned_to:document.getElementById('pm-assign')?.value,
+    description:document.getElementById('pm-desc')?.value.trim(),
+    status:document.getElementById('pm-status')?.value,
+    asset_ids,
+  });
 }
 
 function editPM(id){const p=pmTasks.find(x=>x.id===id);if(p)openPMModal(p);}

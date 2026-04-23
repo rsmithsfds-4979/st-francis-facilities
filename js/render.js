@@ -733,6 +733,8 @@ function renderPM(){
   el.innerHTML=filtered.map(p=>{
     const due=parseDate(p.next_due);
     const conflicts=due?eventsOnDate(due):[];
+    const assetIds=Array.isArray(p.asset_ids)?p.asset_ids:[];
+    const linkedAssets=assetIds.map(id=>assets.find(a=>a.id===id)).filter(Boolean);
     return`<div class="pm-card">
     <div style="width:38px;height:38px;border-radius:8px;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🔧</div>
     <div class="pm-info">
@@ -740,6 +742,7 @@ function renderPM(){
       <div class="pm-meta">${p.building} · ${p.frequency} · ${p.assigned_to||'Unassigned'}</div>
       <div class="pm-meta">Next due: <strong>${p.next_due||'Not set'}</strong>${p.last_completed?' · Last done: '+p.last_completed:''}</div>
       ${p.description?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${p.description}</div>`:''}
+      ${linkedAssets.length?`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${linkedAssets.slice(0,6).map(a=>`<span class="badge b-blue" style="font-size:10px">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}${linkedAssets.length>6?`<span class="badge b-gray" style="font-size:10px">+${linkedAssets.length-6} more</span>`:''}</div>`:''}
       ${conflicts.length?`<div class="pm-conflict">⚠️ Parish event that day: ${conflicts.map(e=>e.title).join(', ')}</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0">

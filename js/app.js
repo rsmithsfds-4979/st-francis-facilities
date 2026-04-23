@@ -524,7 +524,7 @@ async function loadPM(){
   try{
     const{data,error}=await db.from('pm_schedule').select('*').order('next_due');
     if(error)throw error;
-    pmTasks=data||[];
+    pmTasks=(data||[]).map(p=>({...p,asset_ids:normalizeIdArray(p.asset_ids)}));
   }catch(e){console.error(e);pmTasks=[];}
   renderPM();
 }
@@ -685,16 +685,16 @@ async function savePM(d){
       const{data,error}=await db.from('pm_schedule').update(d).eq('id',editingPMId).select();
       if(error)throw error;
       const i=pmTasks.findIndex(p=>p.id===editingPMId);
-      if(i>-1)pmTasks[i]=data[0];
+      if(i>-1)pmTasks[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)};
       showToast('PM task updated!');
     }else{
       const{data,error}=await db.from('pm_schedule').insert([d]).select();
       if(error)throw error;
-      pmTasks.push(data[0]);
+      pmTasks.push({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)});
       showToast('PM task added!');
     }
     editingPMId=null;closeModal('pm-modal');renderPM();renderDash();
-  }catch(e){showToast('Error saving PM task');}
+  }catch(e){console.error(e);showToast('Error saving PM task');}
 }
 
 async function markPMDone(id){
