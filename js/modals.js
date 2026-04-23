@@ -1688,7 +1688,7 @@ function renderProjectQuotePicker(selectedIds){
   el.innerHTML=quotes.map(q=>{
     const checked=selected.has(q.id);
     return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleProjQuote('${q.id}',this)">
-      <input type="checkbox" value="${q.id}" ${checked?'checked':''} onclick="event.stopPropagation();toggleProjQuote('${q.id}',this.closest('.asset-select-item'))">
+      <input type="checkbox" value="${q.id}" ${checked?'checked':''} onclick="event.stopPropagation();this.closest('.asset-select-item').classList.toggle('selected',this.checked)">
       <div style="flex:1;min-width:0">
         <div style="font-weight:bold">${q.vendor||'—'}${q.quote_number?' #'+q.quote_number:''}</div>
         <div style="font-size:11px;color:var(--text3)">${q.date||'—'} · ${fmt(q.amount)} · ${q.status||'Pending'}${q.description?' · '+q.description.substring(0,60):''}</div>
