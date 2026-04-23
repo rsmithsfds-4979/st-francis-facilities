@@ -1959,3 +1959,147 @@ function renderSettings(){
     </div>`;
   }).join('');
 }
+
+// ---- PROJECTS · FINANCE REPORT ----
+// Internal report — full detail: all projects, costs (est + actual), funding
+// source, approval trail, linked items, notes. Organized by status and year.
+function renderProjectsFinanceReport(){
+  const years=[...new Set(projects.map(p=>p.target_year).filter(Boolean))].sort((a,b)=>a-b);
+  syncDropdown('pfr-f-year',years,'All years');
+  const fy=document.getElementById('pfr-f-year')?.value||'all';
+  const filtered=projects.filter(p=>fy==='all'||String(p.target_year)===fy);
+  const el=document.getElementById('pfr-content');
+  if(!el)return;
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No projects to report.</p></div>';return;}
+
+  const buckets={
+    'In Pipeline':['Proposed','Approved','Funded','Scheduled'],
+    'Complete':['Complete'],
+    'Declined':['Declined'],
+  };
+  const sum=list=>list.reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
+  const sumActual=list=>list.reduce((a,p)=>a+(Number(p.actual_cost)||Number(p.estimated_cost)||0),0);
+
+  const pipeline=filtered.filter(p=>buckets['In Pipeline'].includes(p.status));
+  const complete=filtered.filter(p=>p.status==='Complete');
+  const declined=filtered.filter(p=>p.status==='Declined');
+
+  const today=new Date().toLocaleDateString();
+  const scope=fy==='all'?'All years':`Target year ${fy}`;
+
+  const rowHTML=p=>{
+    const trail=Array.isArray(p.approval_trail)?p.approval_trail:[];
+    const latest=trail[trail.length-1];
+    return`<tr style="border-top:1px solid var(--border)">
+      <td style="padding:8px;vertical-align:top">
+        <div style="font-weight:bold;color:var(--accent2)">${p.title}</div>
+        <div style="font-size:11px;color:var(--text3);font-family:sans-serif">${[p.building,p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||'—'}</div>
+        ${p.description?`<div style="font-size:12px;color:var(--text2);font-family:sans-serif;margin-top:4px">${p.description}</div>`:''}
+      </td>
+      <td style="padding:8px;vertical-align:top;font-size:11px">${p.priority||'Medium'}</td>
+      <td style="padding:8px;vertical-align:top;font-size:11px">${p.status||'Proposed'}</td>
+      <td style="padding:8px;vertical-align:top;text-align:right;white-space:nowrap">${fmt(p.estimated_cost)}</td>
+      <td style="padding:8px;vertical-align:top;text-align:right;white-space:nowrap">${p.actual_cost?fmt(p.actual_cost):'—'}</td>
+      <td style="padding:8px;vertical-align:top;font-size:11px;font-family:sans-serif">
+        ${latest?`${latest.decision} · ${latest.approver||'—'}${latest.date?' · '+latest.date:''}`:'—'}
+        ${trail.length>1?`<div style="color:var(--text3);font-size:10px">+ ${trail.length-1} prior</div>`:''}
+      </td>
+    </tr>`;
+  };
+
+  const section=(label,list,showActual)=>list.length?`
+    <div style="margin-top:18px">
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.06em;font-family:sans-serif;margin-bottom:6px">${label} · ${list.length}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--bg2);border-radius:8px;overflow:hidden">
+        <thead style="background:var(--bg3)">
+          <tr><th style="padding:8px;text-align:left">Project</th><th style="padding:8px;text-align:left">Priority</th><th style="padding:8px;text-align:left">Status</th><th style="padding:8px;text-align:right">Estimated</th><th style="padding:8px;text-align:right">Actual</th><th style="padding:8px;text-align:left">Latest decision</th></tr>
+        </thead>
+        <tbody>${list.map(rowHTML).join('')}</tbody>
+        <tfoot style="background:var(--bg3);font-weight:bold">
+          <tr><td colspan="3" style="padding:8px;text-align:right">Subtotal</td><td style="padding:8px;text-align:right">${fmt(sum(list))}</td><td style="padding:8px;text-align:right">${showActual?fmt(sumActual(list)):'—'}</td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>`:'';
+
+  el.innerHTML=`
+    <div class="report-header" style="margin-bottom:14px">
+      <div style="font-size:18px;font-weight:bold;color:var(--accent2)">Capital Projects · Finance Report</div>
+      <div style="font-size:12px;color:var(--text3);font-family:sans-serif">${scope} · generated ${today}</div>
+    </div>
+    <div class="stats-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:6px">
+      <div class="stat-card"><div class="stat-label">Pipeline</div><div class="stat-value" style="color:var(--accent)">${pipeline.length}</div><div class="stat-delta">${fmt(sum(pipeline))}</div></div>
+      <div class="stat-card"><div class="stat-label">Approved+</div><div class="stat-value" style="color:var(--warning)">${fmt(sum(filtered.filter(p=>['Approved','Funded','Scheduled'].includes(p.status))))}</div><div class="stat-delta">committed / in progress</div></div>
+      <div class="stat-card"><div class="stat-label">Complete</div><div class="stat-value" style="color:var(--success)">${complete.length}</div><div class="stat-delta">actual ${fmt(sumActual(complete))}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Estimated</div><div class="stat-value">${fmt(sum(filtered))}</div><div class="stat-delta">all statuses in scope</div></div>
+    </div>
+    ${section('In Pipeline',pipeline,false)}
+    ${section('Complete',complete,true)}
+    ${section('Declined',declined,false)}
+  `;
+}
+
+// ---- PROJECTS · PARISH REPORT ----
+// Public-facing — cleaner. Shows only active/approved projects with the
+// public_description (falls back to description) and estimated cost.
+// Approval detail and internal notes are deliberately omitted.
+function renderProjectsParishReport(){
+  const years=[...new Set(projects.map(p=>p.target_year).filter(Boolean))].sort((a,b)=>a-b);
+  syncDropdown('ppr-f-year',years,'All years');
+  const fy=document.getElementById('ppr-f-year')?.value||'all';
+  // Only show things worth sharing: not declined, not bare Proposed unless they have a public description.
+  const filtered=projects.filter(p=>{
+    if(fy!=='all'&&String(p.target_year)!==fy)return false;
+    if(p.status==='Declined')return false;
+    if(p.status==='Proposed'&&!p.public_description&&!p.description)return false;
+    return true;
+  });
+  const el=document.getElementById('ppr-content');
+  if(!el)return;
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No projects to share yet.</p></div>';return;}
+
+  const today=new Date().toLocaleDateString();
+  const scope=fy==='all'?'':` · Target year ${fy}`;
+
+  // Group by building for a natural parish-facing narrative
+  const byBld={};
+  filtered.forEach(p=>{const k=p.building||'Parish-wide';(byBld[k]=byBld[k]||[]).push(p);});
+
+  const statusLabel={Proposed:'Under consideration',Approved:'Approved',Funded:'Funded',Scheduled:'Scheduled',Complete:'Completed'};
+
+  const cardHTML=p=>{
+    const desc=p.public_description||p.description||'';
+    return`<div class="card" style="margin-bottom:10px">
+      <div style="padding:14px 16px">
+        <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px">
+          <div style="font-size:15px;font-weight:bold;color:var(--accent2);flex:1;min-width:0">${p.title}</div>
+          <span class="badge" style="font-family:sans-serif">${statusLabel[p.status]||p.status}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:6px">
+          ${[p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||''}
+        </div>
+        ${desc?`<div style="font-size:13px;color:var(--text);font-family:sans-serif;line-height:1.5">${desc}</div>`:''}
+        <div style="margin-top:10px;font-size:13px;font-weight:bold">Estimated cost: ${fmt(p.estimated_cost)}</div>
+      </div>
+    </div>`;
+  };
+
+  const totalEstimated=filtered.reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
+
+  el.innerHTML=`
+    <div class="report-header" style="margin-bottom:14px;text-align:center">
+      <div style="font-size:20px;font-weight:bold;color:var(--accent2)">Parish Capital Projects</div>
+      <div style="font-size:12px;color:var(--text3);font-family:sans-serif">St. Francis de Sales${scope} · ${today}</div>
+    </div>
+    <div style="background:var(--bg2);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;font-family:sans-serif;line-height:1.5">
+      The following projects have been identified by the Facilities team to maintain
+      and improve our parish campus. Together they represent an estimated investment
+      of <strong>${fmt(totalEstimated)}</strong>. Your prayers, feedback, and support are welcome.
+    </div>
+    ${Object.keys(byBld).sort().map(bld=>`
+      <div style="margin-top:14px">
+        <div style="font-size:14px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:8px;border-bottom:2px solid var(--accent);padding-bottom:4px">${bld}</div>
+        ${byBld[bld].map(cardHTML).join('')}
+      </div>
+    `).join('')}
+  `;
+}
