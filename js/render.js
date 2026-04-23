@@ -1010,9 +1010,15 @@ function renderContacts(){
                 <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em">Points of Contact${people.length?` · ${people.length}`:''}</div>
                 <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openAddPersonModal('${c.id}')">+ Add Contact</button>
               </div>
-              ${people.length?people.map((p,i)=>`<div style="font-size:12px;color:var(--text2);padding:4px 6px;border-radius:4px;cursor:pointer;margin:-2px -6px" onclick="openPersonModal('${c.id}',${i})" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background=''">
-                <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" onclick="event.stopPropagation()" style="color:var(--accent)">${p.email}</a>`:''}
-                ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
+              ${people.length?people.map((p,i)=>`<div style="font-size:12px;color:var(--text2);padding:4px 0;display:flex;gap:8px;align-items:flex-start">
+                <div style="flex:1;min-width:0">
+                  <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
+                  ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
+                </div>
+                <div style="display:flex;gap:4px;flex-shrink:0">
+                  <button class="btn btn-edit btn-sm" style="font-size:10px;padding:2px 8px" onclick="openPersonModal('${c.id}',${i})">Edit</button>
+                  <button class="btn btn-danger btn-sm" style="font-size:10px;padding:2px 8px" onclick="confirmDeletePerson('${c.id}',${i})">Del</button>
+                </div>
               </div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0">No points of contact yet.</div>'}
             </div>`:''}
             ${isContractor?(c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
