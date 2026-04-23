@@ -220,8 +220,60 @@ function calJumpToDay(iso){
   loadCalEvents();
 }
 
+// ---- WEATHER WIDGET ----
+function weatherEmoji(code){
+  const c=Number(code);
+  if(c===113)return'☀️';
+  if(c===116)return'⛅';
+  if(c===119||c===122)return'☁️';
+  if([143,248,260].includes(c))return'🌫️';
+  if(c===200||c===386||c===389||c===392||c===395)return'⛈️';
+  if(c>=176&&c<=377)return'🌧️';
+  if(c>=179&&c<=374)return'❄️';
+  return'🌡️';
+}
+
+function renderDashWeather(){
+  const el=document.getElementById('d-weather');
+  if(!el)return;
+  const loc=appSettings.weather_location;
+  if(!loc){el.innerHTML='';return;}
+  if(!_weatherData){
+    el.innerHTML=`<div class="card" style="margin-bottom:16px"><div style="padding:12px 16px;font-family:sans-serif;font-size:12px;color:var(--text3)">Loading weather for ${loc}…</div></div>`;
+    return;
+  }
+  const cur=_weatherData.current_condition?.[0];
+  const today=_weatherData.weather?.[0];
+  const area=_weatherData.nearest_area?.[0]?.areaName?.[0]?.value||loc;
+  if(!cur){el.innerHTML='';return;}
+  const emoji=weatherEmoji(cur.weatherCode);
+  const desc=cur.weatherDesc?.[0]?.value||'';
+  const tempF=cur.temp_F;
+  const hi=today?.maxtempF;
+  const lo=today?.mintempF;
+  const wind=cur.windspeedMiles;
+  el.innerHTML=`<div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:18px;padding:12px 18px;font-family:sans-serif">
+      <div style="font-size:40px;line-height:1">${emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:20px;font-weight:bold;color:var(--accent2)">${tempF}°F · ${desc}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${area}${hi&&lo?` · H ${hi}° / L ${lo}°`:''}${wind?` · Wind ${wind} mph`:''}</div>
+      </div>
+      <button class="btn btn-sm" onclick="refreshWeather()" title="Refresh">↻</button>
+    </div>
+  </div>`;
+}
+
+async function refreshWeather(){
+  await loadWeather(true);
+  renderDashWeather();
+}
+
 // ---- RENDER DASHBOARD ----
 function renderDash(){
+  // Run after all inner HTML is populated so collapsible data-ids pick up localStorage state
+  setTimeout(initCollapsibleCards,0);
+  renderDashWeather();
   const open=workOrders.filter(w=>w.status!=='Completed').length;
   document.getElementById('d-wo').textContent=open;
   document.getElementById('wo-badge').textContent=open;
@@ -262,10 +314,10 @@ function renderDash(){
   if(sa){
     if(!lowSupplies.length){sa.innerHTML='';}
     else{
-      sa.innerHTML=`<div class="card" style="margin-bottom:16px">
-        <div class="card-header">
-          <div class="card-title">Supplies running low · ${lowSupplies.length}</div>
-          <button class="card-link" onclick="go('supplies')">View all →</button>
+      sa.innerHTML=`<div class="card collapsible" data-collapse-id="dash-supplies-low" style="margin-bottom:16px">
+        <div class="card-header" onclick="toggleCard(this.parentNode)">
+          <div class="card-title"><span class="cc-chevron">▼</span>Supplies running low · ${lowSupplies.length}</div>
+          <button class="card-link" onclick="event.stopPropagation();go('supplies')">View all →</button>
         </div>
         <div style="max-height:260px;overflow-y:auto">
           ${lowSupplies.map(s=>{
@@ -1774,6 +1826,13 @@ function renderSettings(){
     }else{
       statusEl.innerHTML=`<span style="color:var(--text3)">Not configured. Click <strong>Configure</strong> to connect a Google Calendar (read-only).</span>`;
     }
+  }
+  const wstatus=document.getElementById('weather-status');
+  if(wstatus){
+    const loc=appSettings.weather_location;
+    wstatus.innerHTML=loc
+      ?`✓ Showing weather for <strong>${loc}</strong>.`
+      :`<span style="color:var(--text3)">Not configured. Click <strong>Configure</strong> to show weather on the Dashboard.</span>`;
   }
   renderRoomTypesList();
   renderContactRolesList();

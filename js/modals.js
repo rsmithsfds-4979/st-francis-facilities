@@ -1840,6 +1840,46 @@ function confirmDeleteUtility(id){
   document.getElementById('confirm-overlay').classList.add('open');
 }
 
+// ---- WEATHER SETTINGS MODAL ----
+function openWeatherSettingsModal(){
+  const loc=appSettings.weather_location||'';
+  document.getElementById('weather-body').innerHTML=`
+    <div class="fg"><label>Location *</label>
+      <input type="text" class="fi" id="weather-loc" placeholder="e.g. Columbus, OH or 43015 or Springfield Ohio" value="${loc.replace(/"/g,'&quot;')}">
+    </div>
+    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+      Accepts city, city+state, or US ZIP. Powered by <a href="https://wttr.in" target="_blank" style="color:var(--accent)">wttr.in</a> — no API key needed.
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('weather-modal')">Cancel</button>
+      ${loc?`<button class="btn btn-danger" onclick="clearWeatherSettings()">Disable</button>`:''}
+      <button class="btn btn-primary" onclick="submitWeatherSettings()">Save</button>
+    </div>`;
+  document.getElementById('weather-modal').classList.add('open');
+}
+
+async function submitWeatherSettings(){
+  const loc=document.getElementById('weather-loc')?.value.trim();
+  if(!loc){showToast('Enter a location or Disable');return;}
+  try{
+    await saveSetting('weather_location',loc);
+    await loadWeather(true);
+    closeModal('weather-modal');
+    showToast('Weather saved');
+    renderSettings();renderDash();
+  }catch(e){/* saveSetting already toasted */}
+}
+
+async function clearWeatherSettings(){
+  try{
+    await saveSetting('weather_location','');
+    _weatherData=null;
+    closeModal('weather-modal');
+    showToast('Weather disabled');
+    renderSettings();renderDash();
+  }catch(e){}
+}
+
 // ---- GOOGLE CALENDAR SETTINGS MODAL ----
 function openGCalSettingsModal(){
   const apiKey=appSettings.gcal_api_key||'';

@@ -5,7 +5,7 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather()]);
   renderHistory();renderDash();
 }
 
@@ -380,6 +380,22 @@ async function loadSettings(){
     appSettings={};
     (data||[]).forEach(r=>{appSettings[r.key]=r.value;});
   }catch(e){console.error(e);appSettings={};}
+}
+
+// In-memory cache so we don't refetch on every render
+let _weatherData=null;
+let _weatherLastFetch=0;
+async function loadWeather(force){
+  const loc=appSettings.weather_location;
+  if(!loc){_weatherData=null;return;}
+  // Cache for 15 minutes
+  if(!force&&_weatherData&&(Date.now()-_weatherLastFetch)<15*60*1000)return;
+  try{
+    const res=await fetch(`https://wttr.in/${encodeURIComponent(loc)}?format=j1`);
+    const data=await res.json();
+    _weatherData=data;
+    _weatherLastFetch=Date.now();
+  }catch(e){console.error('Weather fetch failed:',e);_weatherData=null;}
 }
 
 async function saveSetting(key,value){
@@ -1194,7 +1210,25 @@ async function saveBudget(d){
   }catch(e){console.error(e);showToast('Error saving budget');}
 }
 
+// Ref-counted spinner overlay — stays up as long as any async work is pending.
+let _spinnerRefs=0;
+function showSpinner(label){
+  _spinnerRefs++;
+  const ov=document.getElementById('spinner-overlay');
+  const lb=document.getElementById('spinner-label');
+  if(lb&&label)lb.textContent=label;
+  if(ov)ov.classList.add('show');
+}
+function hideSpinner(){
+  _spinnerRefs=Math.max(0,_spinnerRefs-1);
+  if(_spinnerRefs===0){
+    const ov=document.getElementById('spinner-overlay');
+    if(ov)ov.classList.remove('show');
+  }
+}
+
 async function uploadFile(file,folder){
+  showSpinner(`Uploading ${file.name}…`);
   try{
     const ext=file.name.split('.').pop();
     const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
@@ -1204,6 +1238,7 @@ async function uploadFile(file,folder){
     const{data}=db.storage.from(bucket).getPublicUrl(path);
     return data.publicUrl;
   }catch(e){console.error(e);showToast('Error uploading file');return null;}
+  finally{hideSpinner();}
 }
 
 // ---- CSV ----
@@ -1295,6 +1330,22 @@ function go(name,el){
 function goContacts(type,el){
   currentContactType=type;
   go('contacts',el);
+}
+
+// Dashboard stat card navigations — jumps to the page and pre-applies a filter.
+function dashGoOpenWOs(){
+  go('workorders');
+  const sel=document.getElementById('wo-f-status');
+  if(sel){sel.value='Open';renderWO();}
+}
+function dashGoPMDue(){
+  pmMode='upcoming';pmWindow='current';
+  go('pm');
+}
+function dashGoAttention(){
+  go('assets');
+  const sel=document.getElementById('af-status');
+  if(sel){sel.value='Maintenance';renderAssets();}
 }
 
 function showToast(msg){
