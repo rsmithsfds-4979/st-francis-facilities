@@ -997,7 +997,7 @@ function openContactModal(contact){
           <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
         </select>
       </div>
-      <div class="fg"><label>Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
+      <div class="fg"><label id="ct-phone-label">Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
     <div class="fg" id="ct-home-row"><label>Home phone</label><input type="text" class="fi" id="ct-phone-home" value="${v('phone_home')}"></div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
@@ -1085,6 +1085,9 @@ function toggleTypeSections(type){
   // Home phone only applies to individuals (Staff / Volunteer).
   const homeRow=document.getElementById('ct-home-row');
   if(homeRow)homeRow.style.display=(type==='Staff'||type==='Volunteer')?'':'none';
+  // The primary phone is a Main business number for orgs, a Cell for individuals.
+  const phoneLabel=document.getElementById('ct-phone-label');
+  if(phoneLabel)phoneLabel.textContent=(type==='Contractor'||type==='Vendor')?'Main phone':'Cell phone';
 }
 
 async function submitContact(){
