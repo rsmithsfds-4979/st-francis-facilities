@@ -135,6 +135,18 @@ textarea.fi{resize:vertical;min-height:65px}
 .pm-title{font-size:14px;font-weight:bold;color:var(--accent2);margin-bottom:3px}
 .pm-meta{font-size:12px;color:var(--text3);font-family:sans-serif}
 .pm-conflict{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:6px;background:var(--warning-bg);color:var(--warning);font-size:12px;font-family:sans-serif;font-weight:bold;border:1px solid #f0d060}
+/* Role chip picker */
+.role-chip{display:inline-flex;align-items:center;gap:4px;background:var(--info-bg);color:var(--info);padding:3px 4px 3px 10px;border-radius:14px;font-size:12px;font-weight:bold;font-family:sans-serif}
+.role-chip button{border:none;background:transparent;color:var(--info);cursor:pointer;font-size:14px;padding:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1}
+.role-chip button:hover{background:rgba(26,74,138,.15)}
+.role-chips{display:flex;flex-wrap:wrap;gap:4px;min-height:28px;padding:4px 0}
+.role-chips-empty{color:var(--text3);font-size:12px;font-family:sans-serif;padding:4px 0}
+.role-dropdown{border:1px solid var(--border2);border-radius:6px;margin-top:6px;background:var(--bg2);overflow:hidden}
+.role-search{width:100%;padding:7px 10px;border:none;border-bottom:1px solid var(--border);outline:none;font-family:sans-serif;font-size:13px;background:var(--bg2);color:var(--text);box-sizing:border-box}
+.role-options{max-height:180px;overflow-y:auto}
+.role-option{padding:7px 12px;font-size:13px;cursor:pointer;font-family:sans-serif;border-bottom:1px solid var(--border);color:var(--text)}
+.role-option:last-child{border-bottom:none}
+.role-option:hover{background:var(--info-bg)}
 .pm-scheduled{display:inline-block;margin-top:6px;padding:4px 10px;border-radius:6px;background:var(--info-bg);color:var(--info);font-size:12px;font-family:sans-serif;font-weight:bold;border:1px solid #a6c8e8}
 .pm-card-scheduled{border-left:3px solid var(--info)}
 /* Supply cards */
