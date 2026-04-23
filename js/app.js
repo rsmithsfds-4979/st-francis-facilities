@@ -834,6 +834,32 @@ async function addPersonToContact(contactId,person){
   }catch(e){console.error(e);showToast('Error adding contact person');return null;}
 }
 
+async function updatePersonOnContact(contactId,personIndex,newData){
+  const c=contacts.find(x=>x.id===contactId);
+  if(!c||!Array.isArray(c.people)||personIndex<0||personIndex>=c.people.length)return false;
+  const people=[...c.people];
+  people[personIndex]=newData;
+  try{
+    const{error}=await db.from('contacts').update({people}).eq('id',contactId);
+    if(error)throw error;
+    c.people=people;
+    return true;
+  }catch(e){console.error(e);showToast('Error updating contact person');return false;}
+}
+
+async function deletePersonFromContact(contactId,personIndex){
+  const c=contacts.find(x=>x.id===contactId);
+  if(!c||!Array.isArray(c.people)||personIndex<0||personIndex>=c.people.length)return;
+  const people=c.people.filter((_,i)=>i!==personIndex);
+  try{
+    const{error}=await db.from('contacts').update({people}).eq('id',contactId);
+    if(error)throw error;
+    c.people=people;
+    showToast('Point of contact removed');
+    renderContacts();
+  }catch(e){console.error(e);showToast('Error removing');}
+}
+
 async function deleteContact(id){
   try{
     const{error}=await db.from('contacts').delete().eq('id',id);

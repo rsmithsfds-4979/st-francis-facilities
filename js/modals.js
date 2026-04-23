@@ -1116,30 +1116,42 @@ async function submitContact(){
 
 function editContact(id){const c=contacts.find(x=>x.id===id);if(c)openContactModal(c);}
 
-// ---- ADD POINT OF CONTACT MODAL (quick, no-full-edit) ----
-function openAddPersonModal(contactId){
+// ---- POINT-OF-CONTACT MODAL (add + edit + delete, no-full-contact-edit) ----
+// personIndex === undefined/null or < 0 means "add new". Otherwise edit that entry.
+function openPersonModal(contactId,personIndex){
   const contact=contacts.find(c=>c.id===contactId);
   if(!contact)return;
-  document.getElementById('add-person-modal-sub').textContent=`Appending a new contact to ${contact.name}.`;
+  const isEdit=personIndex!==undefined&&personIndex!==null&&personIndex>=0;
+  const person=isEdit&&Array.isArray(contact.people)?contact.people[personIndex]:null;
+  if(isEdit&&!person)return;
+  const v=k=>(person&&person[k])||'';
+  document.getElementById('add-person-modal-h').textContent=isEdit?'Edit Point of Contact':'Add Point of Contact';
+  document.getElementById('add-person-modal-sub').textContent=isEdit
+    ?`Editing ${person.name||'contact'} at ${contact.name}.`
+    :`Appending a new contact to ${contact.name}.`;
   document.getElementById('add-person-body').innerHTML=`
     <div class="form-row">
-      <div class="fg"><label>Name *</label><input type="text" class="fi" id="ap-name" placeholder="Full name"></div>
-      <div class="fg"><label>Title</label><input type="text" class="fi" id="ap-title" placeholder="Sales Rep, A/P, Service Manager…"></div>
+      <div class="fg"><label>Name *</label><input type="text" class="fi" id="ap-name" placeholder="Full name" value="${v('name').replace(/"/g,'&quot;')}"></div>
+      <div class="fg"><label>Title</label><input type="text" class="fi" id="ap-title" placeholder="Sales Rep, A/P, Service Manager…" value="${v('title').replace(/"/g,'&quot;')}"></div>
     </div>
     <div class="form-row">
-      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ap-phone"></div>
-      <div class="fg"><label>Email</label><input type="text" class="fi" id="ap-email"></div>
+      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ap-phone" value="${v('phone').replace(/"/g,'&quot;')}"></div>
+      <div class="fg"><label>Email</label><input type="text" class="fi" id="ap-email" value="${v('email').replace(/"/g,'&quot;')}"></div>
     </div>
-    <div class="fg"><label>Notes</label><input type="text" class="fi" id="ap-notes" placeholder="Optional — best time to reach, preferences, etc."></div>
+    <div class="fg"><label>Notes</label><input type="text" class="fi" id="ap-notes" placeholder="Optional — best time to reach, preferences, etc." value="${v('notes').replace(/"/g,'&quot;')}"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('add-person-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAddPerson('${contactId}')">Add Contact</button>
+      ${isEdit?`<button class="btn btn-danger" onclick="confirmDeletePerson('${contactId}',${personIndex})">Delete</button>`:''}
+      <button class="btn btn-primary" onclick="submitPerson('${contactId}',${isEdit?personIndex:-1})">${isEdit?'Save Changes':'Add Contact'}</button>
     </div>`;
   document.getElementById('add-person-modal').classList.add('open');
   setTimeout(()=>document.getElementById('ap-name')?.focus(),50);
 }
 
-async function submitAddPerson(contactId){
+// Backwards-compat alias (used by inline "+ Add Contact" buttons in earlier code paths)
+function openAddPersonModal(contactId){openPersonModal(contactId);}
+
+async function submitPerson(contactId,personIndex){
   const name=document.getElementById('ap-name')?.value.trim();
   if(!name){showToast('Name is required');return;}
   const person={
@@ -1149,11 +1161,28 @@ async function submitAddPerson(contactId){
     email:document.getElementById('ap-email')?.value.trim()||'',
     notes:document.getElementById('ap-notes')?.value.trim()||'',
   };
-  const saved=await addPersonToContact(contactId,person);
-  if(!saved)return;
+  const isEdit=personIndex>=0;
+  const ok=isEdit
+    ?await updatePersonOnContact(contactId,personIndex,person)
+    :await addPersonToContact(contactId,person);
+  if(!ok)return;
   closeModal('add-person-modal');
-  showToast('Point of contact added');
+  showToast(isEdit?'Point of contact updated':'Point of contact added');
   renderContacts();
+}
+
+function confirmDeletePerson(contactId,personIndex){
+  const c=contacts.find(x=>x.id===contactId);
+  const person=c?.people?.[personIndex];
+  if(!person)return;
+  document.getElementById('conf-h').textContent='Delete point of contact?';
+  document.getElementById('conf-msg').textContent=`"${person.name||'Contact'}" will be removed from ${c.name}. Historical records (PMs, work orders, invoices) that reference this person by name are preserved.`;
+  document.getElementById('conf-ok').onclick=()=>{
+    deletePersonFromContact(contactId,personIndex);
+    closeConfirm();
+    closeModal('add-person-modal');
+  };
+  document.getElementById('confirm-overlay').classList.add('open');
 }
 
 // ---- HISTORY DETAIL MODAL ----

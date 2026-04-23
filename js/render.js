@@ -1010,8 +1010,8 @@ function renderContacts(){
                 <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em">Points of Contact${people.length?` · ${people.length}`:''}</div>
                 <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openAddPersonModal('${c.id}')">+ Add Contact</button>
               </div>
-              ${people.length?people.map(p=>`<div style="font-size:12px;color:var(--text2);padding:2px 0">
-                <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
+              ${people.length?people.map((p,i)=>`<div style="font-size:12px;color:var(--text2);padding:4px 6px;border-radius:4px;cursor:pointer;margin:-2px -6px" onclick="openPersonModal('${c.id}',${i})" onmouseover="this.style.background='var(--info-bg)'" onmouseout="this.style.background=''">
+                <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" onclick="event.stopPropagation()" style="color:var(--accent)">${p.email}</a>`:''}
                 ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
               </div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0">No points of contact yet.</div>'}
             </div>`:''}
