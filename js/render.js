@@ -980,7 +980,28 @@ function renderContacts(){
   if(titleEl)titleEl.textContent=typeLabel;
   const btnEl=document.getElementById('contacts-add-btn');
   if(btnEl)btnEl.textContent='+ Add '+currentContactType;
-  const filtered=contacts.filter(c=>c.type===currentContactType);
+
+  // Populate Role filter with every role scoped to the current contact type
+  const scopedRoles=contactRoles.filter(r=>r.type_scope===currentContactType).map(r=>r.name).sort();
+  syncDropdown('contacts-f-role',scopedRoles,'All roles');
+
+  const fr=document.getElementById('contacts-f-role')?.value||'all';
+  const q=(document.getElementById('contacts-search')?.value||'').toLowerCase();
+
+  const filtered=contacts.filter(c=>{
+    if(c.type!==currentContactType)return false;
+    if(fr!=='all'){
+      const cRoles=Array.isArray(c.roles)&&c.roles.length?c.roles:(c.role?[c.role]:[]);
+      if(!cRoles.includes(fr))return false;
+    }
+    if(q){
+      const rolesHay=(Array.isArray(c.roles)?c.roles:[]).join(' ');
+      const phonesHay=[c.phone,c.phone_home,(Array.isArray(c.additional_phones)?c.additional_phones.map(p=>p.number+' '+(p.label||'')).join(' '):''),(Array.isArray(c.people)?c.people.map(p=>p.name+' '+(p.phone||'')+' '+(p.phone_office||'')).join(' '):'')].filter(Boolean).join(' ');
+      const hay=[c.name,c.role,rolesHay,c.email,c.notes,c.address,c.city,c.state,phonesHay].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(q))return false;
+    }
+    return true;
+  });
   if(!filtered.length){el.innerHTML=`<div class="empty-state"><p>No ${typeLabel.toLowerCase()} yet.</p><small>Click "+ Add ${currentContactType}" to add one.</small></div>`;return;}
   const now=new Date();
   el.innerHTML=`
@@ -1001,7 +1022,8 @@ function renderContacts(){
           <div style="width:40px;height:40px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:var(--info);flex-shrink:0">${(c.name||'?').substring(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
-            <div style="font-size:12px;color:var(--text3)">${c.role}${c.email?' · '+c.email:''}</div>
+            ${(()=>{const rs=Array.isArray(c.roles)&&c.roles.length?c.roles:(c.role?[c.role]:[]);return rs.length?`<div style="margin-top:3px;display:flex;gap:3px;flex-wrap:wrap">${rs.map(r=>`<span class="badge b-blue" style="font-size:10px">${r}</span>`).join('')}</div>`:'';})()}
+            ${c.email?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.email}</div>`:''}
             ${(()=>{
               const phones=[];
               const isOrg=c.type==='Contractor'||c.type==='Vendor';

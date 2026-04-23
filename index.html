@@ -363,9 +363,15 @@
 <div class="view" id="view-contacts">
   <div class="topbar">
     <div class="topbar-title" id="contacts-title">Directory</div>
-    <div class="topbar-actions"><button class="btn btn-primary" id="contacts-add-btn" onclick="openContactModal()">+ Add Contact</button></div>
+    <div class="topbar-actions">
+      <select class="btn" id="contacts-f-role" onchange="renderContacts()"><option value="all">All roles</option></select>
+      <button class="btn btn-primary" id="contacts-add-btn" onclick="openContactModal()">+ Add Contact</button>
+    </div>
   </div>
-  <div class="content"><div id="contacts-list"><div class="loading">Loading...</div></div></div>
+  <div class="content">
+    <input type="text" class="search-bar" id="contacts-search" placeholder="Search name, role, notes, phone…" oninput="renderContacts()">
+    <div id="contacts-list"><div class="loading">Loading...</div></div>
+  </div>
 </div>
 
 <!-- FINANCIAL DASHBOARD -->

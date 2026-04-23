@@ -191,10 +191,18 @@ async function saveContactRole(d){
       if(error)throw error;
       const i=contactRoles.findIndex(r=>r.id===editingContactRoleId);
       if(i>-1)contactRoles[i]=data[0];
-      // Rename cascade: update every contact using the old role (within the same scope)
+      // Rename cascade: update every contact in this scope that had the old role
+      // (in either the legacy `role` column or the new `roles` jsonb array).
       if(renamed){
-        await db.from('contacts').update({role:d.name}).eq('role',old.name).eq('type',old.type_scope);
-        contacts.forEach(c=>{if(c.role===old.name&&c.type===old.type_scope)c.role=d.name;});
+        const affected=contacts.filter(c=>c.type===old.type_scope&&((c.role===old.name)||(Array.isArray(c.roles)&&c.roles.includes(old.name))));
+        for(const c of affected){
+          const newRoles=(Array.isArray(c.roles)?c.roles:[]).map(r=>r===old.name?d.name:r);
+          const newRole=c.role===old.name?d.name:c.role;
+          try{
+            await db.from('contacts').update({roles:newRoles,role:newRole}).eq('id',c.id);
+            c.roles=newRoles;c.role=newRole;
+          }catch(e){console.error(e);}
+        }
       }
       showToast('Role updated!');
     }else{
@@ -212,7 +220,7 @@ async function saveContactRole(d){
 async function deleteContactRole(id){
   const r=contactRoles.find(x=>x.id===id);
   if(!r)return;
-  const inUse=contacts.filter(c=>c.role===r.name&&c.type===r.type_scope).length;
+  const inUse=contacts.filter(c=>c.type===r.type_scope&&((c.role===r.name)||(Array.isArray(c.roles)&&c.roles.includes(r.name)))).length;
   if(inUse>0){showToast(`Cannot delete — ${inUse} contact${inUse>1?'s':''} still use "${r.name}"`);return;}
   try{
     const{error}=await db.from('contact_roles').delete().eq('id',id);
@@ -597,7 +605,10 @@ async function loadContacts(){
       let additional_phones=normalizeIdArray(c.additional_phones);
       // One-shot migration: adopt legacy phone_home as a "Home" entry when no list exists
       if(c.phone_home&&!additional_phones.length)additional_phones=[{label:'Home',number:c.phone_home}];
-      return{...c,people:normalizeIdArray(c.people),additional_phones};
+      // Roles: prefer new roles[] array, fall back to legacy single role string
+      let roles=normalizeIdArray(c.roles);
+      if(!roles.length&&c.role)roles=[c.role];
+      return{...c,people:normalizeIdArray(c.people),additional_phones,roles};
     });
   }catch(e){console.error(e);contacts=[];}
   renderContacts();populateContactDropdowns();

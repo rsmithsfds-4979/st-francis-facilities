@@ -984,13 +984,10 @@ function openContactModal(contact){
   const v=k=>contact?.[k]||'';
   const sel=(k,val)=>contact?.[k]===val?'selected':'';
   document.getElementById('contact-body').innerHTML=`
-    <div class="form-row">
-      <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
-      <div class="fg"><label>Role *</label>
-        <select class="fi" id="ct-role">
-          <option value="">Select…</option>
-        </select>
-      </div>
+    <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
+    <div class="fg"><label>Role(s) — pick one or more *</label>
+      <div id="ct-roles-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px;background:var(--bg2)"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:sans-serif">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
     </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
@@ -1051,8 +1048,9 @@ function openContactModal(contact){
   phonesDraft=Array.isArray(contact?.additional_phones)?contact.additional_phones.map(p=>({...p})):[];
   renderContactPhonesList();
   const selectedType=document.getElementById('ct-type')?.value||'';
-  // Seed role dropdown with current role before toggleTypeSections reads from it
-  populateContactRoleDropdown(selectedType,contact?.role||'');
+  // Seed role list with current roles before toggleTypeSections reads from it
+  const existingRoles=Array.isArray(contact?.roles)&&contact.roles.length?contact.roles:(contact?.role?[contact.role]:[]);
+  populateContactRoleDropdown(selectedType,existingRoles);
   // Sync visibility of COI + people + phone rows based on the initially selected type
   toggleTypeSections(selectedType);
   document.getElementById('contact-modal').classList.add('open');
@@ -1106,24 +1104,29 @@ function toggleTypeSections(type){
   // The primary phone is a Main business number for orgs, a Cell for individuals.
   const phoneLabel=document.getElementById('ct-phone-label');
   if(phoneLabel)phoneLabel.textContent=(type==='Contractor'||type==='Vendor')?'Main phone':'Cell phone';
-  // Role dropdown narrows to this type's scoped roles
-  populateContactRoleDropdown(type,document.getElementById('ct-role')?.value||'');
+  // Role list narrows to this type's scoped roles; preserve currently-checked ones
+  const checkedNow=[...document.querySelectorAll('.ct-role-check:checked')].map(cb=>cb.value);
+  populateContactRoleDropdown(type,checkedNow);
 }
 
-function populateContactRoleDropdown(type,currentRole){
-  const sel=document.getElementById('ct-role');
-  if(!sel)return;
-  const roles=contactRoles.filter(r=>r.type_scope===type).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.name.localeCompare(b.name));
-  const opts=['<option value="">Select…</option>'];
-  let matched=false;
-  roles.forEach(r=>{
-    const selected=currentRole===r.name;
-    if(selected)matched=true;
-    opts.push(`<option ${selected?'selected':''}>${r.name}</option>`);
-  });
-  // Preserve legacy/custom value if it isn't in the managed list
-  if(currentRole&&!matched)opts.push(`<option selected>${currentRole}</option>`);
-  sel.innerHTML=opts.join('');
+function populateContactRoleDropdown(type,currentRoles){
+  const list=document.getElementById('ct-roles-list');
+  if(!list)return;
+  const selected=new Set(Array.isArray(currentRoles)?currentRoles:(currentRoles?[currentRoles]:[]));
+  const scopedRoles=contactRoles.filter(r=>r.type_scope===type).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.name.localeCompare(b.name));
+  if(!scopedRoles.length){
+    list.innerHTML=`<div style="font-size:12px;color:var(--text3);padding:8px;font-family:sans-serif">No roles configured for this type. Add them in <strong>Settings → Contact Roles</strong>.</div>`;
+    return;
+  }
+  // Legacy/custom roles not in the managed list — show them too so we don't silently drop
+  const legacy=[...selected].filter(n=>!scopedRoles.some(r=>r.name===n));
+  list.innerHTML=[...scopedRoles.map(r=>({name:r.name,legacy:false})),...legacy.map(n=>({name:n,legacy:true}))].map(r=>{
+    const checked=selected.has(r.name);
+    return`<label style="display:flex;align-items:center;gap:8px;padding:4px 6px;font-size:13px;cursor:pointer;font-family:sans-serif">
+      <input type="checkbox" class="ct-role-check" value="${r.name.replace(/"/g,'&quot;')}" ${checked?'checked':''} style="width:14px;height:14px">
+      <span>${r.name}${r.legacy?' <span style="color:var(--text3);font-size:11px">(legacy)</span>':''}</span>
+    </label>`;
+  }).join('');
 }
 
 // Local draft of the additional-phones list while the contact modal is open.
@@ -1153,9 +1156,10 @@ function removeContactPhone(i){captureContactPhonesDraft();phonesDraft.splice(i,
 
 async function submitContact(){
   const name=document.getElementById('ct-name')?.value.trim();
-  const role=document.getElementById('ct-role')?.value.trim();
+  const selectedRoles=[...document.querySelectorAll('.ct-role-check:checked')].map(cb=>cb.value);
+  const role=selectedRoles[0]||''; // primary role for legacy read compat
   const type=document.getElementById('ct-type')?.value;
-  if(!name||!role){showToast('Please fill in name and role');return;}
+  if(!name||!selectedRoles.length){showToast('Please fill in name and at least one role');return;}
   // COI fields only persisted for Contractors; wiped for other types to keep data clean.
   const isContractor=type==='Contractor';
   let coi_url=null;
@@ -1176,7 +1180,7 @@ async function submitContact(){
   captureContactPhonesDraft();
   const additional_phones=isIndividual?phonesDraft.filter(p=>p.label||p.number):[];
   saveContact({
-    name,role,type,
+    name,role,roles:selectedRoles,type,
     phone:document.getElementById('ct-phone')?.value.trim(),
     phone_office:null,
     phone_office_ext:null,
