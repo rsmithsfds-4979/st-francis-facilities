@@ -844,22 +844,30 @@ function renderPM(){
 }
 
 function pmCardHTML(p){
-  const due=parseDate(p.next_due);
+  // Prefer scheduled_date for conflict checks if one is set
+  const schedDate=parseDate(p.scheduled_date);
+  const due=schedDate||parseDate(p.next_due);
   const conflicts=due?eventsOnDate(due):[];
   const assetIds=Array.isArray(p.asset_ids)?p.asset_ids:[];
   const linkedAssets=assetIds.map(id=>assets.find(a=>a.id===id)).filter(Boolean);
-  return`<div class="pm-card">
+  const isScheduled=!!p.scheduled_date&&p.status!=='Done';
+  const schedLine=isScheduled
+    ?`<div class="pm-scheduled">📅 Scheduled ${p.scheduled_date}${p.scheduled_time?' at '+p.scheduled_time:''}${p.scheduled_with?' · '+p.scheduled_with:''}</div>`
+    :'';
+  return`<div class="pm-card${isScheduled?' pm-card-scheduled':''}">
     <div style="width:38px;height:38px;border-radius:8px;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🔧</div>
     <div class="pm-info">
       <div class="pm-title">${p.title}</div>
       <div class="pm-meta">${p.building} · ${p.frequency} · ${p.assigned_to||'Unassigned'}</div>
       <div class="pm-meta">Next due: <strong>${p.next_due||'Not set'}</strong>${p.last_completed?' · Last done: '+p.last_completed:''}</div>
+      ${schedLine}
       ${p.description?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${p.description}</div>`:''}
       ${linkedAssets.length?`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${linkedAssets.slice(0,6).map(a=>`<span class="badge b-blue" style="font-size:10px">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}${linkedAssets.length>6?`<span class="badge b-gray" style="font-size:10px">+${linkedAssets.length-6} more</span>`:''}</div>`:''}
       ${conflicts.length?`<div class="pm-conflict">⚠️ Parish event that day: ${conflicts.map(e=>e.title).join(', ')}</div>`:''}
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end;flex-shrink:0">
       ${sb(p.status)}
+      ${p.status!=='Done'?`<button class="btn btn-sm" style="background:var(--info-bg);color:var(--info);border-color:#c0d8f0" onclick="openPMScheduleModal('${p.id}')">📅 ${isScheduled?'Reschedule':'Schedule'}</button>`:''}
       ${p.status!=='Done'?`<button class="btn btn-success btn-sm" onclick="markPMDone('${p.id}')">✓ Done</button>`:''}
       <button class="btn btn-edit btn-sm" onclick="editPM('${p.id}')">Edit</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDeletePM('${p.id}')">Del</button>

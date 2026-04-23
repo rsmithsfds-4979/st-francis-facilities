@@ -67,16 +67,18 @@ function combinedCalendarEvents(){
   // Google
   (gcalEvents||[]).forEach(e=>out.push({...e,source:'gcal'}));
 
-  // PM tasks not yet done
+  // PM tasks not yet done. Scheduled_date takes precedence over next_due when set.
   (pmTasks||[]).filter(p=>p.status!=='Done').forEach(p=>{
-    const d=parseDate(p.next_due);
+    const scheduled=parseDate(p.scheduled_date);
+    const d=scheduled||parseDate(p.next_due);
     if(!d)return;
     const k=ymd(d);
+    const titlePrefix=scheduled?'📅 ':'🔧 ';
     out.push({
       id:'pm-'+p.id,
-      title:'🔧 '+p.title,
+      title:titlePrefix+p.title+(scheduled?' (scheduled)':''),
       start:k,end:k,allDay:true,
-      description:[p.building,p.frequency,p.assigned_to&&'Assigned: '+p.assigned_to].filter(Boolean).join(' · '),
+      description:[p.building,p.frequency,p.assigned_to&&'Assigned: '+p.assigned_to,scheduled&&p.scheduled_time&&'Time: '+p.scheduled_time,scheduled&&p.scheduled_with&&'With: '+p.scheduled_with].filter(Boolean).join(' · '),
       location:p.building||'',
       source:'pm',_ref:{type:'pm',id:p.id},
     });
@@ -695,6 +697,57 @@ async function savePM(d){
     }
     editingPMId=null;closeModal('pm-modal');renderPM();renderDash();
   }catch(e){console.error(e);showToast('Error saving PM task');}
+}
+
+// Logs a scheduled date/time/contact against a PM and optionally auto-creates a Work Order
+// to track the actual visit. PM remains Upcoming until marked Done.
+async function schedulePM(id,{date,time,withWhom,notes,createWO}){
+  const pm=pmTasks.find(p=>p.id===id);
+  if(!pm)return;
+  try{
+    const upd={scheduled_date:date||null,scheduled_time:time||null,scheduled_with:withWhom||null,scheduled_notes:notes||null};
+    const{error}=await db.from('pm_schedule').update(upd).eq('id',id);
+    if(error)throw error;
+    Object.assign(pm,upd);
+    let toastMsg='PM scheduled';
+    if(createWO){
+      const dueStr=date?(time?`${date} ${time}`:date):'';
+      const woData={
+        issue:pm.title+' (Scheduled PM)',
+        building:pm.building||'All Buildings',
+        priority:'Medium',
+        assignee:withWhom||pm.assigned_to||'—',
+        due_date:dueStr,
+        status:'Open',
+        notes:`Auto-created from PM schedule${notes?'. '+notes:''}`,
+        asset_ids:Array.isArray(pm.asset_ids)?pm.asset_ids:[],
+      };
+      try{
+        const{data:woRes,error:woErr}=await db.from('work_orders').insert([woData]).select();
+        if(!woErr&&woRes?.[0]){
+          workOrders.unshift({...woRes[0],asset_ids:normalizeIdArray(woRes[0].asset_ids),invoice_ids:normalizeIdArray(woRes[0].invoice_ids),photo_urls:normalizeIdArray(woRes[0].photo_urls)});
+          toastMsg='PM scheduled + Work Order created';
+        }
+      }catch(e){console.error('PM schedule WO failed:',e);}
+    }
+    closeModal('pm-schedule-modal');
+    showToast(toastMsg);
+    renderPM();renderWO();renderDash();
+  }catch(e){console.error(e);showToast('Error scheduling PM');}
+}
+
+async function clearPMSchedule(id){
+  const pm=pmTasks.find(p=>p.id===id);
+  if(!pm)return;
+  try{
+    const upd={scheduled_date:null,scheduled_time:null,scheduled_with:null,scheduled_notes:null};
+    const{error}=await db.from('pm_schedule').update(upd).eq('id',id);
+    if(error)throw error;
+    Object.assign(pm,upd);
+    closeModal('pm-schedule-modal');
+    showToast('Schedule cleared');
+    renderPM();
+  }catch(e){console.error(e);showToast('Error');}
 }
 
 async function markPMDone(id){

@@ -696,6 +696,58 @@ function submitPM(){
 
 function editPM(id){const p=pmTasks.find(x=>x.id===id);if(p)openPMModal(p);}
 
+// ---- SCHEDULE PM MODAL ----
+function openPMScheduleModal(pmId){
+  const pm=pmTasks.find(p=>p.id===pmId);
+  if(!pm)return;
+  document.getElementById('pm-schedule-modal-h').textContent=pm.scheduled_date?'Edit Schedule':'Schedule PM';
+  // Pre-fill: existing schedule, else defaults. Default scheduled_with to PM's assigned_to.
+  const schedDate=pm.scheduled_date||'';
+  const schedTime=pm.scheduled_time||'';
+  const schedWith=pm.scheduled_with||pm.assigned_to||'';
+  const schedNotes=pm.scheduled_notes||'';
+  document.getElementById('pm-schedule-body').innerHTML=`
+    <div style="padding:10px 12px;background:var(--info-bg);border-radius:6px;margin-bottom:14px;font-family:sans-serif;font-size:12px">
+      Scheduling <strong>${pm.title}</strong> — ${pm.building} · ${pm.frequency||'—'}
+      ${pm.next_due?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Normally due: ${pm.next_due}</div>`:''}
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Scheduled date *</label><input type="date" class="fi" id="pm-sched-date" value="${schedDate}"></div>
+      <div class="fg"><label>Time (optional)</label><input type="time" class="fi" id="pm-sched-time" value="${schedTime}"></div>
+    </div>
+    <div class="fg"><label>Scheduled with</label>
+      <input type="text" class="fi" id="pm-sched-with" list="pm-sched-with-opts" placeholder="Name of contact you spoke to" value="${schedWith.replace(/"/g,'&quot;')}">
+      <datalist id="pm-sched-with-opts">
+        ${contacts.map(c=>`<option value="${c.name.replace(/"/g,'&quot;')}">`).join('')}
+      </datalist>
+    </div>
+    <div class="fg"><label>Notes about the call / email</label>
+      <textarea class="fi" id="pm-sched-notes" placeholder="e.g. Called Mike 4/23, confirmed Spring PM, will bring new filters">${schedNotes}</textarea>
+    </div>
+    <div class="fg" style="display:flex;align-items:center;gap:8px;font-family:sans-serif;font-size:13px;padding:8px 12px;background:var(--bg3);border-radius:6px">
+      <input type="checkbox" id="pm-sched-create-wo" ${pm.scheduled_date?'':'checked'} style="width:16px;height:16px;cursor:pointer">
+      <label for="pm-sched-create-wo" style="cursor:pointer;margin:0">Also create a Work Order for this visit${pm.scheduled_date?' (already scheduled — check to create another)':''}</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('pm-schedule-modal')">Cancel</button>
+      ${pm.scheduled_date?`<button class="btn btn-danger" onclick="clearPMSchedule('${pmId}')">Clear schedule</button>`:''}
+      <button class="btn btn-primary" onclick="submitPMSchedule('${pmId}')">${pm.scheduled_date?'Save changes':'Save schedule'}</button>
+    </div>`;
+  document.getElementById('pm-schedule-modal').classList.add('open');
+}
+
+function submitPMSchedule(pmId){
+  const date=document.getElementById('pm-sched-date')?.value;
+  if(!date){showToast('Please pick a scheduled date');return;}
+  schedulePM(pmId,{
+    date,
+    time:document.getElementById('pm-sched-time')?.value||'',
+    withWhom:document.getElementById('pm-sched-with')?.value.trim()||'',
+    notes:document.getElementById('pm-sched-notes')?.value.trim()||'',
+    createWO:!!document.getElementById('pm-sched-create-wo')?.checked,
+  });
+}
+
 // ---- INVOICE MODAL ----
 function openInvoiceModal(inv){
   editingInvId=inv?inv.id:null;
