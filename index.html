@@ -422,6 +422,13 @@
       </div>
       <div id="room-types-list"><div class="loading">Loading...</div></div>
     </div>
+    <div class="card collapsible" data-collapse-id="settings-contact-roles">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Contact Roles</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openContactRoleModal()">+ Add Role</button>
+      </div>
+      <div id="contact-roles-list"><div class="loading">Loading...</div></div>
+    </div>
     <div class="card collapsible" data-collapse-id="settings-gcal">
       <div class="card-header" onclick="toggleCard(this.parentNode)">
         <div class="card-title"><span class="cc-chevron">▼</span>Google Calendar Integration</div>
@@ -480,6 +487,9 @@
 </div>
 <div class="modal-overlay" id="room-type-modal" onclick="outsideClose(event,'room-type-modal')">
   <div class="modal"><h3 id="room-type-modal-h">Add Room Type</h3><div class="modal-sub">Manage the room type list used across all buildings.</div><div id="room-type-body"></div></div>
+</div>
+<div class="modal-overlay" id="contact-role-modal" onclick="outsideClose(event,'contact-role-modal')">
+  <div class="modal"><h3 id="contact-role-modal-h">Add Role</h3><div class="modal-sub">Roles are scoped by contact type (Contractor / Vendor / Staff / Volunteer).</div><div id="contact-role-body"></div></div>
 </div>
 <div class="modal-overlay" id="quote-modal" onclick="outsideClose(event,'quote-modal')">
   <div class="modal"><h3 id="quote-modal-h">Add Quote</h3><div class="modal-sub">Log an estimate received from a contractor or vendor.</div><div id="quote-body"></div></div>

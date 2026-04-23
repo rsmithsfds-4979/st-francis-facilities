@@ -1292,6 +1292,31 @@ function populateBuildingDropdowns(){
 
 function populateContactDropdowns(){}
 
+function renderContactRolesList(){
+  const el=document.getElementById('contact-roles-list');
+  if(!el)return;
+  if(!contactRoles.length){el.innerHTML='<div class="empty-state"><p>No roles yet.</p></div>';return;}
+  // Group by scope for readability
+  const scopes=['Contractor','Vendor','Staff','Volunteer'];
+  const byScope={};
+  contactRoles.forEach(r=>{(byScope[r.type_scope]=byScope[r.type_scope]||[]).push(r);});
+  el.innerHTML=scopes.filter(s=>byScope[s]?.length).map(s=>`
+    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;padding:10px 16px 4px;background:var(--bg3)">${s} · ${byScope[s].length}</div>
+    ${byScope[s].map(r=>{
+      const inUse=contacts.filter(c=>c.role===r.name&&c.type===r.type_scope).length;
+      return`<div style="display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:bold;font-size:13px;color:var(--accent2)">${r.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${inUse} contact${inUse===1?'':'s'} using this role</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-edit btn-sm" onclick="editContactRole('${r.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDeleteContactRole('${r.id}','${r.name.replace(/'/g,"\\'")}')">Del</button>
+        </div>
+      </div>`;
+    }).join('')}`).join('');
+}
+
 function renderRoomTypesList(){
   const el=document.getElementById('room-types-list');
   if(!el)return;
@@ -1725,6 +1750,7 @@ function renderSettings(){
     }
   }
   renderRoomTypesList();
+  renderContactRolesList();
   const el=document.getElementById('categories-list');
   if(!el)return;
   if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}

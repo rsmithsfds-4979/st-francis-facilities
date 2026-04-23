@@ -986,7 +986,11 @@ function openContactModal(contact){
   document.getElementById('contact-body').innerHTML=`
     <div class="form-row">
       <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
-      <div class="fg"><label>Role *</label><input type="text" class="fi" id="ct-role" placeholder="e.g. HVAC Contractor" value="${v('role')}"></div>
+      <div class="fg"><label>Role *</label>
+        <select class="fi" id="ct-role">
+          <option value="">Select…</option>
+        </select>
+      </div>
     </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
@@ -1046,8 +1050,11 @@ function openContactModal(contact){
   renderPeopleList();
   phonesDraft=Array.isArray(contact?.additional_phones)?contact.additional_phones.map(p=>({...p})):[];
   renderContactPhonesList();
+  const selectedType=document.getElementById('ct-type')?.value||'';
+  // Seed role dropdown with current role before toggleTypeSections reads from it
+  populateContactRoleDropdown(selectedType,contact?.role||'');
   // Sync visibility of COI + people + phone rows based on the initially selected type
-  toggleTypeSections(document.getElementById('ct-type')?.value||'');
+  toggleTypeSections(selectedType);
   document.getElementById('contact-modal').classList.add('open');
 }
 
@@ -1099,6 +1106,24 @@ function toggleTypeSections(type){
   // The primary phone is a Main business number for orgs, a Cell for individuals.
   const phoneLabel=document.getElementById('ct-phone-label');
   if(phoneLabel)phoneLabel.textContent=(type==='Contractor'||type==='Vendor')?'Main phone':'Cell phone';
+  // Role dropdown narrows to this type's scoped roles
+  populateContactRoleDropdown(type,document.getElementById('ct-role')?.value||'');
+}
+
+function populateContactRoleDropdown(type,currentRole){
+  const sel=document.getElementById('ct-role');
+  if(!sel)return;
+  const roles=contactRoles.filter(r=>r.type_scope===type).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)||a.name.localeCompare(b.name));
+  const opts=['<option value="">Select…</option>'];
+  let matched=false;
+  roles.forEach(r=>{
+    const selected=currentRole===r.name;
+    if(selected)matched=true;
+    opts.push(`<option ${selected?'selected':''}>${r.name}</option>`);
+  });
+  // Preserve legacy/custom value if it isn't in the managed list
+  if(currentRole&&!matched)opts.push(`<option selected>${currentRole}</option>`);
+  sel.innerHTML=opts.join('');
 }
 
 // Local draft of the additional-phones list while the contact modal is open.
@@ -1795,6 +1820,51 @@ function confirmDeleteRoomType(id,name){
     ?`"${name}" is used by ${inUse} room${inUse>1?'s':''}. Reassign them before deleting.`
     :`"${name}" will be permanently removed.`;
   document.getElementById('conf-ok').onclick=()=>{deleteRoomType(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ---- CONTACT ROLE MODAL ----
+function openContactRoleModal(r){
+  editingContactRoleId=r?r.id:null;
+  document.getElementById('contact-role-modal-h').textContent=r?'Edit Role':'Add Role';
+  const sel=(val)=>r?.type_scope===val?'selected':'';
+  document.getElementById('contact-role-body').innerHTML=`
+    <div class="fg"><label>Name *</label><input type="text" class="fi" id="cr-name" placeholder="e.g. Asbestos Abatement" value="${(r?.name||'').replace(/"/g,'&quot;')}"></div>
+    <div class="fg"><label>Applies to *</label>
+      <select class="fi" id="cr-scope">
+        <option ${sel('Contractor')}>Contractor</option>
+        <option ${sel('Vendor')}>Vendor</option>
+        <option ${sel('Staff')}>Staff</option>
+        <option ${sel('Volunteer')}>Volunteer</option>
+      </select>
+    </div>
+    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+      ${r?'Renaming will update every contact of this scope using the old name.':'Only contacts of the selected type will see this role in their dropdown.'}
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('contact-role-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitContactRole()">${r?'Save Changes':'Add Role'}</button>
+    </div>`;
+  document.getElementById('contact-role-modal').classList.add('open');
+}
+
+function submitContactRole(){
+  const name=document.getElementById('cr-name')?.value.trim();
+  const type_scope=document.getElementById('cr-scope')?.value;
+  if(!name||!type_scope){showToast('Please fill in name and scope');return;}
+  saveContactRole({name,type_scope});
+}
+
+function editContactRole(id){const r=contactRoles.find(x=>x.id===id);if(r)openContactRoleModal(r);}
+
+function confirmDeleteContactRole(id,name){
+  const r=contactRoles.find(x=>x.id===id);
+  const inUse=r?contacts.filter(c=>c.role===r.name&&c.type===r.type_scope).length:0;
+  document.getElementById('conf-h').textContent='Delete role?';
+  document.getElementById('conf-msg').textContent=inUse>0
+    ?`"${name}" is used by ${inUse} contact${inUse>1?'s':''}. Reassign them before deleting.`
+    :`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteContactRole(id);closeConfirm();};
   document.getElementById('confirm-overlay').classList.add('open');
 }
 

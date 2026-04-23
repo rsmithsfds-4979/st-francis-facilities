@@ -5,7 +5,7 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles()]);
   renderHistory();renderDash();
 }
 
@@ -161,6 +161,64 @@ async function deleteQuote(id){
     if(error)throw error;
     quotes=quotes.filter(q=>q.id!==id);
     showToast('Quote deleted');renderQuotes();
+  }catch(e){showToast('Error deleting');}
+}
+
+async function loadContactRoles(){
+  try{
+    const{data,error}=await db.from('contact_roles').select('*').order('type_scope').order('sort_order').order('name');
+    if(error)throw error;
+    if(!data||data.length===0)await seedContactRoles();
+    else contactRoles=data;
+  }catch(e){console.error(e);contactRoles=[];}
+}
+
+async function seedContactRoles(){
+  try{
+    const toInsert=defaultContactRoles.map((r,i)=>({...r,sort_order:i+1}));
+    const{data,error}=await db.from('contact_roles').insert(toInsert).select();
+    if(error)throw error;
+    contactRoles=data||[];
+  }catch(e){console.error(e);contactRoles=[];}
+}
+
+async function saveContactRole(d){
+  try{
+    if(editingContactRoleId){
+      const old=contactRoles.find(r=>r.id===editingContactRoleId);
+      const renamed=old&&old.name!==d.name;
+      const{data,error}=await db.from('contact_roles').update(d).eq('id',editingContactRoleId).select();
+      if(error)throw error;
+      const i=contactRoles.findIndex(r=>r.id===editingContactRoleId);
+      if(i>-1)contactRoles[i]=data[0];
+      // Rename cascade: update every contact using the old role (within the same scope)
+      if(renamed){
+        await db.from('contacts').update({role:d.name}).eq('role',old.name).eq('type',old.type_scope);
+        contacts.forEach(c=>{if(c.role===old.name&&c.type===old.type_scope)c.role=d.name;});
+      }
+      showToast('Role updated!');
+    }else{
+      const sort_order=(contactRoles.reduce((m,r)=>Math.max(m,r.sort_order||0),0))+1;
+      const{data,error}=await db.from('contact_roles').insert([{...d,sort_order}]).select();
+      if(error)throw error;
+      contactRoles.push(data[0]);
+      showToast('Role added!');
+    }
+    editingContactRoleId=null;closeModal('contact-role-modal');
+    renderSettings();renderContacts();
+  }catch(e){console.error(e);showToast('Error saving role');}
+}
+
+async function deleteContactRole(id){
+  const r=contactRoles.find(x=>x.id===id);
+  if(!r)return;
+  const inUse=contacts.filter(c=>c.role===r.name&&c.type===r.type_scope).length;
+  if(inUse>0){showToast(`Cannot delete — ${inUse} contact${inUse>1?'s':''} still use "${r.name}"`);return;}
+  try{
+    const{error}=await db.from('contact_roles').delete().eq('id',id);
+    if(error)throw error;
+    contactRoles=contactRoles.filter(x=>x.id!==id);
+    showToast('Role deleted');renderSettings();
   }catch(e){showToast('Error deleting');}
 }
 
