@@ -991,8 +991,13 @@ function openContactModal(contact){
           <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
         </select>
       </div>
-      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
+      <div class="fg"><label>Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
+    <div class="form-row" id="ct-office-row">
+      <div class="fg"><label>Office phone</label><input type="text" class="fi" id="ct-phone-office" value="${v('phone_office')}"></div>
+      <div class="fg" style="max-width:120px"><label>Extension</label><input type="text" class="fi" id="ct-phone-office-ext" value="${v('phone_office_ext')}"></div>
+    </div>
+    <div class="fg" id="ct-home-row"><label>Home phone</label><input type="text" class="fi" id="ct-phone-home" value="${v('phone_home')}"></div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
     <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Street address</label><input type="text" class="fi" id="ct-address" placeholder="123 Main St" value="${v('address')}"></div>
@@ -1028,6 +1033,8 @@ function openContactModal(contact){
     </div>`;
   peopleDraft=Array.isArray(contact?.people)?contact.people.map(p=>({...p})):[];
   renderPeopleList();
+  // Sync visibility of COI + people + phone rows based on the initially selected type
+  toggleTypeSections(document.getElementById('ct-type')?.value||'');
   document.getElementById('contact-modal').classList.add('open');
 }
 
@@ -1073,6 +1080,11 @@ function toggleTypeSections(type){
   if(coi)coi.style.display=type==='Contractor'?'block':'none';
   const people=document.getElementById('people-section');
   if(people)people.style.display=(type==='Contractor'||type==='Vendor')?'block':'none';
+  // Office phone + ext for Contractor/Vendor; Home phone for Staff/Volunteer.
+  const officeRow=document.getElementById('ct-office-row');
+  if(officeRow)officeRow.style.display=(type==='Contractor'||type==='Vendor')?'':'none';
+  const homeRow=document.getElementById('ct-home-row');
+  if(homeRow)homeRow.style.display=(type==='Staff'||type==='Volunteer')?'':'none';
 }
 
 async function submitContact(){
@@ -1095,9 +1107,14 @@ async function submitContact(){
   const people=(isContractor||isVendor)
     ?peopleDraft.filter(p=>p.name||p.title||p.phone||p.email||p.notes)
     :[];
+  const isOrg=isContractor||isVendor;
+  const isIndividual=type==='Staff'||type==='Volunteer';
   saveContact({
     name,role,type,
     phone:document.getElementById('ct-phone')?.value.trim(),
+    phone_office:isOrg?document.getElementById('ct-phone-office')?.value.trim():null,
+    phone_office_ext:isOrg?document.getElementById('ct-phone-office-ext')?.value.trim():null,
+    phone_home:isIndividual?document.getElementById('ct-phone-home')?.value.trim():null,
     email:document.getElementById('ct-email')?.value.trim(),
     website:document.getElementById('ct-website')?.value.trim(),
     address:document.getElementById('ct-address')?.value.trim(),

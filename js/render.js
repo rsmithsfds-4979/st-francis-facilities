@@ -1001,7 +1001,8 @@ function renderContacts(){
           <div style="width:40px;height:40px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:var(--info);flex-shrink:0">${(c.name||'?').substring(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
-            <div style="font-size:12px;color:var(--text3)">${c.role}${c.phone?' · '+c.phone:''}${c.email?' · '+c.email:''}</div>
+            <div style="font-size:12px;color:var(--text3)">${c.role}${c.email?' · '+c.email:''}</div>
+            ${(()=>{const phones=[];if(c.phone)phones.push('📱 '+c.phone);if(c.phone_office){const ext=c.phone_office_ext?' x'+c.phone_office_ext:'';phones.push('📞 '+c.phone_office+ext);}if(c.phone_home)phones.push('🏠 '+c.phone_home);return phones.length?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${phones.join(' · ')}</div>`:'';})()}
             ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
             ${c.website?`<div style="font-size:12px;margin-top:2px">🌐 <a href="${websiteHref}" target="_blank" style="color:var(--accent)">${websiteLabel}</a></div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}
