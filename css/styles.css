@@ -15,9 +15,14 @@ body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-heig
 .sidebar-header{padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.1)}
 .sidebar-logo{font-size:13px;font-weight:bold;line-height:1.35}
 .sidebar-sub{font-size:10px;opacity:.6;margin-top:2px;font-family:sans-serif}
-.nav-section{padding:6px 6px 2px}
-.nav-label{font-size:9px;font-weight:bold;opacity:.5;letter-spacing:.1em;text-transform:uppercase;padding:0 8px;margin-bottom:2px;font-family:sans-serif}
-.nav-item{display:flex;align-items:center;justify-content:space-between;padding:5px 10px;border-radius:5px;font-size:12.5px;color:rgba(255,255,255,.75);cursor:pointer;transition:all .15s;font-family:sans-serif}
+.nav-section{padding:2px 6px}
+.nav-section + .nav-section{margin-top:2px}
+.nav-label{display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:bold;color:#fff;opacity:.95;letter-spacing:.14em;text-transform:uppercase;padding:8px 10px 7px;margin:2px 0 4px;font-family:sans-serif;cursor:pointer;border-radius:5px;background:rgba(255,255,255,.08);border-left:3px solid var(--accent);user-select:none;transition:background .15s}
+.nav-label:hover{background:rgba(255,255,255,.14)}
+.nav-chev{font-size:10px;opacity:.75;transition:transform .15s;display:inline-block}
+.nav-section.collapsed .nav-chev{transform:rotate(-90deg)}
+.nav-section.collapsed .nav-item,.nav-section.collapsed #building-nav-items{display:none}
+.nav-item{display:flex;align-items:center;justify-content:space-between;padding:6px 10px 6px 16px;border-radius:5px;font-size:12.5px;color:rgba(255,255,255,.78);cursor:pointer;transition:all .15s;font-family:sans-serif}
 .nav-item:hover{background:rgba(255,255,255,.1);color:#fff}
 .nav-item.active{background:rgba(255,255,255,.18);color:#fff;font-weight:500}
 .nav-badge{background:#c0392b;color:#fff;font-size:10px;font-weight:bold;padding:1px 6px;border-radius:10px}

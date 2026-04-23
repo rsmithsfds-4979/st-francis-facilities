@@ -15,50 +15,47 @@
     <div class="sidebar-logo">St. Francis<br>de Sales</div>
     <div class="sidebar-sub">Facility Manager</div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Overview</div>
+  <div class="nav-section" data-nav="overview">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Overview</span><span class="nav-chev">▾</span></div>
     <div class="nav-item active" onclick="go('dashboard',this)"><span>Dashboard</span></div>
     <div class="nav-item" onclick="go('calendar',this)"><span>Calendar</span></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Operations</div>
+  <div class="nav-section" data-nav="operations">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Operations</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('workorders',this)"><span>Work Orders</span><span class="nav-badge" id="wo-badge">0</span></div>
     <div class="nav-item" onclick="go('pm',this)"><span>PM Schedule</span></div>
     <div class="nav-item" onclick="go('history',this)"><span>Service History</span></div>
+    <div class="nav-item" onclick="go('projects',this)"><span>Projects</span></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Assets</div>
+  <div class="nav-section" data-nav="assets">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Assets &amp; Spend</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('assets',this)"><span>Asset Registry</span></div>
     <div class="nav-item" onclick="go('supplies',this)"><span>Supplies</span></div>
     <div class="nav-item" onclick="go('quotes',this)"><span>Vendor Quotes</span></div>
     <div class="nav-item" onclick="go('invoices',this)"><span>Vendor Invoices</span></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Buildings</div>
+  <div class="nav-section" data-nav="buildings">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Buildings</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('buildings',this)"><span>All Buildings</span></div>
     <div id="building-nav-items"></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Directory</div>
+  <div class="nav-section" data-nav="directory">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Directory</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="goContacts('Contractor',this)"><span>Contractors</span></div>
     <div class="nav-item" onclick="goContacts('Vendor',this)"><span>Vendors</span></div>
     <div class="nav-item" onclick="goContacts('Staff',this)"><span>Staff</span></div>
     <div class="nav-item" onclick="goContacts('Volunteer',this)"><span>Volunteers</span></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Planning</div>
-    <div class="nav-item" onclick="go('projects',this)"><span>Projects</span></div>
-  </div>
-  <div class="nav-section">
-    <div class="nav-label">Reports</div>
+  <div class="nav-section" data-nav="reports">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Reports</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('finance',this)"><span>Financial Dashboard</span></div>
     <div class="nav-item" onclick="go('pm-report',this)"><span>PM Compliance</span></div>
-    <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor & COI</span></div>
+    <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor &amp; COI</span></div>
     <div class="nav-item" onclick="go('projects-finance-report',this)"><span>Projects · Finance</span></div>
     <div class="nav-item" onclick="go('projects-parish-report',this)"><span>Projects · Parish</span></div>
   </div>
-  <div class="nav-section">
-    <div class="nav-label">Admin</div>
+  <div class="nav-section" data-nav="admin">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>Admin</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('settings',this)"><span>Settings</span></div>
   </div>
 </div>

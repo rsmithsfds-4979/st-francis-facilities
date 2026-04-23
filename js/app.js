@@ -1360,7 +1360,15 @@ function go(name,el){
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const v=document.getElementById('view-'+name);
   if(v)v.classList.add('active');
-  if(el)el.classList.add('active');
+  if(el){
+    el.classList.add('active');
+    // Auto-expand the containing nav section so the active item is visible
+    const section=el.closest('.nav-section');
+    if(section?.classList.contains('collapsed')){
+      section.classList.remove('collapsed');
+      try{localStorage.setItem('nav-'+section.dataset.nav,'0');}catch(e){}
+    }
+  }
   if(name==='buildings')renderBuildings();
   if(name==='settings')renderSettings();
   if(name==='contacts')renderContacts();
@@ -1468,6 +1476,26 @@ function initCollapsibleCards(){
   });
 }
 
+// ---- COLLAPSIBLE SIDEBAR SECTIONS ----
+// Keeps a persisted collapsed state per nav section so the sidebar stays tidy
+// across sessions. Keyed by the section's data-nav attribute.
+function toggleNavSection(labelEl){
+  const section=labelEl?.closest('.nav-section');
+  if(!section)return;
+  const collapsed=section.classList.toggle('collapsed');
+  const key=section.dataset.nav;
+  if(key){try{localStorage.setItem('nav-'+key,collapsed?'1':'0');}catch(e){}}
+}
+
+function initCollapsibleNav(){
+  document.querySelectorAll('.nav-section[data-nav]').forEach(section=>{
+    try{
+      if(localStorage.getItem('nav-'+section.dataset.nav)==='1')section.classList.add('collapsed');
+    }catch(e){}
+  });
+}
+
 // ---- INIT ----
 setupDragDropUploads();
+initCollapsibleNav();
 loadAll();
