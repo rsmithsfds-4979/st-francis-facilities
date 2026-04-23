@@ -21,6 +21,7 @@ function openWOModal(presetRoomId,presetBldId){
       <div class="fg"><label>Building *</label>
         <select class="fi" id="f-bld" onchange="updateRoomDropdown()">
           <option value="">Select...</option>
+          <option ${presetBldName==='All Buildings'?'selected':''}>All Buildings</option>
           ${buildings.map(b=>`<option ${b.name===presetBldName?'selected':''}>${b.name}</option>`).join('')}
         </select>
       </div>
@@ -66,23 +67,37 @@ function openWOModal(presetRoomId,presetBldId){
     </div>`;
   initPhotoState('wo',wo?allPhotos(wo):[]);
   renderPhotoGallery('wo','wo-photo-gallery');
-  initAssetPicker('asset-select-list',checkedAssetIds,presetBldName||'all',true);
+  // "All Buildings" means show everything; specific building filters; no building → hint
+  const pickerFilter=presetBldName==='All Buildings'?'all':(presetBldName||'all');
+  const needBuildingGate=!presetBldName; // hint only if nothing picked yet
+  initAssetPicker('asset-select-list',checkedAssetIds,pickerFilter,needBuildingGate);
   const bldSel=document.getElementById('asset-select-list-bld');
-  if(bldSel&&presetBldName)bldSel.value=presetBldName;
+  if(bldSel)bldSel.value=pickerFilter;
   renderAssetPicker('asset-select-list');
   document.getElementById('wo-modal').classList.add('open');
 }
 
 function updateRoomDropdown(){
   const bldName=document.getElementById('f-bld')?.value;
+  const isAll=bldName==='All Buildings';
   const roomSel=document.getElementById('f-room');
   if(roomSel){
-    const bldRooms=bldName?rooms.filter(r=>r.building_name===bldName):[];
-    roomSel.innerHTML='<option value="">Select room...</option>'+bldRooms.map(r=>`<option value="${r.id}">${r.name}${r.floor?' ('+r.floor+')':''}</option>`).join('');
+    if(!bldName||isAll){
+      // No single-building context — a specific room doesn't make sense here
+      roomSel.innerHTML='<option value="">—</option>';
+    }else{
+      const bldRooms=rooms.filter(r=>r.building_name===bldName);
+      roomSel.innerHTML='<option value="">Select room...</option>'+bldRooms.map(r=>`<option value="${r.id}">${r.name}${r.floor?' ('+r.floor+')':''}</option>`).join('');
+    }
   }
-  // Sync the asset picker's building filter so it narrows automatically
+  // Any explicit building pick (including "All Buildings") lifts the requireBuilding hint
+  const state=_pickerState['asset-select-list'];
+  if(state)state.requireBuilding=!bldName;
   const pickerBld=document.getElementById('asset-select-list-bld');
-  if(pickerBld){pickerBld.value=bldName||'all';renderAssetPicker('asset-select-list');}
+  if(pickerBld){
+    pickerBld.value=(bldName&&!isAll)?bldName:'all';
+    renderAssetPicker('asset-select-list');
+  }
 }
 
 function toggleAssetSelect(el,id){
