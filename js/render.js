@@ -14,10 +14,11 @@ function eventDate(e){
   }
   return new Date(e.start);
 }
-function eventsOnDate(date){
+function eventsOnDate(date,events){
   if(!date)return[];
+  const list=events||gcalEvents;
   const y=date.getFullYear(),m=date.getMonth(),d=date.getDate();
-  return gcalEvents.filter(e=>{
+  return list.filter(e=>{
     const ed=eventDate(e);
     return ed&&ed.getFullYear()===y&&ed.getMonth()===m&&ed.getDate()===d;
   });
@@ -83,19 +84,30 @@ function fmtEventTime(e){
 function sortEvents(events){return[...events].sort((a,b)=>(new Date(a.start))-(new Date(b.start)));}
 
 function renderCalDay(el){
-  const events=sortEvents(eventsOnDate(calDate));
+  const all=combinedCalendarEvents();
+  const events=sortEvents(eventsOnDate(calDate,all));
   if(!events.length){el.innerHTML='<div class="empty-state"><p>No events on this day.</p></div>';return;}
-  el.innerHTML=events.map(e=>`
-    <div class="card" style="margin-bottom:12px">
+  el.innerHTML=events.map(e=>{
+    const src=e.source||'gcal';
+    const clickable=e._ref?`onclick="dispatchCalEvent('${e._ref.type}','${e._ref.id}')" style="cursor:pointer"`:'';
+    return`<div class="card cal-src-${src}-card" ${clickable} style="margin-bottom:12px;border-left:4px solid ${calSourceColor(src)}">
       <div style="padding:14px 18px;display:flex;gap:14px;align-items:flex-start">
-        <div style="font-size:12px;color:var(--accent);font-family:sans-serif;font-weight:bold;min-width:100px;flex-shrink:0">${fmtEventTime(e)}</div>
+        <div style="font-size:12px;color:${calSourceColor(src)};font-family:sans-serif;font-weight:bold;min-width:100px;flex-shrink:0">${fmtEventTime(e)}<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:normal">${calSourceLabel(src)}</div></div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:bold;font-size:15px;color:var(--accent2)">${e.title}</div>
           ${e.location?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:4px">📍 ${e.location}</div>`:''}
           ${e.description?`<div style="font-size:13px;color:var(--text2);font-family:sans-serif;margin-top:8px;white-space:pre-wrap;line-height:1.5">${e.description}</div>`:''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function calSourceColor(src){
+  return{gcal:'var(--accent)',pm:'var(--warning)',wo:'var(--danger)',quote:'#6b3fa0',custom:'var(--success)'}[src]||'var(--text3)';
+}
+function calSourceLabel(src){
+  return{gcal:'Parish',pm:'PM',wo:'Work order',quote:'Quote',custom:'Event'}[src]||'';
 }
 
 function renderCalWeek(el){
@@ -103,23 +115,28 @@ function renderCalWeek(el){
   const weekStart=new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay());
   const today=new Date();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const all=combinedCalendarEvents();
   const cols=[];
   for(let i=0;i<7;i++){
     const day=new Date(weekStart.getFullYear(),weekStart.getMonth(),weekStart.getDate()+i);
-    const events=sortEvents(eventsOnDate(day));
+    const events=sortEvents(eventsOnDate(day,all));
     const isToday=sameDay(day,today);
     cols.push(`<div class="cal-week-col ${isToday?'cal-today':''}">
-      <div class="cal-week-head">
+      <div class="cal-week-head" onclick="calJumpToDay('${day.toISOString()}')">
         <div class="cal-week-dayname">${dayNames[i]}</div>
         <div class="cal-week-daynum">${day.getDate()}</div>
       </div>
-      <div class="cal-week-body" onclick="calJumpToDay('${day.toISOString()}')">
+      <div class="cal-week-body">
         ${events.length
-          ?events.map(e=>`<div class="cal-chip cal-chip-big">
+          ?events.map(e=>{
+            const src=e.source||'gcal';
+            const click=e._ref?`onclick="event.stopPropagation();dispatchCalEvent('${e._ref.type}','${e._ref.id}')"`:'';
+            return`<div class="cal-chip cal-chip-big cal-src-${src}" ${click}>
               <div class="cal-chip-time">${fmtEventTime(e)}</div>
               <div class="cal-chip-title">${e.title}</div>
               ${e.location?`<div class="cal-chip-loc">📍 ${e.location}</div>`:''}
-            </div>`).join('')
+            </div>`;
+          }).join('')
           :'<div class="cal-week-empty">—</div>'}
       </div>
     </div>`);
@@ -135,17 +152,23 @@ function renderCalMonth(el){
   const gridStart=new Date(year,month,1-firstDay.getDay());
   const today=new Date();
   const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const all=combinedCalendarEvents();
   const cells=[];
   for(let i=0;i<42;i++){
     const day=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+i);
     const inMonth=day.getMonth()===month;
     const isToday=sameDay(day,today);
-    const events=sortEvents(eventsOnDate(day));
+    const events=sortEvents(eventsOnDate(day,all));
     const shown=events.slice(0,3);
     const extra=events.length-shown.length;
+    const chips=shown.map(e=>{
+      const src=e.source||'gcal';
+      const click=e._ref?`onclick="event.stopPropagation();dispatchCalEvent('${e._ref.type}','${e._ref.id}')"`:'';
+      return`<div class="cal-chip cal-chip-mini cal-src-${src}" ${click} title="${(e.title+(e.location?' — '+e.location:'')).replace(/"/g,'&quot;')}">${e.allDay?'':fmtEventTime(e).split(' – ')[0]+' '}${e.title}</div>`;
+    }).join('');
     cells.push(`<div class="cal-month-cell ${inMonth?'':'cal-month-other'} ${isToday?'cal-today':''}" onclick="calJumpToDay('${day.toISOString()}')">
       <div class="cal-month-daynum">${day.getDate()}</div>
-      ${shown.map(e=>`<div class="cal-chip cal-chip-mini" title="${(e.title+(e.location?' — '+e.location:'')).replace(/"/g,'&quot;')}">${e.allDay?'':fmtEventTime(e).split(' – ')[0]+' '}${e.title}</div>`).join('')}
+      ${chips}
       ${extra>0?`<div class="cal-more">+${extra} more</div>`:''}
     </div>`);
     if((i+1)%7===0&&i>=27&&day>=new Date(year,month+1,0))break; // trim 6th row if not needed
@@ -162,6 +185,7 @@ function renderCalQuarter(el){
   const qStartMonth=Math.floor(d.getMonth()/3)*3;
   const today=new Date();
   const dayNames=['S','M','T','W','T','F','S'];
+  const all=combinedCalendarEvents();
   const months=[];
   for(let m=0;m<3;m++){
     const monthDate=new Date(year,qStartMonth+m,1);
@@ -172,7 +196,7 @@ function renderCalQuarter(el){
       const day=new Date(gridStart.getFullYear(),gridStart.getMonth(),gridStart.getDate()+i);
       const inMonth=day.getMonth()===qStartMonth+m;
       const isToday=sameDay(day,today);
-      const events=eventsOnDate(day);
+      const events=eventsOnDate(day,all);
       const titles=events.slice(0,5).map(e=>e.title).join('\n').replace(/"/g,'&quot;');
       cells.push(`<div class="cal-mini-cell ${inMonth?'':'cal-mini-other'} ${isToday?'cal-today':''}" onclick="calJumpToDay('${day.toISOString()}')" title="${titles}">
         <div class="cal-mini-num">${day.getDate()}</div>

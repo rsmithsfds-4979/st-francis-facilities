@@ -5,8 +5,126 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents()]);
   renderHistory();renderDash();
+}
+
+async function loadCalendarEvents(){
+  try{
+    const{data,error}=await db.from('calendar_events').select('*').order('start_at');
+    if(error)throw error;
+    calendarEvents=(data||[]).map(e=>({
+      id:e.id,
+      title:e.title,
+      start:e.start_at,
+      end:e.end_at,
+      allDay:!!e.all_day,
+      description:e.description||'',
+      building:e.building||'',
+      location:e.location||'',
+      notes:e.notes||'',
+      source:'custom',
+      _ref:{type:'custom',id:e.id},
+    }));
+  }catch(e){console.error(e);calendarEvents=[];}
+}
+
+async function saveCalendarEvent(d){
+  try{
+    if(editingEventId){
+      const{data,error}=await db.from('calendar_events').update({...d,updated_at:new Date().toISOString()}).eq('id',editingEventId).select();
+      if(error)throw error;
+      showToast('Event updated!');
+    }else{
+      const{data,error}=await db.from('calendar_events').insert([d]).select();
+      if(error)throw error;
+      showToast('Event added!');
+    }
+    editingEventId=null;closeModal('calendar-event-modal');
+    await loadCalendarEvents();
+    if(typeof renderCalendar==='function')renderCalendar();
+  }catch(e){console.error(e);showToast('Error saving event');}
+}
+
+async function deleteCalendarEvent(id){
+  try{
+    const{error}=await db.from('calendar_events').delete().eq('id',id);
+    if(error)throw error;
+    calendarEvents=calendarEvents.filter(e=>e.id!==id);
+    showToast('Event deleted');
+    if(typeof renderCalendar==='function')renderCalendar();
+  }catch(e){showToast('Error deleting');}
+}
+
+// Builds a unified list of calendar events from: Google parish calendar (read-only),
+// PM tasks (next_due), open work orders (due_date), pending quotes (valid_until), and
+// app-managed custom events. Each event carries `source` and `_ref` so the calendar
+// renderer can color-code and route clicks to the originating record.
+function combinedCalendarEvents(){
+  const out=[];
+  const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+  // Google
+  (gcalEvents||[]).forEach(e=>out.push({...e,source:'gcal'}));
+
+  // PM tasks not yet done
+  (pmTasks||[]).filter(p=>p.status!=='Done').forEach(p=>{
+    const d=parseDate(p.next_due);
+    if(!d)return;
+    const k=ymd(d);
+    out.push({
+      id:'pm-'+p.id,
+      title:'🔧 '+p.title,
+      start:k,end:k,allDay:true,
+      description:[p.building,p.frequency,p.assigned_to&&'Assigned: '+p.assigned_to].filter(Boolean).join(' · '),
+      location:p.building||'',
+      source:'pm',_ref:{type:'pm',id:p.id},
+    });
+  });
+
+  // Open work orders with a due date
+  (workOrders||[]).filter(w=>w.status!=='Completed'&&w.due_date).forEach(w=>{
+    const d=parseDate(w.due_date);
+    if(!d)return;
+    const k=ymd(d);
+    out.push({
+      id:'wo-'+w.id,
+      title:'🛠 '+w.issue,
+      start:k,end:k,allDay:true,
+      description:[w.priority&&'Priority: '+w.priority,w.assignee&&'Assigned: '+w.assignee,w.location].filter(Boolean).join(' · '),
+      location:[w.building,w.location].filter(Boolean).join(' · '),
+      source:'wo',_ref:{type:'wo',id:w.id},
+    });
+  });
+
+  // Pending quotes by expiry
+  (quotes||[]).filter(q=>q.status==='Pending'&&q.valid_until).forEach(q=>{
+    const d=parseDate(q.valid_until);
+    if(!d)return;
+    const k=ymd(d);
+    out.push({
+      id:'q-'+q.id,
+      title:'💰 '+(q.vendor||'Quote')+' expires',
+      start:k,end:k,allDay:true,
+      description:[q.description,q.amount&&fmt(q.amount)].filter(Boolean).join(' · '),
+      location:q.building||'',
+      source:'quote',_ref:{type:'quote',id:q.id},
+    });
+  });
+
+  // Custom app events
+  (calendarEvents||[]).forEach(e=>out.push(e));
+
+  return out;
+}
+
+// Routes a click on a calendar event to the originating record's modal.
+function dispatchCalEvent(type,id){
+  if(type==='pm'){editPM(id);return;}
+  if(type==='wo'){openWODetail(id);return;}
+  if(type==='quote'){editQuote(id);return;}
+  if(type==='custom'){editCalendarEvent(id);return;}
+  // gcal: no destination — handled inline in render with a no-op
 }
 
 async function loadQuotes(){

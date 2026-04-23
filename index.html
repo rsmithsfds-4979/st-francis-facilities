@@ -118,6 +118,8 @@
       <button class="btn btn-sm" onclick="calPrev()">← Prev</button>
       <button class="btn btn-sm" onclick="calToday()">Today</button>
       <button class="btn btn-sm" onclick="calNext()">Next →</button>
+      <span style="width:8px"></span>
+      <button class="btn btn-primary btn-sm" onclick="openCalendarEventModal()">+ Add Event</button>
     </div>
   </div>
   <div class="content" id="cal-content"><div class="loading">Loading...</div></div>
@@ -468,6 +470,9 @@
 </div>
 <div class="modal-overlay" id="quote-modal" onclick="outsideClose(event,'quote-modal')">
   <div class="modal"><h3 id="quote-modal-h">Add Quote</h3><div class="modal-sub">Log an estimate received from a contractor or vendor.</div><div id="quote-body"></div></div>
+</div>
+<div class="modal-overlay" id="calendar-event-modal" onclick="outsideClose(event,'calendar-event-modal')">
+  <div class="modal"><h3 id="calendar-event-modal-h">Add Event</h3><div class="modal-sub">Schedule something on the app calendar (separate from the parish Google calendar).</div><div id="calendar-event-body"></div></div>
 </div>
 <div class="modal-overlay" id="lightbox" onclick="closeModal('lightbox')" style="z-index:300;background:rgba(0,0,0,.9)">
   <img id="lightbox-img" style="max-width:90%;max-height:90vh;border-radius:8px">

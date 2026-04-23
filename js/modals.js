@@ -980,6 +980,111 @@ function submitCategory(){
 
 function editCategory(id){const c=categories.find(x=>x.id===id);if(c)openCategoryModal(c);}
 
+// ---- CALENDAR EVENT MODAL ----
+function openCalendarEventModal(ev){
+  editingEventId=ev?ev.id:null;
+  document.getElementById('calendar-event-modal-h').textContent=ev?'Edit Event':'Add Event';
+  // start/end are stored as YYYY-MM-DD (all-day) or full ISO timestamps (timed).
+  const allDay=ev?!!ev.allDay:true;
+  let startDate='',startTime='',endDate='',endTime='';
+  if(ev){
+    if(ev.allDay){
+      startDate=ev.start||'';
+      endDate=ev.end||'';
+    }else{
+      const s=ev.start?new Date(ev.start):null;
+      const e=ev.end?new Date(ev.end):null;
+      const ymd=d=>d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:'';
+      const hm=d=>d?`${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`:'';
+      startDate=ymd(s);startTime=hm(s);
+      endDate=ymd(e);endTime=hm(e);
+    }
+  }else{
+    const t=new Date();
+    startDate=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+  }
+  const v=k=>ev?.[k]||'';
+  document.getElementById('calendar-event-body').innerHTML=`
+    <div class="fg"><label>Title *</label><input type="text" class="fi" id="ev-title" placeholder="e.g. Roof inspection visit" value="${v('title').replace(/"/g,'&quot;')}"></div>
+    <div class="fg" style="display:flex;align-items:center;gap:8px;font-family:sans-serif;font-size:13px">
+      <input type="checkbox" id="ev-allday" ${allDay?'checked':''} onchange="toggleEventTimes()" style="width:16px;height:16px;cursor:pointer">
+      <label for="ev-allday" style="cursor:pointer;margin:0">All-day</label>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Start date *</label><input type="date" class="fi" id="ev-start-date" value="${startDate}"></div>
+      <div class="fg" id="ev-start-time-wrap" style="${allDay?'display:none':''}"><label>Start time</label><input type="time" class="fi" id="ev-start-time" value="${startTime}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>End date</label><input type="date" class="fi" id="ev-end-date" value="${endDate}"></div>
+      <div class="fg" id="ev-end-time-wrap" style="${allDay?'display:none':''}"><label>End time</label><input type="time" class="fi" id="ev-end-time" value="${endTime}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Building</label>
+        <select class="fi" id="ev-bld">
+          <option value="">—</option>
+          ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Location</label><input type="text" class="fi" id="ev-loc" placeholder="Specific room or area" value="${v('location').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="fg"><label>Description</label><textarea class="fi" id="ev-desc">${v('description')}</textarea></div>
+    <div class="fg"><label>Notes</label><textarea class="fi" id="ev-notes">${v('notes')}</textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('calendar-event-modal')">Cancel</button>
+      ${ev?`<button class="btn btn-danger" onclick="confirmDeleteCalendarEvent('${ev.id}')">Delete</button>`:''}
+      <button class="btn btn-primary" onclick="submitCalendarEvent()">${ev?'Save Changes':'Add Event'}</button>
+    </div>`;
+  document.getElementById('calendar-event-modal').classList.add('open');
+}
+
+function toggleEventTimes(){
+  const allDay=document.getElementById('ev-allday')?.checked;
+  const sw=document.getElementById('ev-start-time-wrap');
+  const ew=document.getElementById('ev-end-time-wrap');
+  if(sw)sw.style.display=allDay?'none':'';
+  if(ew)ew.style.display=allDay?'none':'';
+}
+
+function submitCalendarEvent(){
+  const title=document.getElementById('ev-title')?.value.trim();
+  const sd=document.getElementById('ev-start-date')?.value;
+  if(!title){showToast('Please enter a title');return;}
+  if(!sd){showToast('Please pick a start date');return;}
+  const allDay=document.getElementById('ev-allday')?.checked;
+  const ed=document.getElementById('ev-end-date')?.value||sd;
+  let start_at,end_at;
+  if(allDay){
+    start_at=sd;
+    end_at=ed;
+  }else{
+    const st=document.getElementById('ev-start-time')?.value||'00:00';
+    const et=document.getElementById('ev-end-time')?.value||st;
+    start_at=`${sd}T${st}`;
+    end_at=`${ed}T${et}`;
+  }
+  saveCalendarEvent({
+    title,
+    description:document.getElementById('ev-desc')?.value.trim()||null,
+    start_at,end_at,
+    all_day:allDay,
+    building:document.getElementById('ev-bld')?.value||null,
+    location:document.getElementById('ev-loc')?.value.trim()||null,
+    notes:document.getElementById('ev-notes')?.value.trim()||null,
+  });
+}
+
+function editCalendarEvent(id){
+  const e=calendarEvents.find(x=>x.id===id);
+  if(e)openCalendarEventModal(e);
+}
+
+function confirmDeleteCalendarEvent(id){
+  document.getElementById('conf-h').textContent='Delete event?';
+  document.getElementById('conf-msg').textContent='This calendar event will be permanently removed.';
+  document.getElementById('conf-ok').onclick=()=>{deleteCalendarEvent(id);closeConfirm();closeModal('calendar-event-modal');};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
 // ---- QUOTE MODAL ----
 function openQuoteModal(quote){
   editingQuoteId=quote?quote.id:null;
