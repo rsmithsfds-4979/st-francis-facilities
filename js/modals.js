@@ -132,7 +132,7 @@ function renderAssetPicker(listId){
   if(state.requireBuilding&&building==='all'){
     el.innerHTML=`
       <div class="asset-select-item" onclick="handleAddAssetInline('${listId}')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
-      <div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:20px;text-align:center">Select a building above to see its assets.</div>`;
+      <div style="font-size:12px;color:var(--text3);padding:20px;text-align:center">Select a building above to see its assets.</div>`;
     return;
   }
 
@@ -159,7 +159,7 @@ function renderAssetPicker(listId){
         <span style="font-size:14px">${catIcon[a.category]||'📦'}</span>
         <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.building} · ${a.room_number||a.location||''} · ${a.category||''}</div></div>
       </div>`;
-    }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:12px;text-align:center">No assets match.</div>'}`;
+    }).join(''):'<div style="font-size:12px;color:var(--text3);padding:12px;text-align:center">No assets match.</div>'}`;
   updatePickerCount(listId);
 }
 
@@ -199,7 +199,7 @@ function assetPickerFiltersHTML(listId){
     <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
       <button type="button" class="btn btn-sm" onclick="selectAllVisibleAssets('${listId}')" style="padding:3px 8px;font-size:11px">Select all visible</button>
       <button type="button" class="btn btn-sm" onclick="clearPickerSelection('${listId}')" style="padding:3px 8px;font-size:11px">Clear</button>
-      <span id="${listId}-count" style="font-family:sans-serif;color:var(--text3);font-size:11px;margin-left:4px"></span>
+      <span id="${listId}-count" style="color:var(--text3);font-size:11px;margin-left:4px"></span>
     </div>
     <div id="${listId}" style="max-height:260px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px"></div>`;
 }
@@ -335,16 +335,16 @@ async function openWODetail(id){
   document.getElementById('wod-body').innerHTML=`
     <div class="dr"><div class="dl">Priority</div><div>${pb(w.priority)}</div></div>
     <div class="dr"><div class="dl">Status</div><div>${sb(w.status)}</div></div>
-    <div class="dr"><div class="dl">Assigned to</div><div style="font-family:sans-serif">${w.assignee}</div></div>
-    <div class="dr"><div class="dl">Due date</div><div style="font-family:sans-serif">${w.due_date||'Not set'}</div></div>
-    <div class="dr"><div class="dl">Completed</div><div style="font-family:sans-serif">${w.completed_date||'—'}</div></div>
-    ${linkedAssets.length?`<div class="dr"><div class="dl">Assets</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:4px">${linkedAssets.map(a=>`<span class="badge b-blue">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}</div></div>`:''}
-    ${linkedInvoices.length?`<div class="dr"><div class="dl">Invoices</div><div style="font-family:sans-serif;display:flex;flex-wrap:wrap;gap:6px">${linkedInvoices.map(i=>`<span class="badge b-green" style="cursor:pointer" onclick="editInvoice('${i.id}');closeModal('wo-detail-modal')">${i.invoice_number||'(no #)'} · ${i.vendor} · ${fmt(i.amount)}${i.pdf_url?' 📄':''}</span>`).join('')}</div></div>`:''}
-    ${w.notes?`<div class="dr"><div class="dl">Notes</div><div style="font-family:sans-serif;white-space:normal;line-height:1.5">${w.notes}</div></div>`:''}
+    <div class="dr"><div class="dl">Assigned to</div><div>${w.assignee}</div></div>
+    <div class="dr"><div class="dl">Due date</div><div>${w.due_date||'Not set'}</div></div>
+    <div class="dr"><div class="dl">Completed</div><div>${w.completed_date||'—'}</div></div>
+    ${linkedAssets.length?`<div class="dr"><div class="dl">Assets</div><div style="display:flex;flex-wrap:wrap;gap:4px">${linkedAssets.map(a=>`<span class="badge b-blue">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}</div></div>`:''}
+    ${linkedInvoices.length?`<div class="dr"><div class="dl">Invoices</div><div style="display:flex;flex-wrap:wrap;gap:6px">${linkedInvoices.map(i=>`<span class="badge b-green" style="cursor:pointer" onclick="editInvoice('${i.id}');closeModal('wo-detail-modal')">${i.invoice_number||'(no #)'} · ${i.vendor} · ${fmt(i.amount)}${i.pdf_url?' 📄':''}</span>`).join('')}</div></div>`:''}
+    ${w.notes?`<div class="dr"><div class="dl">Notes</div><div style="white-space:normal;line-height:1.5">${w.notes}</div></div>`:''}
     ${allPhotos(w).length?`<div style="margin:12px 0"><div class="photo-gallery">${allPhotos(w).map(u=>`<div class="photo-thumb" style="width:110px;height:110px"><img src="${u}" onclick="openLightbox('${u}')"></div>`).join('')}</div></div>`:''}
-    <div style="margin-top:16px;font-size:11px;font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px">Comments & Updates</div>
+    <div style="margin-top:16px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px">Comments & Updates</div>
     <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">
-      ${comments.length?comments.map(c=>`<div class="comment"><div class="comment-author">${c.author}</div><div class="comment-text">${c.comment}</div><div class="comment-time">${new Date(c.created_at).toLocaleString()}</div></div>`).join(''):'<div style="padding:12px 14px;font-size:13px;color:var(--text3);font-family:sans-serif">No comments yet</div>'}
+      ${comments.length?comments.map(c=>`<div class="comment"><div class="comment-author">${c.author}</div><div class="comment-text">${c.comment}</div><div class="comment-time">${new Date(c.created_at).toLocaleString()}</div></div>`).join(''):'<div style="padding:12px 14px;font-size:13px;color:var(--text3)">No comments yet</div>'}
     </div>
     <div class="fg"><label>Add a comment</label>
       <select class="fi" id="cmt-author" style="margin-bottom:8px"><option value="">Your name...</option>${contacts.map(c=>`<option>${c.name}</option>`).join('')}</select>
@@ -497,7 +497,7 @@ function openBuildingModal(bld){
       <div class="fg"><label>Floors / Levels</label><input type="text" class="fi" id="bld-floors" placeholder="e.g. Basement, 1st, 2nd, Roof" value="${v('floors')}"></div>
     </div>
     <div style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
-      <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Emergency contact</div>
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);margin-bottom:10px">Emergency contact</div>
       <div class="form-row">
         <div class="fg"><label>Name</label><input type="text" class="fi" id="bld-em-name" placeholder="On-site contact after hours" value="${v('emergency_contact_name')}"></div>
         <div class="fg"><label>Phone</label><input type="text" class="fi" id="bld-em-phone" value="${v('emergency_contact_phone')}"></div>
@@ -509,12 +509,12 @@ function openBuildingModal(bld){
         ${COMMON_UTILITIES.map(u=>{
           const tracked=buildingTrackedUtilities(bld);
           const checked=tracked.includes(u);
-          return`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;font-family:sans-serif">
+          return`<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
             <input type="checkbox" class="ut-check" value="${u}" ${checked?'checked':''}>${u}
           </label>`;
         }).join('')}
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:sans-serif">Uncheck any that don't apply here (e.g. Water if on a well, Gas if all-electric).</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Uncheck any that don't apply here (e.g. Water if on a well, Gas if all-electric).</div>
     </div>
     <div class="fg"><label>Photos</label>
       <div class="photo-gallery" id="bld-photo-gallery"></div>
@@ -591,7 +591,7 @@ function openRoomModal(room){
         </select>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin:-4px 0 10px">
+    <div style="font-size:11px;color:var(--text3);margin:-4px 0 10px">
       Floor suggestions come from the building's <em>Floors / Levels</em> field. Room type options are managed in <strong>Settings → Room Types</strong>.
     </div>
     <div class="form-row">
@@ -675,7 +675,7 @@ function openPMModal(pm){
     <div class="fg"><label>Description</label><textarea class="fi" id="pm-desc">${v('description')}</textarea></div>
     <div class="fg"><label>Assets covered by this PM</label>
       ${assetPickerFiltersHTML('pm-asset-list')}
-      <div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin-top:4px">Group multiple assets under one PM — e.g. "HVAC PM" covers every HVAC unit, "Fire Inspection" covers extinguishers + kitchen suppression.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Group multiple assets under one PM — e.g. "HVAC PM" covers every HVAC unit, "Fire Inspection" covers extinguishers + kitchen suppression.</div>
     </div>
     <div class="fg"><label>Status</label>
       <select class="fi" id="pm-status">
@@ -733,7 +733,7 @@ function openPMScheduleModal(pmId){
 
   document.getElementById('pm-schedule-modal-h').textContent=pm.scheduled_date?'Edit Schedule':'Schedule PM';
   document.getElementById('pm-schedule-body').innerHTML=`
-    <div style="padding:10px 12px;background:var(--info-bg);border-radius:6px;margin-bottom:14px;font-family:sans-serif;font-size:12px">
+    <div style="padding:10px 12px;background:var(--info-bg);border-radius:6px;margin-bottom:14px;font-size:12px">
       Scheduling <strong>${pm.title}</strong> — ${pm.building} · ${pm.frequency||'—'}
       ${pm.next_due?`<div style="font-size:11px;color:var(--text3);margin-top:2px">Normally due: ${pm.next_due}</div>`:''}
     </div>
@@ -751,7 +751,7 @@ function openPMScheduleModal(pmId){
     <div class="fg"><label>Notes about the call / email</label>
       <textarea class="fi" id="pm-sched-notes" placeholder="e.g. Called Mike 4/23, confirmed Spring PM, will bring new filters">${pm.scheduled_notes||''}</textarea>
     </div>
-    <div class="fg" style="display:flex;align-items:center;gap:8px;font-family:sans-serif;font-size:13px;padding:8px 12px;background:var(--bg3);border-radius:6px">
+    <div class="fg" style="display:flex;align-items:center;gap:8px;font-size:13px;padding:8px 12px;background:var(--bg3);border-radius:6px">
       <input type="checkbox" id="pm-sched-create-wo" ${pm.scheduled_date?'':'checked'} style="width:16px;height:16px;cursor:pointer">
       <label for="pm-sched-create-wo" style="cursor:pointer;margin:0">Also create a Work Order for this visit${pm.scheduled_date?' (already scheduled — check to create another)':''}</label>
     </div>
@@ -779,7 +779,7 @@ function renderPMSchedulePersonPicker(){
   const people=Array.isArray(contact.people)?contact.people:[];
   if(!isOrg){
     // Staff/Volunteer: the contact IS the person, no sub-picker needed
-    wrap.innerHTML=`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin:-6px 0 12px;padding-left:2px">You'll be scheduling with ${contact.name} directly.</div>`;
+    wrap.innerHTML=`<div style="font-size:11px;color:var(--text3);margin:-6px 0 12px;padding-left:2px">You'll be scheduling with ${contact.name} directly.</div>`;
     _pmSchedPerson='';
     return;
   }
@@ -792,7 +792,7 @@ function renderPMSchedulePersonPicker(){
       </select>
     </div>
     <div id="pm-sched-new-person" style="display:none;padding:10px 12px;background:var(--bg3);border-radius:6px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Add new contact at ${contact.name}</div>
+      <div style="font-size:11px;font-weight:bold;color:var(--accent2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Add new contact at ${contact.name}</div>
       <div class="form-row">
         <div class="fg"><label>Name *</label><input type="text" class="fi" id="new-person-name" placeholder="Full name"></div>
         <div class="fg"><label>Title</label><input type="text" class="fi" id="new-person-title" placeholder="Sales Rep, A/P, Service Manager…"></div>
@@ -956,7 +956,7 @@ function renderInvoiceWOPicker(){
       <input type="checkbox" ${checked?'checked':''} onclick="event.stopPropagation();toggleInvWO('${w.id}',this.closest('.asset-select-item'))">
       <div style="flex:1;min-width:0"><div style="font-weight:bold">${w.issue}${linkHint}</div><div style="font-size:11px;color:var(--text3)">${w.building} · ${w.status}${w.assignee?' · '+w.assignee:''}${w.completed_date?' · done '+w.completed_date:''}</div></div>
     </div>`;
-  }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:12px;text-align:center">No matching work orders.</div>';
+  }).join(''):'<div style="font-size:12px;color:var(--text3);padding:12px;text-align:center">No matching work orders.</div>';
 }
 
 function toggleInvWO(id,rowEl){
@@ -1005,7 +1005,7 @@ function openContactModal(contact){
     <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
     <div class="fg"><label>Role(s) — pick one or more *</label>
       <div id="ct-roles-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px;background:var(--bg2)"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:sans-serif">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
     </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
@@ -1020,7 +1020,7 @@ function openContactModal(contact){
     </div>
     <div id="ct-phones-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif">Additional phone numbers</div>
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2)">Additional phone numbers</div>
         <button type="button" class="btn btn-sm" onclick="addContactPhone()">+ Add phone</button>
       </div>
       <div id="ct-phones-list"></div>
@@ -1039,22 +1039,22 @@ function openContactModal(contact){
     <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
     <div id="people-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor'||(contact?.type||currentContactType)==='Vendor')?'block':'none'}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif">Points of Contact</div>
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2)">Points of Contact</div>
         <button type="button" class="btn btn-sm" onclick="addPerson()">+ Add Person</button>
       </div>
       <div id="people-list"></div>
     </div>
     <div id="coi-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor')?'block':'none'}">
-      <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:10px">Certificate of Insurance</div>
+      <div style="font-size:13px;font-weight:bold;color:var(--accent2);margin-bottom:10px">Certificate of Insurance</div>
       <div class="form-row">
         <div class="fg"><label>COI Expiry date</label><input type="text" class="fi" id="ct-coi-exp" placeholder="e.g. Dec 31 2025" value="${v('coi_expiry')}"></div>
         <div class="fg"><label>Insurance company</label><input type="text" class="fi" id="ct-coi-ins" placeholder="e.g. State Farm" value="${v('coi_insurer')}"></div>
       </div>
       <div class="fg"><label>Policy number</label><input type="text" class="fi" id="ct-coi-pol" placeholder="Policy number" value="${v('coi_policy_number')}"></div>
       <div class="fg"><label>COI Document</label>
-        ${contact?.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current COI</a></div>`:''}
+        ${contact?.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
         <div class="photo-upload" onclick="document.getElementById('coi-file-input').click()">📄 ${contact?.coi_url?'Upload new COI (replaces current)':'Upload COI document (PDF or image)'}<input type="file" id="coi-file-input" accept=".pdf,image/*" style="display:none" onchange="previewCOI(event)"></div>
-        <div id="coi-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+        <div id="coi-preview" style="font-size:12px;color:var(--success);margin-top:6px"></div>
       </div>
     </div>
     <div class="modal-actions">
@@ -1081,7 +1081,7 @@ let peopleDraft=[];
 function renderPeopleList(){
   const el=document.getElementById('people-list');
   if(!el)return;
-  if(!peopleDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No points of contact yet.</div>';return;}
+  if(!peopleDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0">No points of contact yet.</div>';return;}
   el.innerHTML=peopleDraft.map((p,i)=>`
     <div class="person-row" data-i="${i}" style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;margin-bottom:8px;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">
       <input type="text" class="fi person-name" placeholder="Name" value="${(p.name||'').replace(/"/g,'&quot;')}">
@@ -1156,7 +1156,7 @@ function renderContactRolesUI(type){
     const filtered=available.filter(n=>!q||n.toLowerCase().includes(q));
     const opts=filtered.length
       ?filtered.map(n=>`<div class="role-option" onclick="addContactRole('${n.replace(/'/g,"\\'")}','${type}')">${n}</div>`).join('')
-      :'<div style="padding:10px 12px;color:var(--text3);font-size:12px;font-family:sans-serif">No matching roles</div>';
+      :'<div style="padding:10px 12px;color:var(--text3);font-size:12px">No matching roles</div>';
     dropdownHTML=`<div class="role-dropdown">
       <input type="text" class="role-search" id="ct-roles-search" placeholder="Search roles…" value="${q.replace(/"/g,'&quot;')}" oninput="renderContactRolesUI('${type}')">
       <div class="role-options">${opts}</div>
@@ -1199,7 +1199,7 @@ let phonesDraft=[];
 function renderContactPhonesList(){
   const el=document.getElementById('ct-phones-list');
   if(!el)return;
-  if(!phonesDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">None yet.</div>';return;}
+  if(!phonesDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0">None yet.</div>';return;}
   el.innerHTML=phonesDraft.map((ph,i)=>`
     <div class="phone-row" data-i="${i}" style="display:grid;grid-template-columns:160px 1fr auto;gap:6px;margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">
       <input type="text" class="fi phone-label-input" list="ct-phone-label-opts" placeholder="Label" value="${(ph.label||'').replace(/"/g,'&quot;')}">
@@ -1282,9 +1282,9 @@ function openCOIModal(contactId){
     </div>
     <div class="fg"><label>Policy number</label><input type="text" class="fi" id="coim-pol" value="${(contact.coi_policy_number||'').replace(/"/g,'&quot;')}"></div>
     <div class="fg"><label>COI Document</label>
-      ${contact.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-family:sans-serif;font-size:13px">📄 View current COI</a></div>`:''}
+      ${contact.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
       <div class="photo-upload" onclick="document.getElementById('coim-file').click()">📄 ${contact.coi_url?'Upload new COI (replaces current)':'Click or drag COI document here'}<input type="file" id="coim-file" accept=".pdf,image/*" style="display:none" onchange="previewCOIQuick(event)"></div>
-      <div id="coim-preview" style="font-size:12px;color:var(--success);font-family:sans-serif;margin-top:6px"></div>
+      <div id="coim-preview" style="font-size:12px;color:var(--success);margin-top:6px"></div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('coi-modal')">Cancel</button>
@@ -1402,9 +1402,9 @@ function showHistDetail(inv){
   document.getElementById('hm-h').textContent='Invoice '+h.inv;
   document.getElementById('hm-sub').textContent=h.date+' · '+h.building;
   document.getElementById('hm-body').innerHTML=`
-    <div class="dr"><div class="dl">Equipment</div><div style="font-family:sans-serif">${h.equip}</div></div>
-    <div class="dr"><div class="dl">Amount</div><div style="font-family:sans-serif;font-weight:bold">${h.amount>0?fmt(h.amount):'No charge / Proposal'}</div></div>
-    <div style="margin-top:12px;font-size:11px;color:var(--text3);font-family:sans-serif;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Work performed</div>
+    <div class="dr"><div class="dl">Equipment</div><div>${h.equip}</div></div>
+    <div class="dr"><div class="dl">Amount</div><div style="font-weight:bold">${h.amount>0?fmt(h.amount):'No charge / Proposal'}</div></div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Work performed</div>
     <div class="notes-box">${h.desc}</div>
     <div class="modal-actions"><button class="btn" onclick="closeModal('hist-modal')">Close</button></div>`;
   document.getElementById('hist-modal').classList.add('open');
@@ -1477,7 +1477,7 @@ function openCategoryModal(cat){
       <div class="fg"><label>Name *</label><input type="text" class="fi" id="cat-name" placeholder="e.g. Landscaping" value="${v('name')}"></div>
       <div class="fg"><label>Icon (emoji)</label><input type="text" class="fi" id="cat-icon" placeholder="📦" value="${v('icon')}" maxlength="4"></div>
     </div>
-    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
       ${cat?'Renaming will update every asset using this category.':'Paste any emoji or leave blank for the default 📦.'}
     </div>
     <div class="modal-actions">
@@ -1522,7 +1522,7 @@ function openCalendarEventModal(ev){
   const v=k=>ev?.[k]||'';
   document.getElementById('calendar-event-body').innerHTML=`
     <div class="fg"><label>Title *</label><input type="text" class="fi" id="ev-title" placeholder="e.g. Roof inspection visit" value="${v('title').replace(/"/g,'&quot;')}"></div>
-    <div class="fg" style="display:flex;align-items:center;gap:8px;font-family:sans-serif;font-size:13px">
+    <div class="fg" style="display:flex;align-items:center;gap:8px;font-size:13px">
       <input type="checkbox" id="ev-allday" ${allDay?'checked':''} onchange="toggleEventTimes()" style="width:16px;height:16px;cursor:pointer">
       <label for="ev-allday" style="cursor:pointer;margin:0">All-day</label>
     </div>
@@ -1684,7 +1684,7 @@ function renderProjectQuotePicker(selectedIds){
   const el=document.getElementById('proj-quote-list');
   if(!el)return;
   const selected=new Set(selectedIds||[]);
-  if(!quotes.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px;font-family:sans-serif">No quotes logged yet. Add some from Vendor Quotes.</div>';return;}
+  if(!quotes.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px">No quotes logged yet. Add some from Vendor Quotes.</div>';return;}
   el.innerHTML=quotes.map(q=>{
     const checked=selected.has(q.id);
     return`<div class="asset-select-item ${checked?'selected':''}" onclick="toggleProjQuote('${q.id}',this)">
@@ -1707,8 +1707,8 @@ function renderProjectApprovalTrail(project){
   const trail=Array.isArray(project?.approval_trail)?project.approval_trail:[];
   if(!trail.length)return'';
   return`<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:12px">
-    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:6px">Approval Trail</div>
-    ${trail.map(t=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;border-bottom:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Approval Trail</div>
+    ${trail.map(t=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
       <strong>${t.decision||'—'}</strong>${t.date?' · '+t.date:''}${t.approver?' · by '+t.approver:''}
       ${t.notes?`<div style="color:var(--text3);margin-top:2px">${t.notes}</div>`:''}
     </div>`).join('')}
@@ -2118,7 +2118,7 @@ function openWeatherSettingsModal(){
     <div class="fg"><label>Location *</label>
       <input type="text" class="fi" id="weather-loc" placeholder="e.g. Columbus, OH or 43015 or Springfield Ohio" value="${loc.replace(/"/g,'&quot;')}">
     </div>
-    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
       Accepts city, city+state, or US ZIP. Powered by <a href="https://wttr.in" target="_blank" style="color:var(--accent)">wttr.in</a> — no API key needed.
     </div>
     <div class="modal-actions">
@@ -2157,12 +2157,12 @@ function openGCalSettingsModal(){
   const calId=appSettings.gcal_calendar_id||'';
   document.getElementById('gcal-modal-h').textContent='Google Calendar Integration';
   document.getElementById('gcal-body').innerHTML=`
-    <div style="background:var(--info-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-family:sans-serif;font-size:12px;color:var(--text2);line-height:1.5">
+    <div style="background:var(--info-bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.5">
       Paste your Google Cloud API key and the parish calendar ID. The calendar must be set to <strong>public</strong> in Google Calendar settings. For security, restrict the API key in Google Cloud Console to HTTP referrers from this site.
     </div>
     <div class="fg"><label>Google API key *</label><input type="text" class="fi" id="gcal-key" placeholder="AIzaSy..." value="${apiKey}"></div>
     <div class="fg"><label>Calendar ID *</label><input type="text" class="fi" id="gcal-id" placeholder="parishcalendar@example.org" value="${calId}"></div>
-    <div id="gcal-test-result" style="font-size:12px;font-family:sans-serif;margin-bottom:12px"></div>
+    <div id="gcal-test-result" style="font-size:12px;margin-bottom:12px"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('gcal-modal')">Cancel</button>
       <button class="btn" onclick="testGCalConnection()">Test Connection</button>
@@ -2208,7 +2208,7 @@ function openRoomTypeModal(rt){
   document.getElementById('room-type-modal-h').textContent=rt?'Edit Room Type':'Add Room Type';
   document.getElementById('room-type-body').innerHTML=`
     <div class="fg"><label>Name *</label><input type="text" class="fi" id="rt-name" placeholder="e.g. Nursery, Library, Vestibule" value="${rt?.name||''}"></div>
-    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
       ${rt?'Renaming will update every room using this type.':'Used in the Room modal dropdown across all buildings.'}
     </div>
     <div class="modal-actions">
@@ -2252,7 +2252,7 @@ function openContactRoleModal(r){
         <option ${sel('Volunteer')}>Volunteer</option>
       </select>
     </div>
-    <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:12px">
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
       ${r?'Renaming will update every contact of this scope using the old name.':'Only contacts of the selected type will see this role in their dropdown.'}
     </div>
     <div class="modal-actions">

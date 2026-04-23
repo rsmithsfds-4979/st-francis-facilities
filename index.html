@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>St. Francis de Sales — Facility Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 <link rel="stylesheet" href="css/styles.css">
@@ -335,7 +338,7 @@
     <div id="bld-photo-area" style="margin-bottom:16px"></div>
     <div id="bld-info-area" style="margin-bottom:16px"></div>
     <div id="bld-utilities-area" style="margin-bottom:16px"></div>
-    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 10px">Rooms</div>
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em;margin:20px 0 10px">Rooms</div>
     <input type="text" class="search-bar" id="room-search" placeholder="Search rooms..." oninput="renderRooms()" style="margin-bottom:12px">
     <div id="rooms-grid" class="room-grid"><div class="loading">Loading...</div></div>
   </div>
@@ -353,15 +356,15 @@
     </div>
   </div>
   <div class="content">
-    <div id="room-detail-meta" style="margin-bottom:12px;font-family:sans-serif;font-size:13px;color:var(--text3)"></div>
+    <div id="room-detail-meta" style="margin-bottom:12px;font-size:13px;color:var(--text3)"></div>
     <div id="room-photos" style="margin-bottom:16px"></div>
     <div class="two-col">
       <div>
-        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Assets in this room</div>
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Assets in this room</div>
         <div id="room-assets"><div class="loading">Loading...</div></div>
       </div>
       <div>
-        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Work Orders for this room</div>
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">Work Orders for this room</div>
         <div id="room-workorders"><div class="loading">Loading...</div></div>
       </div>
     </div>
@@ -492,14 +495,14 @@
         <div class="card-title"><span class="cc-chevron">▼</span>Google Calendar Integration</div>
         <button class="btn btn-sm" onclick="event.stopPropagation();openGCalSettingsModal()">Configure</button>
       </div>
-      <div id="gcal-status" style="padding:14px 18px;font-family:sans-serif;font-size:13px"></div>
+      <div id="gcal-status" style="padding:14px 18px;font-size:13px"></div>
     </div>
     <div class="card collapsible" data-collapse-id="settings-weather">
       <div class="card-header" onclick="toggleCard(this.parentNode)">
         <div class="card-title"><span class="cc-chevron">▼</span>Dashboard Weather</div>
         <button class="btn btn-sm" onclick="event.stopPropagation();openWeatherSettingsModal()">Configure</button>
       </div>
-      <div id="weather-status" style="padding:14px 18px;font-family:sans-serif;font-size:13px"></div>
+      <div id="weather-status" style="padding:14px 18px;font-size:13px"></div>
     </div>
   </div>
 </div>
@@ -596,7 +599,7 @@
 <div class="spinner-overlay" id="spinner-overlay">
   <div class="spinner-box">
     <div class="spinner"></div>
-    <div id="spinner-label" style="font-family:sans-serif;font-size:13px;color:var(--text2)">Working…</div>
+    <div id="spinner-label" style="font-size:13px;color:var(--text2)">Working…</div>
   </div>
 </div>
 

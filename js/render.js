@@ -92,11 +92,11 @@ function renderCalDay(el){
     const clickable=e._ref?`onclick="dispatchCalEvent('${e._ref.type}','${e._ref.id}')" style="cursor:pointer"`:'';
     return`<div class="card cal-src-${src}-card" ${clickable} style="margin-bottom:12px;border-left:4px solid ${calSourceColor(src)}">
       <div style="padding:14px 18px;display:flex;gap:14px;align-items:flex-start">
-        <div style="font-size:12px;color:${calSourceColor(src)};font-family:sans-serif;font-weight:bold;min-width:100px;flex-shrink:0">${fmtEventTime(e)}<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:normal">${calSourceLabel(src)}</div></div>
+        <div style="font-size:12px;color:${calSourceColor(src)};font-weight:bold;min-width:100px;flex-shrink:0">${fmtEventTime(e)}<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:normal">${calSourceLabel(src)}</div></div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:bold;font-size:15px;color:var(--accent2)">${e.title}</div>
-          ${e.location?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:4px">📍 ${e.location}</div>`:''}
-          ${e.description?`<div style="font-size:13px;color:var(--text2);font-family:sans-serif;margin-top:8px;white-space:pre-wrap;line-height:1.5">${e.description}</div>`:''}
+          ${e.location?`<div style="font-size:12px;color:var(--text3);margin-top:4px">📍 ${e.location}</div>`:''}
+          ${e.description?`<div style="font-size:13px;color:var(--text2);margin-top:8px;white-space:pre-wrap;line-height:1.5">${e.description}</div>`:''}
         </div>
       </div>
     </div>`;
@@ -239,7 +239,7 @@ function renderDashWeather(){
   const loc=appSettings.weather_location;
   if(!loc){el.innerHTML='';return;}
   if(!_weatherData){
-    el.innerHTML=`<div class="card" style="margin-bottom:16px"><div style="padding:12px 16px;font-family:sans-serif;font-size:12px;color:var(--text3)">Loading weather for ${loc}…</div></div>`;
+    el.innerHTML=`<div class="card" style="margin-bottom:16px"><div style="padding:12px 16px;font-size:12px;color:var(--text3)">Loading weather for ${loc}…</div></div>`;
     return;
   }
   const cur=_weatherData.current_condition?.[0];
@@ -253,7 +253,7 @@ function renderDashWeather(){
   const lo=today?.mintempF;
   const wind=cur.windspeedMiles;
   el.innerHTML=`<div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;gap:18px;padding:12px 18px;font-family:sans-serif">
+    <div style="display:flex;align-items:center;gap:18px;padding:12px 18px">
       <div style="font-size:40px;line-height:1">${emoji}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:20px;font-weight:bold;color:var(--accent2)">${tempF}°F · ${desc}</div>
@@ -307,7 +307,7 @@ function renderDash(){
     return d>now&&d<in60;
   });
   const wa=document.getElementById('d-warranty-alerts');
-  if(wa)wa.innerHTML=warningA.map(a=>`<div style="background:var(--warning-bg);border:1px solid #f0d060;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;gap:10px">⚠️ <strong>${a.description}</strong> warranty expires ${a.warranty_expiry}</div>`).join('');
+  if(wa)wa.innerHTML=warningA.map(a=>`<div style="background:var(--warning-bg);border:1px solid #f0d060;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px;display:flex;align-items:center;gap:10px">⚠️ <strong>${a.description}</strong> warranty expires ${a.warranty_expiry}</div>`).join('');
 
   const sa=document.getElementById('d-supply-alerts');
   const lowSupplies=supplies.filter(s=>supplyStockStatus(s).label!=='Stocked');
@@ -324,7 +324,7 @@ function renderDash(){
             const st=supplyStockStatus(s);
             const emoji=st.label==='Out'?'🚨':'⚠️';
             const badgeCls=st.label==='Out'?'b-red':'b-amber';
-            return`<div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+            return`<div style="display:flex;align-items:center;gap:10px;padding:8px 18px;border-bottom:1px solid var(--border);font-size:13px">
               <span style="font-size:14px">${emoji}</span>
               <div style="flex:1;min-width:0">
                 <div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
@@ -348,22 +348,22 @@ function renderDash(){
   if(pr){
     const upcoming=pmTasks.filter(p=>p.status!=='Done').slice(0,4);
     pr.innerHTML=upcoming.length
-      ?upcoming.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+      ?upcoming.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-size:13px">
         <span style="font-size:16px">🔧</span>
         <div style="flex:1;min-width:0"><div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.title}</div><div style="font-size:11px;color:var(--text3)">${p.next_due||'No date'} · ${p.assigned_to||'Unassigned'}</div></div>
         ${sb(p.status)}</div>`).join('')
-      :'<div style="text-align:center;padding:20px;color:var(--text3);font-family:sans-serif;font-size:13px">No upcoming PM tasks</div>';
+      :'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">No upcoming PM tasks</div>';
   }
 
   const gc=document.getElementById('d-gcal-rows');
   if(gc){
     const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;
     if(!configured){
-      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">Not configured. Go to <a onclick="go(\'settings\')" style="color:var(--accent);cursor:pointer">Settings</a> to connect a Google Calendar.</div>';
+      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-size:13px">Not configured. Go to <a onclick="go(\'settings\')" style="color:var(--accent);cursor:pointer">Settings</a> to connect a Google Calendar.</div>';
     }else if(!gcalEvents.length){
-      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No upcoming events in the next 90 days.</div>';
+      gc.innerHTML='<div style="padding:16px 18px;color:var(--text3);font-size:13px">No upcoming events in the next 90 days.</div>';
     }else{
-      gc.innerHTML=gcalEvents.slice(0,6).map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+      gc.innerHTML=gcalEvents.slice(0,6).map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-size:13px">
         <span style="font-size:16px">📅</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.title}</div>
@@ -378,12 +378,12 @@ function renderDash(){
   if(aa)aa.innerHTML=attnA.length
     ?attnA.slice(0,5).map(a=>{
       const pic=firstPhoto(a);
-      return`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+      return`<div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-bottom:1px solid var(--border);font-size:13px">
       ${pic?`<img src="${pic}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;cursor:pointer" onclick="openLightbox('${pic}')">`:`<span style="font-size:17px">${catIcon[a.category]||'📦'}</span>`}
       <div style="flex:1;min-width:0"><div style="font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.room_number||a.location} · ${a.building}</div></div>
       ${sb(a.status)}</div>`;
     }).join('')
-    :'<div style="text-align:center;padding:20px;color:var(--text3);font-family:sans-serif;font-size:13px">All assets operational ✓</div>';
+    :'<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">All assets operational ✓</div>';
 }
 
 // ---- RENDER BUILDINGS ----
@@ -455,7 +455,7 @@ function renderBuildingHeader(){
       b.square_footage?`${Number(b.square_footage).toLocaleString()} sq ft`:null,
       b.floors?b.floors:null,
     ].filter(Boolean).join(' · ');
-    infoEl.innerHTML=`<div class="card"><div style="padding:14px 18px;font-family:sans-serif">
+    infoEl.innerHTML=`<div class="card"><div style="padding:14px 18px">
       ${b.description?`<div style="font-size:13px;color:var(--text2);margin-bottom:10px">${b.description}</div>`:''}
       ${addrLine?`<div style="font-size:13px;color:var(--text2)">📍 ${addrLine}</div>`:''}
       ${spec?`<div style="font-size:13px;color:var(--text3);margin-top:4px">🏛️ ${spec}</div>`:''}
@@ -477,7 +477,7 @@ function renderBuildingUtilities(){
   // If the building isn't tracking any utilities, show a gentle prompt instead of an empty card.
   if(!tracked.length){
     el.innerHTML=`<div class="card"><div class="card-header"><div class="card-title">Utilities</div><button class="btn btn-sm" onclick="editCurrentBuilding()">Configure</button></div>
-      <div style="padding:14px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No utilities configured for this building. Click <strong>Configure</strong> to pick which ones to track.</div>
+      <div style="padding:14px 18px;color:var(--text3);font-size:13px">No utilities configured for this building. Click <strong>Configure</strong> to pick which ones to track.</div>
     </div>`;
     return;
   }
@@ -553,7 +553,7 @@ function renderUtilityTable(){
   const tracked=buildingTrackedUtilities(b);
   const readings=utilityReadings.filter(u=>u.building_id===currentBuildingId&&(_utilTab==='All'?tracked.includes(u.utility_type):u.utility_type===_utilTab))
     .sort((a,b)=>{const da=parseDate(a.period_end),db=parseDate(b.period_end);return(db||0)-(da||0);});
-  if(!readings.length){el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">No readings logged yet.</div>';return;}
+  if(!readings.length){el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-size:13px">No readings logged yet.</div>';return;}
   el.innerHTML=`<div class="table-wrap"><table class="table">
     <colgroup><col style="width:10%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:15%"><col style="width:15%"></colgroup>
     <thead><tr><th>Type</th><th>Period</th><th>Usage</th><th>Cost</th><th>Provider</th><th>Account</th><th>Actions</th></tr></thead>
@@ -583,7 +583,7 @@ function renderRooms(){
   bldRooms.forEach(r=>{const f=r.floor||'Other';if(!floors[f])floors[f]=[];floors[f].push(r);});
   const b=buildings.find(x=>x.id===currentBuildingId);
   el.innerHTML=Object.entries(floors).map(([floor,roomList])=>`
-    <div style="grid-column:1/-1;font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-top:8px;margin-bottom:4px">${floor}</div>
+    <div style="grid-column:1/-1;font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:8px;margin-bottom:4px">${floor}</div>
     ${roomList.map(r=>{
       const aCount=assets.filter(a=>a.room_id===r.id).length;
       const wCount=workOrders.filter(w=>w.room_id===r.id&&w.status!=='Completed').length;
@@ -671,7 +671,7 @@ function renderRoomDetail(roomId){
 
   const rw=document.getElementById('room-workorders');
   if(rw)rw.innerHTML=roomWOs.length
-    ?roomWOs.map(w=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;font-family:sans-serif;cursor:pointer" onclick="openWODetail('${w.id}')">
+    ?roomWOs.map(w=>`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;cursor:pointer" onclick="openWODetail('${w.id}')">
         <div style="font-weight:bold;font-size:13px;margin-bottom:4px">${w.issue}</div>
         <div style="display:flex;gap:6px;align-items:center">${pb(w.priority)}${sb(w.status)}<span style="font-size:11px;color:var(--text3);margin-left:4px">${w.assignee}</span></div>
       </div>`).join('')
@@ -727,12 +727,12 @@ function renderAssetServiceRecord(assetId){
     .sort((a,b)=>((parseDate(b.date)||new Date(0))-(parseDate(a.date)||new Date(0))));
 
   if(!pms.length&&!wos.length&&!invs.length){
-    return`<div style="margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text3);font-family:sans-serif">
+    return`<div style="margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text3)">
       No PMs, work orders, or invoices linked to this asset yet.
     </div>`;
   }
 
-  const pmRow=p=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+  const pmRow=p=>`<div style="font-size:12px;padding:4px 0;display:flex;gap:8px;align-items:baseline">
     <span>🔧</span>
     <div style="flex:1;min-width:0">
       <div style="font-weight:bold;color:var(--text)">${p.title}</div>
@@ -740,7 +740,7 @@ function renderAssetServiceRecord(assetId){
     </div>
     ${sb(p.status||'Upcoming')}
   </div>`;
-  const woRow=w=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+  const woRow=w=>`<div style="font-size:12px;padding:4px 0;display:flex;gap:8px;align-items:baseline">
     <span>🛠</span>
     <div style="flex:1;min-width:0">
       <div style="font-weight:bold;color:var(--text)">${w.issue}</div>
@@ -748,7 +748,7 @@ function renderAssetServiceRecord(assetId){
     </div>
     ${sb(w.status||'Open')}
   </div>`;
-  const invRow=i=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+  const invRow=i=>`<div style="font-size:12px;padding:4px 0;display:flex;gap:8px;align-items:baseline">
     <span>💵</span>
     <div style="flex:1;min-width:0">
       <div style="font-weight:bold;color:var(--text)">${i.vendor||'—'}${i.invoice_number?' #'+i.invoice_number:''}</div>
@@ -759,12 +759,12 @@ function renderAssetServiceRecord(assetId){
 
   const section=(title,rows,emptyMsg)=>`
     <div style="margin-top:10px">
-      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:4px">${title}${rows.length?` · ${rows.length}`:''}</div>
-      ${rows.length?rows:`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;padding:2px 0">${emptyMsg}</div>`}
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${title}${rows.length?` · ${rows.length}`:''}</div>
+      ${rows.length?rows:`<div style="font-size:11px;color:var(--text3);padding:2px 0">${emptyMsg}</div>`}
     </div>`;
 
   return`<div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:8px">
-    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:4px">Service Record</div>
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);margin-bottom:4px">Service Record</div>
     ${section('Preventive maintenance',pms.map(pmRow),'No PMs cover this asset yet.')}
     ${section('Work orders',wos.slice(0,10).map(woRow),'No work orders have touched this asset yet.')}
     ${section('Invoices',invs.slice(0,10).map(invRow),'No invoices reference this asset yet.')}
@@ -914,7 +914,7 @@ function pmCardHTML(p){
       <div class="pm-meta">${p.building} · ${p.frequency} · ${p.assigned_to||'Unassigned'}</div>
       <div class="pm-meta">Next due: <strong>${p.next_due||'Not set'}</strong>${p.last_completed?' · Last done: '+p.last_completed:''}</div>
       ${schedLine}
-      ${p.description?`<div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${p.description}</div>`:''}
+      ${p.description?`<div style="font-size:12px;color:var(--text3);margin-top:3px">${p.description}</div>`:''}
       ${linkedAssets.length?`<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${linkedAssets.slice(0,6).map(a=>`<span class="badge b-blue" style="font-size:10px">${catIcon[a.category]||'📦'} ${a.description}</span>`).join('')}${linkedAssets.length>6?`<span class="badge b-gray" style="font-size:10px">+${linkedAssets.length-6} more</span>`:''}</div>`:''}
       ${conflicts.length?`<div class="pm-conflict">⚠️ Parish event that day: ${conflicts.map(e=>e.title).join(', ')}</div>`:''}
     </div>
@@ -1010,14 +1010,14 @@ function renderPMConflicts(){
   el.innerHTML=`<div class="card" style="margin-bottom:16px;border-left:4px solid var(--warning)">
     <div class="card-header"><div class="card-title">⚠️ Parish event conflicts · ${conflictRows.length}</div></div>
     <div>
-      ${conflictRows.slice(0,8).map(r=>`<div style="display:flex;gap:10px;align-items:baseline;padding:8px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+      ${conflictRows.slice(0,8).map(r=>`<div style="display:flex;gap:10px;align-items:baseline;padding:8px 18px;border-bottom:1px solid var(--border);font-size:13px">
         <span style="font-weight:bold;color:var(--accent2);min-width:110px">${fmtDate(r.date)}</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:bold"><a onclick="editPM('${r.pm.id}')" style="color:inherit;cursor:pointer;text-decoration:underline">${r.pm.title}</a></div>
           <div style="font-size:11px;color:var(--text3)">Parish event that day: ${r.events.map(e=>e.title).join(', ')}</div>
         </div>
       </div>`).join('')}
-      ${conflictRows.length>8?`<div style="padding:8px 18px;font-size:12px;color:var(--text3);font-family:sans-serif">+${conflictRows.length-8} more conflicts…</div>`:''}
+      ${conflictRows.length>8?`<div style="padding:8px 18px;font-size:12px;color:var(--text3)">+${conflictRows.length-8} more conflicts…</div>`:''}
     </div>
   </div>`;
 }
@@ -1070,7 +1070,7 @@ function renderContacts(){
         const websiteHref=c.website?(c.website.match(/^https?:\/\//i)?c.website:'https://'+c.website):'';
         const websiteLabel=c.website?c.website.replace(/^https?:\/\//i,''):'';
         const people=Array.isArray(c.people)?c.people:[];
-        return`<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border);font-family:sans-serif">
+        return`<div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border)">
           <div style="width:40px;height:40px;border-radius:50%;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:var(--info);flex-shrink:0">${(c.name||'?').substring(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
@@ -1251,7 +1251,7 @@ function renderProjects(){
   el.innerHTML=statusOrder.filter(s=>groups[s]?.length).map(s=>{
     const groupTotal=groups[s].reduce((a,p)=>a+(Number(p.estimated_cost)||0),0);
     return`
-      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px;display:flex;justify-content:space-between">
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px;display:flex;justify-content:space-between">
         <span>${s} · ${groups[s].length}</span>
         <span style="color:var(--text2)">${fmt(groupTotal)}</span>
       </div>
@@ -1280,10 +1280,10 @@ function projectCardHTML(p){
           <span class="badge ${prioColor}" style="font-size:10px">${p.priority||'Medium'}</span>
           ${sb(p.status||'Proposed')}
         </div>
-        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-top:3px">${[p.building,p.target_year&&`Target ${p.target_year}`,p.funding_source].filter(Boolean).join(' · ')||'—'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">${[p.building,p.target_year&&`Target ${p.target_year}`,p.funding_source].filter(Boolean).join(' · ')||'—'}</div>
         <div style="font-size:14px;font-weight:bold;margin-top:4px">${fmt(p.estimated_cost)}${p.actual_cost&&p.status==='Complete'?` <span style="font-size:12px;color:var(--text3)">· actual ${fmt(p.actual_cost)}</span>`:''}</div>
-        ${p.description?`<div style="font-size:12px;color:var(--text2);font-family:sans-serif;margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.description}</div>`:''}
-        ${linked.length?`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;margin-top:4px">🔗 ${linked.join(' · ')}</div>`:''}
+        ${p.description?`<div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${p.description}</div>`:''}
+        ${linked.length?`<div style="font-size:11px;color:var(--text3);margin-top:4px">🔗 ${linked.join(' · ')}</div>`:''}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;align-items:flex-end">
         ${canApprove?`<button class="btn btn-success btn-sm" onclick="openProjectApproveModal('${p.id}','Approved')">✓ Approve</button>`:''}
@@ -1484,10 +1484,10 @@ function renderContactRolesList(){
   const byScope={};
   contactRoles.forEach(r=>{(byScope[r.type_scope]=byScope[r.type_scope]||[]).push(r);});
   el.innerHTML=scopes.filter(s=>byScope[s]?.length).map(s=>`
-    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;padding:10px 16px 4px;background:var(--bg3)">${s} · ${byScope[s].length}</div>
+    <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 16px 4px;background:var(--bg3)">${s} · ${byScope[s].length}</div>
     ${byScope[s].map(r=>{
       const inUse=contacts.filter(c=>c.role===r.name&&c.type===r.type_scope).length;
-      return`<div style="display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+      return`<div style="display:flex;align-items:center;gap:14px;padding:8px 16px;border-bottom:1px solid var(--border)">
         <div style="flex:1;min-width:0">
           <div style="font-weight:bold;font-size:13px;color:var(--accent2)">${r.name}</div>
           <div style="font-size:11px;color:var(--text3)">${inUse} contact${inUse===1?'':'s'} using this role</div>
@@ -1506,7 +1506,7 @@ function renderRoomTypesList(){
   if(!roomTypes.length){el.innerHTML='<div class="empty-state"><p>No room types yet.</p></div>';return;}
   el.innerHTML=roomTypes.map(rt=>{
     const inUse=rooms.filter(r=>r.room_type===rt.name).length;
-    return`<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+    return`<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border)">
       <div style="flex:1;min-width:0">
         <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${rt.name}</div>
         <div style="font-size:12px;color:var(--text3)">${inUse} room${inUse===1?'':'s'} using this type</div>
@@ -1566,7 +1566,7 @@ function renderFinance(){
   const year=new Date().getFullYear();
   el.innerHTML=`
     <div id="finance-budget"></div>
-    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;text-transform:uppercase;letter-spacing:.05em;margin:20px 0 12px">Cost per building — ${year}</div>
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em;margin:20px 0 12px">Cost per building — ${year}</div>
     <div id="finance-buildings" class="stats-row" style="grid-template-columns:repeat(3,1fr)"></div>
     <div class="card" style="margin-top:20px">
       <div class="card-header">
@@ -1605,7 +1605,7 @@ function renderBudgetProgress(){
       <div class="card-title">Annual Budget (${year})</div>
       <button class="btn btn-primary btn-sm no-print" onclick="openBudgetModal()">Set Budget</button>
     </div>
-    <div style="padding:16px 18px;color:var(--text3);font-family:sans-serif;font-size:13px">
+    <div style="padding:16px 18px;color:var(--text3);font-size:13px">
       No budget set for ${year} — click Set Budget to add one. Year-to-date spending so far: <strong>${fmt(spent)}</strong>.
     </div></div>`;
     return;
@@ -1623,7 +1623,7 @@ function renderBudgetProgress(){
     <div class="card-title">Annual Budget (${year})</div>
     <button class="btn btn-sm no-print" onclick="openBudgetModal()">Edit Budget</button>
   </div>
-  <div style="padding:16px 18px;font-family:sans-serif">
+  <div style="padding:16px 18px">
     <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:10px;flex-wrap:wrap">
       <div style="font-size:22px;font-weight:bold;color:var(--accent2)">${fmt(spent)}</div>
       <div style="font-size:13px;color:var(--text3)">of ${fmt(amt)}</div>
@@ -1804,7 +1804,7 @@ function renderPMReport(){
         <colgroup><col style="width:26%"><col style="width:14%"><col style="width:11%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:13%"></colgroup>
         <thead><tr><th>Task</th><th>Building</th><th>Frequency</th><th>Assigned</th><th>Next Due</th><th>Last Done</th><th>Status</th></tr></thead>
         <tbody>${rows.map(row).join('')}</tbody>
-      </table></div>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+      </table></div>`:`<div style="padding:16px;color:var(--text3);font-size:13px">${emptyMsg}</div>`}
     </div>`;
 
   el.innerHTML=`
@@ -1859,7 +1859,7 @@ function renderCOIReport(){
         <colgroup><col style="width:17%"><col style="width:14%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:12%"><col style="width:13%"><col style="width:7%"></colgroup>
         <thead><tr><th>Contractor</th><th>Role</th><th>Phone</th><th>COI Expiry</th><th>Status</th><th>Insurer</th><th>Policy #</th><th class="no-print">COI</th></tr></thead>
         <tbody>${rows.map(row).join('')}</tbody>
-      </table></div>`:`<div style="padding:16px;color:var(--text3);font-family:sans-serif;font-size:13px">${emptyMsg}</div>`}
+      </table></div>`:`<div style="padding:16px;color:var(--text3);font-size:13px">${emptyMsg}</div>`}
     </div>`;
 
   el.innerHTML=`
@@ -1946,7 +1946,7 @@ function renderSettings(){
   if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}
   el.innerHTML=categories.map(c=>{
     const inUse=assets.filter(a=>a.category===c.name).length;
-    return`<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border);font-family:sans-serif">
+    return`<div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--border)">
       <div style="width:38px;height:38px;border-radius:8px;background:var(--info-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${c.icon||'📦'}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
@@ -2052,7 +2052,7 @@ function renderProjectsFinanceReport(){
     </div>`:'';
 
   el.innerHTML=`
-    <div style="font-family:sans-serif">
+    <div>
       <div class="report-header" style="margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid var(--accent)">
         <div style="font-size:20px;font-weight:bold;color:var(--accent2);letter-spacing:.01em">Capital Projects · Finance Report</div>
         <div style="font-size:12px;color:var(--text3);margin-top:4px">${scope} · generated ${today}</div>
@@ -2104,12 +2104,12 @@ function renderProjectsParishReport(){
       <div style="padding:14px 16px">
         <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:4px">
           <div style="font-size:15px;font-weight:bold;color:var(--accent2);flex:1;min-width:0">${p.title}</div>
-          <span class="badge" style="font-family:sans-serif">${statusLabel[p.status]||p.status}</span>
+          <span class="badge">${statusLabel[p.status]||p.status}</span>
         </div>
-        <div style="font-size:12px;color:var(--text3);font-family:sans-serif;margin-bottom:6px">
+        <div style="font-size:12px;color:var(--text3);margin-bottom:6px">
           ${[p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||''}
         </div>
-        ${desc?`<div style="font-size:13px;color:var(--text);font-family:sans-serif;line-height:1.5">${desc}</div>`:''}
+        ${desc?`<div style="font-size:13px;color:var(--text);line-height:1.5">${desc}</div>`:''}
         <div style="margin-top:10px;font-size:13px;font-weight:bold">Estimated cost: ${fmt(p.estimated_cost)}</div>
       </div>
     </div>`;
@@ -2120,16 +2120,16 @@ function renderProjectsParishReport(){
   el.innerHTML=`
     <div class="report-header" style="margin-bottom:14px;text-align:center">
       <div style="font-size:20px;font-weight:bold;color:var(--accent2)">Parish Capital Projects</div>
-      <div style="font-size:12px;color:var(--text3);font-family:sans-serif">St. Francis de Sales${scope} · ${today}</div>
+      <div style="font-size:12px;color:var(--text3)">St. Francis de Sales${scope} · ${today}</div>
     </div>
-    <div style="background:var(--bg2);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;font-family:sans-serif;line-height:1.5">
+    <div style="background:var(--bg2);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.5">
       The following projects have been identified by the Facilities team to maintain
       and improve our parish campus. Together they represent an estimated investment
       of <strong>${fmt(totalEstimated)}</strong>. Your prayers, feedback, and support are welcome.
     </div>
     ${Object.keys(byBld).sort().map(bld=>`
       <div style="margin-top:14px">
-        <div style="font-size:14px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:8px;border-bottom:2px solid var(--accent);padding-bottom:4px">${bld}</div>
+        <div style="font-size:14px;font-weight:bold;color:var(--accent2);margin-bottom:8px;border-bottom:2px solid var(--accent);padding-bottom:4px">${bld}</div>
         ${byBld[bld].map(cardHTML).join('')}
       </div>
     `).join('')}
