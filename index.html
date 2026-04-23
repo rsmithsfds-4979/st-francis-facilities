@@ -156,6 +156,8 @@
       <select class="btn" id="pm-sort" onchange="renderPM()" title="Sort by">
         <option value="due-asc">Next due · soonest</option>
         <option value="due-desc">Next due · furthest</option>
+        <option value="last-desc">Last done · newest</option>
+        <option value="last-asc">Last done · oldest</option>
         <option value="title">Title (A–Z)</option>
         <option value="building">Building</option>
         <option value="assigned">Assigned to</option>
@@ -167,13 +169,14 @@
   <div class="content">
     <div id="pm-stats" class="stats-row" style="grid-template-columns:repeat(4,1fr)"></div>
     <div id="pm-conflicts"></div>
-    <div id="pm-view-tabs" class="cal-view-toggle" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn btn-sm" onclick="setPMView('all')">All</button>
-      <button class="btn btn-sm" onclick="setPMView('month')">Month</button>
-      <button class="btn btn-sm" onclick="setPMView('quarter')">Quarter</button>
-      <button class="btn btn-sm" onclick="setPMView('year')">Year</button>
-      <button class="btn btn-sm" onclick="setPMView('freq')">By Frequency</button>
-      <button class="btn btn-sm" onclick="setPMView('bld')">By Building</button>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" id="pm-mode-upcoming" onclick="setPMMode('upcoming')">📅 Upcoming</button>
+        <button class="btn btn-sm" id="pm-mode-history" onclick="setPMMode('history')">📜 History</button>
+      </div>
+      <span style="color:var(--border);margin:0 4px">|</span>
+      <select class="btn btn-sm" id="pm-window" onchange="setPMWindow(this.value)"></select>
+      <select class="btn btn-sm" id="pm-year-pick" onchange="setPMYear(Number(this.value))"></select>
     </div>
     <input type="text" class="search-bar" id="pm-search" placeholder="Search PM tasks…" oninput="renderPM()">
     <div id="pm-list"><div class="loading">Loading...</div></div>

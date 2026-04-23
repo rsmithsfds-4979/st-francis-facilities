@@ -749,7 +749,7 @@ function renderPM(){
 
   renderPMStats();
   renderPMConflicts();
-  updatePMViewTabs();
+  renderPMControls();
 
   // Populate Building filter from actual data
   const blds=[...new Set(pmTasks.map(p=>p.building).filter(Boolean))].sort();
@@ -757,30 +757,59 @@ function renderPM(){
 
   const fs=document.getElementById('pm-f-status')?.value||'all';
   const fb=document.getElementById('pm-f-bld')?.value||'all';
-  const sort=document.getElementById('pm-sort')?.value||'due-asc';
+  const sort=document.getElementById('pm-sort')?.value||(pmMode==='history'?'last-desc':'due-asc');
   const q=(document.getElementById('pm-search')?.value||'').toLowerCase();
 
   const now=new Date();now.setHours(0,0,0,0);
+  const in30=new Date(now.getTime()+30*24*60*60*1000);
+  const monthStart=new Date(now.getFullYear(),now.getMonth(),1);
   const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
   const qStart=new Date(now.getFullYear(),Math.floor(now.getMonth()/3)*3,1);
   const qEnd=new Date(qStart.getFullYear(),qStart.getMonth()+3,0,23,59,59);
-  const yearEnd=new Date(now.getFullYear(),11,31,23,59,59);
+  const yStart=new Date(pmYear,0,1);
+  const yEnd=new Date(pmYear,11,31,23,59,59);
 
   let filtered=pmTasks.filter(p=>{
+    // Mode: upcoming (active) vs history (completed)
+    if(pmMode==='upcoming'&&p.status==='Done')return false;
+    if(pmMode==='history'&&p.status!=='Done')return false;
+
     if(fs!=='all'&&p.status!==fs)return false;
     if(fb!=='all'&&p.building!==fb)return false;
     if(q){
-      const hay=[p.title,p.building,p.assigned_to,p.description,p.frequency,p.status,p.next_due].filter(Boolean).join(' ').toLowerCase();
+      const hay=[p.title,p.building,p.assigned_to,p.description,p.frequency,p.status,p.next_due,p.last_completed].filter(Boolean).join(' ').toLowerCase();
       if(!hay.includes(q))return false;
     }
-    // View-based time window — only applied to Month/Quarter/Year views
-    if(pmView==='month'||pmView==='quarter'||pmView==='year'){
-      const due=parseDate(p.next_due);
-      if(!due)return false;
-      if(pmView==='month'&&(due<now||due>monthEnd))return false;
-      if(pmView==='quarter'&&(due<qStart||due>qEnd))return false;
-      if(pmView==='year'&&(due<now||due>yearEnd))return false;
+
+    // Time window
+    if(pmMode==='upcoming'){
+      if(pmWindow==='current'){
+        // Overdue + anything due within 30 days + no date set (still actionable)
+        const due=parseDate(p.next_due);
+        if(!due)return true; // undated but active → keep visible
+        return due<=in30;
+      }
+      if(pmWindow==='month'){
+        const due=parseDate(p.next_due);
+        return due&&due>=monthStart&&due<=monthEnd;
+      }
+      if(pmWindow==='quarter'){
+        const due=parseDate(p.next_due);
+        return due&&due>=qStart&&due<=qEnd;
+      }
+      if(pmWindow==='year'){
+        const due=parseDate(p.next_due);
+        return due&&due>=yStart&&due<=yEnd;
+      }
+      // 'all' — no time filter
+      return true;
     }
+    // History mode
+    if(pmWindow==='year'){
+      const done=parseDate(p.last_completed);
+      return done&&done>=yStart&&done<=yEnd;
+    }
+    // 'all-done' — no time filter
     return true;
   });
 
@@ -792,43 +821,25 @@ function renderPM(){
   const cmps={
     'due-asc':(a,b)=>((parseDate(a.next_due)||FAR)-(parseDate(b.next_due)||FAR))||byTitle(a,b),
     'due-desc':(a,b)=>((parseDate(b.next_due)||NEAR)-(parseDate(a.next_due)||NEAR))||byTitle(a,b),
+    'last-desc':(a,b)=>((parseDate(b.last_completed)||NEAR)-(parseDate(a.last_completed)||NEAR))||byTitle(a,b),
+    'last-asc':(a,b)=>((parseDate(a.last_completed)||FAR)-(parseDate(b.last_completed)||FAR))||byTitle(a,b),
     'title':byTitle,
     'building':(a,b)=>(a.building||'').localeCompare(b.building||'')||byTitle(a,b),
     'assigned':(a,b)=>(a.assigned_to||'').localeCompare(b.assigned_to||'')||byTitle(a,b),
     'status':(a,b)=>((statusOrder[a.status]??9)-(statusOrder[b.status]??9))||byTitle(a,b),
   };
-  filtered.sort(cmps[sort]||cmps['due-asc']);
+  filtered.sort(cmps[sort]||cmps[pmMode==='history'?'last-desc':'due-asc']);
 
   if(!filtered.length){
+    const hint=pmMode==='upcoming'
+      ?'No upcoming PM tasks match these filters. Try widening the time window.'
+      :'No completed PM tasks match these filters.';
     el.innerHTML=pmTasks.length
-      ?'<div class="empty-state"><p>No PM tasks match these filters.</p></div>'
+      ?`<div class="empty-state"><p>${hint}</p></div>`
       :'<div class="empty-state"><p>No PM tasks yet.</p></div>';
     return;
   }
 
-  // Grouped renderings
-  if(pmView==='freq'){
-    const groupOrder=['Monthly','Quarterly','Semi-Annual','Annual','As Needed'];
-    const groups={};
-    filtered.forEach(p=>{const k=p.frequency||'Other';(groups[k]=groups[k]||[]).push(p);});
-    const order=[...groupOrder.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!groupOrder.includes(k))];
-    el.innerHTML=order.map(k=>`
-      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px">${k} · ${groups[k].length}</div>
-      ${groups[k].map(pmCardHTML).join('')}
-    `).join('');
-    return;
-  }
-  if(pmView==='bld'){
-    const groups={};
-    filtered.forEach(p=>{const k=p.building||'—';(groups[k]=groups[k]||[]).push(p);});
-    el.innerHTML=Object.keys(groups).sort().map(k=>`
-      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px">${k} · ${groups[k].length}</div>
-      ${groups[k].map(pmCardHTML).join('')}
-    `).join('');
-    return;
-  }
-
-  // Flat rendering (All / Month / Quarter / Year)
   el.innerHTML=filtered.map(pmCardHTML).join('');
 }
 
@@ -856,16 +867,47 @@ function pmCardHTML(p){
   </div>`;
 }
 
-function setPMView(v){pmView=v;renderPM();}
+function setPMMode(m){
+  pmMode=m;
+  // Default to a sensible window for each mode
+  if(m==='upcoming'&&!['current','month','quarter','year','all'].includes(pmWindow))pmWindow='current';
+  if(m==='history'&&!['all-done','year'].includes(pmWindow))pmWindow='year';
+  renderPM();
+}
+function setPMWindow(w){pmWindow=w;renderPM();}
+function setPMYear(y){pmYear=Number(y)||new Date().getFullYear();renderPM();}
 
-function updatePMViewTabs(){
-  const tabs={all:'All',month:'Month',quarter:'Quarter',year:'Year',freq:'By Frequency',bld:'By Building'};
-  const container=document.getElementById('pm-view-tabs');
-  if(!container)return;
-  container.querySelectorAll('button').forEach(btn=>{
-    const key=btn.getAttribute('onclick').match(/setPMView\('(\w+)'\)/)?.[1];
-    btn.classList.toggle('btn-primary',key===pmView);
-  });
+// Populates the mode buttons, window dropdown, and year dropdown based on current state.
+function renderPMControls(){
+  const upBtn=document.getElementById('pm-mode-upcoming');
+  const hiBtn=document.getElementById('pm-mode-history');
+  if(upBtn)upBtn.classList.toggle('btn-primary',pmMode==='upcoming');
+  if(hiBtn)hiBtn.classList.toggle('btn-primary',pmMode==='history');
+
+  const win=document.getElementById('pm-window');
+  if(win){
+    const opts=pmMode==='upcoming'
+      ?[['current','Current (overdue + next 30 days)'],['month','This month'],['quarter','This quarter'],['year','Pick year'],['all','All upcoming']]
+      :[['year','Pick year'],['all-done','All completed']];
+    // If current window isn't valid for the mode, snap to first option
+    const validKeys=opts.map(o=>o[0]);
+    if(!validKeys.includes(pmWindow))pmWindow=validKeys[0];
+    win.innerHTML=opts.map(([v,l])=>`<option value="${v}" ${pmWindow===v?'selected':''}>${l}</option>`).join('');
+  }
+
+  const yp=document.getElementById('pm-year-pick');
+  if(yp){
+    const showYear=pmWindow==='year';
+    yp.style.display=showYear?'':'none';
+    if(showYear){
+      // Build year options from actual PM data + current +/- 2 years
+      const fromData=pmTasks.flatMap(p=>[p.next_due,p.last_completed].map(parseDate).filter(Boolean).map(d=>d.getFullYear()));
+      const thisYear=new Date().getFullYear();
+      const yearSet=new Set([thisYear-2,thisYear-1,thisYear,thisYear+1,thisYear+2,...fromData,pmYear]);
+      const years=[...yearSet].sort((a,b)=>b-a);
+      yp.innerHTML=years.map(y=>`<option value="${y}" ${y===pmYear?'selected':''}>${y}</option>`).join('');
+    }
+  }
 }
 
 function renderPMStats(){
