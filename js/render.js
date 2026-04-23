@@ -662,6 +662,63 @@ function renderAssets(){
   }).join('');
 }
 
+// ---- ASSET SERVICE RECORD ----
+// Read-only block shown in the Asset edit modal: PMs covering this asset,
+// completed WOs that serviced it, and vendor invoices tied to it.
+function renderAssetServiceRecord(assetId){
+  if(!assetId)return'';
+  const pms=pmTasks.filter(p=>Array.isArray(p.asset_ids)&&p.asset_ids.includes(assetId))
+    .sort((a,b)=>((parseDate(b.next_due)||new Date(0))-(parseDate(a.next_due)||new Date(0))));
+  const wos=workOrders.filter(w=>Array.isArray(w.asset_ids)&&w.asset_ids.includes(assetId))
+    .sort((a,b)=>((parseDate(b.completed_date)||parseDate(b.created_at)||new Date(0))-(parseDate(a.completed_date)||parseDate(a.created_at)||new Date(0))));
+  const invs=invoices.filter(i=>Array.isArray(i.asset_ids)&&i.asset_ids.includes(assetId))
+    .sort((a,b)=>((parseDate(b.date)||new Date(0))-(parseDate(a.date)||new Date(0))));
+
+  if(!pms.length&&!wos.length&&!invs.length){
+    return`<div style="margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text3);font-family:sans-serif">
+      No PMs, work orders, or invoices linked to this asset yet.
+    </div>`;
+  }
+
+  const pmRow=p=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+    <span>🔧</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:bold;color:var(--text)">${p.title}</div>
+      <div style="color:var(--text3);font-size:11px">${p.frequency||''} · Next due: ${p.next_due||'—'}${p.last_completed?' · Last done: '+p.last_completed:''}</div>
+    </div>
+    ${sb(p.status||'Upcoming')}
+  </div>`;
+  const woRow=w=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+    <span>🛠</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:bold;color:var(--text)">${w.issue}</div>
+      <div style="color:var(--text3);font-size:11px">${w.completed_date?'Completed '+w.completed_date:'Status: '+(w.status||'Open')}${w.assignee?' · '+w.assignee:''}</div>
+    </div>
+    ${sb(w.status||'Open')}
+  </div>`;
+  const invRow=i=>`<div style="font-size:12px;font-family:sans-serif;padding:4px 0;display:flex;gap:8px;align-items:baseline">
+    <span>💵</span>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:bold;color:var(--text)">${i.vendor||'—'}${i.invoice_number?' #'+i.invoice_number:''}</div>
+      <div style="color:var(--text3);font-size:11px">${i.date||'—'}${i.description?' · '+i.description:''}</div>
+    </div>
+    <div style="font-weight:bold;font-size:12px">${fmt(i.amount)}</div>
+  </div>`;
+
+  const section=(title,rows,emptyMsg)=>`
+    <div style="margin-top:10px">
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:4px">${title}${rows.length?` · ${rows.length}`:''}</div>
+      ${rows.length?rows:`<div style="font-size:11px;color:var(--text3);font-family:sans-serif;padding:2px 0">${emptyMsg}</div>`}
+    </div>`;
+
+  return`<div style="margin-top:16px;padding:14px;background:var(--bg3);border-radius:8px">
+    <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif;margin-bottom:4px">Service Record</div>
+    ${section('Preventive maintenance',pms.map(pmRow),'No PMs cover this asset yet.')}
+    ${section('Work orders',wos.slice(0,10).map(woRow),'No work orders have touched this asset yet.')}
+    ${section('Invoices',invs.slice(0,10).map(invRow),'No invoices reference this asset yet.')}
+  </div>`;
+}
+
 // ---- RENDER WORK ORDERS ----
 function renderWO(){
   const fs=document.getElementById('wo-f-status')?.value||'all';

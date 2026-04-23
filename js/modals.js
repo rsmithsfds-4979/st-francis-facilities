@@ -347,6 +347,7 @@ function openAssetModal(asset,presetRoomId){
       <div class="photo-gallery" id="a-photo-gallery"></div>
       <div class="photo-upload" onclick="document.getElementById('a-photo-input').click()">📷 Click or drag photos here<input type="file" id="a-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('asset',event,'a-photo-gallery')"></div>
     </div>
+    ${asset?renderAssetServiceRecord(asset.id):''}
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('asset-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitAsset()">${asset?'Save Changes':'Add Asset'}</button>

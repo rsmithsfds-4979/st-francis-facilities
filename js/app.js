@@ -698,13 +698,38 @@ async function savePM(d){
 }
 
 async function markPMDone(id){
+  const pm=pmTasks.find(x=>x.id===id);
+  if(!pm){showToast('PM not found');return;}
+  const today=new Date().toLocaleDateString();
   try{
-    const{error}=await db.from('pm_schedule').update({status:'Done',last_completed:new Date().toLocaleDateString()}).eq('id',id);
+    const{error}=await db.from('pm_schedule').update({status:'Done',last_completed:today}).eq('id',id);
     if(error)throw error;
-    const p=pmTasks.find(x=>x.id===id);
-    if(p){p.status='Done';p.last_completed=new Date().toLocaleDateString();}
-    showToast('PM marked done!');renderPM();renderDash();
-  }catch(e){showToast('Error');}
+    pm.status='Done';pm.last_completed=today;
+
+    // Auto-log to service history: create one completed WO carrying the PM's linked assets.
+    // Shows up on the asset service record, the Service History page, and the WO table.
+    try{
+      const pmAssets=Array.isArray(pm.asset_ids)?pm.asset_ids:[];
+      const woData={
+        issue:pm.title+' (PM)',
+        building:pm.building||'All Buildings',
+        priority:'Medium',
+        assignee:pm.assigned_to||'—',
+        status:'Completed',
+        completed_date:today,
+        notes:`Auto-logged from PM completion${pm.description?': '+pm.description:''}`,
+        asset_ids:pmAssets,
+      };
+      const{data:woRes,error:woErr}=await db.from('work_orders').insert([woData]).select();
+      if(!woErr&&woRes?.[0]){
+        const row={...woRes[0],asset_ids:normalizeIdArray(woRes[0].asset_ids),invoice_ids:normalizeIdArray(woRes[0].invoice_ids),photo_urls:normalizeIdArray(woRes[0].photo_urls)};
+        workOrders.unshift(row);
+      }
+    }catch(e){console.error('PM auto-log failed:',e);}
+
+    showToast('PM marked done — service record logged');
+    renderPM();renderDash();renderWO();renderHistory();
+  }catch(e){console.error(e);showToast('Error');}
 }
 
 async function deletePM(id){
