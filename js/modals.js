@@ -2050,11 +2050,17 @@ function openUtilityModal(reading){
       <div class="fg"><label>Account number</label><input type="text" class="fi" id="ur-account" value="${v('account_number')}"></div>
     </div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="ur-notes">${v('notes')}</textarea></div>
+    <div class="fg"><label>Bill PDFs</label>
+      <div id="ur-pdf-list"></div>
+      <div class="photo-upload" onclick="document.getElementById('ur-pdf-input').click()">📄 Click or drag PDFs here<input type="file" id="ur-pdf-input" accept=".pdf" multiple style="display:none" onchange="addPendingPDFs('utility',event,'ur-pdf-list')"></div>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('utility-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitUtility()">${reading?'Save Changes':'Save Reading'}</button>
     </div>`;
   refreshUtilityTypeOptions(reading?.utility_type);
+  initPhotoState('utility',allPDFs(reading));
+  renderPDFList('utility','ur-pdf-list');
   document.getElementById('utility-modal').classList.add('open');
 }
 
@@ -2084,10 +2090,11 @@ function onUtilityTypeChange(){
   if(!unitEl.value||knownDefaults.includes(unitEl.value))unitEl.value=UTILITY_UNIT_DEFAULTS[type]||'';
 }
 
-function submitUtility(){
+async function submitUtility(){
   const building_id=document.getElementById('ur-bld')?.value;
   const utility_type=document.getElementById('ur-type')?.value;
   if(!building_id||!utility_type){showToast('Building and utility type are required');return;}
+  const pdf_urls=await finalizePhotos('utility','utilities');
   saveUtility({
     building_id,utility_type,
     period_start:document.getElementById('ur-start')?.value||null,
@@ -2099,6 +2106,7 @@ function submitUtility(){
     provider:document.getElementById('ur-provider')?.value.trim()||null,
     account_number:document.getElementById('ur-account')?.value.trim()||null,
     notes:document.getElementById('ur-notes')?.value.trim()||null,
+    pdf_urls,
   });
 }
 

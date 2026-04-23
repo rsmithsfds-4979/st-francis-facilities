@@ -555,20 +555,26 @@ function renderUtilityTable(){
     .sort((a,b)=>{const da=parseDate(a.period_end),db=parseDate(b.period_end);return(db||0)-(da||0);});
   if(!readings.length){el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-size:13px">No readings logged yet.</div>';return;}
   el.innerHTML=`<div class="table-wrap"><table class="table">
-    <colgroup><col style="width:10%"><col style="width:16%"><col style="width:14%"><col style="width:14%"><col style="width:16%"><col style="width:15%"><col style="width:15%"></colgroup>
-    <thead><tr><th>Type</th><th>Period</th><th>Usage</th><th>Cost</th><th>Provider</th><th>Account</th><th>Actions</th></tr></thead>
-    <tbody>${readings.slice(0,24).map(r=>`<tr>
+    <colgroup><col style="width:10%"><col style="width:15%"><col style="width:13%"><col style="width:12%"><col style="width:14%"><col style="width:13%"><col style="width:8%"><col style="width:15%"></colgroup>
+    <thead><tr><th>Type</th><th>Period</th><th>Usage</th><th>Cost</th><th>Provider</th><th>Account</th><th>Bill</th><th>Actions</th></tr></thead>
+    <tbody>${readings.slice(0,24).map(r=>{
+      const pdfs=Array.isArray(r.pdf_urls)?r.pdf_urls:[];
+      const pdfCell=pdfs.length
+        ?pdfs.map((u,i)=>`<a href="${u}" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;margin-right:6px" title="Open bill PDF">📄${pdfs.length>1?' '+(i+1):''}</a>`).join('')
+        :'<span style="color:var(--text3)">—</span>';
+      return`<tr>
       <td>${r.utility_type}</td>
       <td style="font-size:12px">${r.period_start||'—'} → ${r.period_end||'—'}</td>
       <td>${r.usage?Number(r.usage).toLocaleString()+' '+(r.usage_unit||''):'—'}</td>
       <td style="font-weight:bold">${r.cost?fmt(r.cost):'—'}</td>
       <td style="font-size:12px">${r.provider||'—'}</td>
       <td style="font-size:12px;color:var(--text3)">${r.account_number||'—'}</td>
+      <td style="font-size:12px">${pdfCell}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-edit btn-sm" onclick="editUtility('${r.id}')">Edit</button>
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteUtility('${r.id}')">Del</button>
       </td>
-    </tr>`).join('')}</tbody>
+    </tr>`;}).join('')}</tbody>
   </table></div>`;
 }
 

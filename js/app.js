@@ -339,7 +339,7 @@ async function loadUtilities(){
   try{
     const{data,error}=await db.from('utility_readings').select('*').order('period_end',{ascending:false});
     if(error)throw error;
-    utilityReadings=data||[];
+    utilityReadings=(data||[]).map(u=>({...u,pdf_urls:normalizeIdArray(u.pdf_urls)}));
   }catch(e){console.error(e);utilityReadings=[];}
 }
 
@@ -349,12 +349,12 @@ async function saveUtility(d){
       const{data,error}=await db.from('utility_readings').update(d).eq('id',editingUtilityId).select();
       if(error)throw error;
       const i=utilityReadings.findIndex(u=>u.id===editingUtilityId);
-      if(i>-1)utilityReadings[i]=data[0];
+      if(i>-1)utilityReadings[i]={...data[0],pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       showToast('Utility reading updated!');
     }else{
       const{data,error}=await db.from('utility_readings').insert([d]).select();
       if(error)throw error;
-      utilityReadings.unshift(data[0]);
+      utilityReadings.unshift({...data[0],pdf_urls:normalizeIdArray(data[0].pdf_urls)});
       showToast('Utility reading saved!');
     }
     editingUtilityId=null;closeModal('utility-modal');
@@ -1128,7 +1128,7 @@ function renderPhotoGallery(key,galleryId){
     ...kept.map(u=>`<div class="photo-thumb"><img src="${u}" onclick="openLightbox('${u}')"><button type="button" onclick="removeExistingPhoto('${key}','${u}','${galleryId}')">×</button></div>`),
     ...s.pendingPreviews.map((p,i)=>`<div class="photo-thumb"><img src="${p}"><button type="button" onclick="removePendingPhoto('${key}',${i},'${galleryId}')">×</button></div>`),
   ];
-  el.innerHTML=thumbs.join('')||'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No photos yet</div>';
+  el.innerHTML=thumbs.join('')||'<div style="font-size:12px;color:var(--text3);padding:4px 0">No photos yet</div>';
 }
 
 function addPendingPhotos(key,event,galleryId){
@@ -1217,7 +1217,7 @@ function renderPDFList(key,listId){
       <button type="button" class="btn btn-danger btn-sm" onclick="removePDFPending('${key}',${i},'${listId}')">✕</button>
     </div>`);
   });
-  el.innerHTML=rows.length?rows.join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">No PDFs attached.</div>';
+  el.innerHTML=rows.length?rows.join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No PDFs attached.</div>';
 }
 
 function removePDFExisting(key,idx,listId){
@@ -1278,7 +1278,7 @@ async function uploadFile(file,folder){
   try{
     const ext=file.name.split('.').pop();
     const path=`${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const bucket=(folder==='coi'||folder==='invoices'||folder==='quotes')?'documents':'asset-photos';
+    const bucket=(folder==='coi'||folder==='invoices'||folder==='quotes'||folder==='utilities')?'documents':'asset-photos';
     const{error}=await db.storage.from(bucket).upload(path,file);
     if(error)throw error;
     const{data}=db.storage.from(bucket).getPublicUrl(path);
