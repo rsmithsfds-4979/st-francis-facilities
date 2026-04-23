@@ -1382,6 +1382,7 @@ function go(name,el){
   if(name==='projects-finance-report')renderProjectsFinanceReport();
   if(name==='projects-parish-report')renderProjectsParishReport();
   renderHistory();
+  autoCloseMobileSidebar();
 }
 
 function goContacts(type,el){
@@ -1495,7 +1496,41 @@ function initCollapsibleNav(){
   });
 }
 
+// ---- SIDEBAR SHOW/HIDE ----
+// On desktop, toggling removes the sidebar entirely (persisted). On mobile,
+// toggling slides the off-canvas drawer in/out (not persisted — tap-anywhere
+// closes, next visit starts closed).
+function isMobileViewport(){return window.matchMedia('(max-width:768px)').matches;}
+
+function toggleSidebar(){
+  const app=document.querySelector('.app');
+  if(!app)return;
+  if(isMobileViewport()){
+    app.classList.toggle('sidebar-open');
+  }else{
+    const hidden=app.classList.toggle('sidebar-hidden');
+    try{localStorage.setItem('sidebar-hidden',hidden?'1':'0');}catch(e){}
+  }
+}
+
+function initSidebarState(){
+  const app=document.querySelector('.app');
+  if(!app)return;
+  if(!isMobileViewport()){
+    try{
+      if(localStorage.getItem('sidebar-hidden')==='1')app.classList.add('sidebar-hidden');
+    }catch(e){}
+  }
+}
+
+// Close the mobile drawer after the user picks a nav item.
+function autoCloseMobileSidebar(){
+  if(!isMobileViewport())return;
+  document.querySelector('.app')?.classList.remove('sidebar-open');
+}
+
 // ---- INIT ----
 setupDragDropUploads();
 initCollapsibleNav();
+initSidebarState();
 loadAll();

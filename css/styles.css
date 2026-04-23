@@ -11,8 +11,19 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Georgia',serif;background:var(--bg);color:var(--text);min-height:100vh}
 .app{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:220px;background:var(--accent2);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
-.sidebar-header{padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar{width:220px;background:var(--accent2);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;transition:transform .22s ease}
+.sidebar-header{padding:14px 14px 10px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.sidebar-header-text{flex:1;min-width:0}
+.sidebar-close{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:2px 8px;border-radius:5px;line-height:1;opacity:.7;transition:opacity .15s}
+.sidebar-close:hover{opacity:1;background:rgba(255,255,255,.12)}
+.sidebar-toggle{position:fixed;top:10px;left:10px;z-index:60;background:var(--accent2);color:#fff;border:none;width:42px;height:42px;border-radius:8px;cursor:pointer;font-size:20px;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);display:none}
+.sidebar-toggle:hover{background:var(--accent)}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:45;display:none}
+.app.sidebar-open .sidebar-overlay{display:block}
+/* Desktop hidden state: sidebar off, toggle visible */
+.app.sidebar-hidden .sidebar{display:none}
+.app.sidebar-hidden .sidebar-toggle{display:flex}
+.app.sidebar-hidden .topbar{padding-left:64px}
 .sidebar-logo{font-size:13px;font-weight:bold;line-height:1.35}
 .sidebar-sub{font-size:10px;opacity:.6;margin-top:2px;font-family:sans-serif}
 .nav-section{padding:2px 6px}
@@ -287,11 +298,27 @@ textarea.fi{resize:vertical;min-height:65px}
 }
 
 @media(max-width:768px){
-  .sidebar{width:56px}
-  .sidebar-logo,.sidebar-sub,.nav-label{display:none}
-  .nav-item span:first-child{display:none}
-  .stats-row,.building-grid,.three-col{grid-template-columns:repeat(2,1fr)}
+  /* Off-canvas sidebar: slides in over content, overlay dims the rest */
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;width:260px;transform:translateX(-100%);box-shadow:2px 0 16px rgba(0,0,0,.3)}
+  .app.sidebar-open .sidebar{transform:translateX(0)}
+  .sidebar-toggle{display:flex}
+  .app.sidebar-open .sidebar-toggle{display:none}
+  .topbar{padding:14px 16px 14px 64px}
+  .topbar-title{font-size:16px}
+  .content{padding:14px}
+  .stats-row,.building-grid,.three-col{grid-template-columns:repeat(2,1fr);gap:10px}
   .two-col{grid-template-columns:1fr}
   .room-grid{grid-template-columns:repeat(2,1fr)}
   .form-row{grid-template-columns:1fr}
+  /* Larger touch targets inside the drawer */
+  .nav-item{padding:10px 12px;font-size:14px}
+  .nav-label{padding:10px 12px;font-size:11px}
+  /* Full-screen modals on small phones so long forms fit */
+  .modal-overlay{padding:0}
+  .modal{max-width:100%;width:100%;height:100%;max-height:100%;border-radius:0;padding:18px}
+  .modal-actions{position:sticky;bottom:0;background:var(--bg2);margin:16px -18px 0;padding:12px 18px}
+  /* Stat cards: tighter numbers so two fit on narrow phones */
+  .stat-value{font-size:22px}
+  /* Buttons: easier to tap */
+  .btn{padding:9px 14px;font-size:13px}
 }

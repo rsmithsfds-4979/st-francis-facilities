@@ -10,10 +10,15 @@
 </head>
 <body>
 <div class="app">
+<button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
+<div class="sidebar-overlay" onclick="toggleSidebar()"></div>
 <div class="sidebar">
   <div class="sidebar-header">
-    <div class="sidebar-logo">St. Francis<br>de Sales</div>
-    <div class="sidebar-sub">Facility Manager</div>
+    <div class="sidebar-header-text">
+      <div class="sidebar-logo">St. Francis<br>de Sales</div>
+      <div class="sidebar-sub">Facility Manager</div>
+    </div>
+    <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Close menu">✕</button>
   </div>
   <div class="nav-section" data-nav="overview">
     <div class="nav-label" onclick="toggleNavSection(this)"><span>Overview</span><span class="nav-chev">▾</span></div>
