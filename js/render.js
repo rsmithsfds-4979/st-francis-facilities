@@ -1002,7 +1002,7 @@ function renderContacts(){
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
             <div style="font-size:12px;color:var(--text3)">${c.role}${c.email?' · '+c.email:''}</div>
-            ${(()=>{const phones=[];if(c.phone)phones.push('📱 '+c.phone);if(c.phone_office){const ext=c.phone_office_ext?' x'+c.phone_office_ext:'';phones.push('📞 '+c.phone_office+ext);}if(c.phone_home)phones.push('🏠 '+c.phone_home);return phones.length?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${phones.join(' · ')}</div>`:'';})()}
+            ${(()=>{const phones=[];if(c.phone)phones.push('📱 '+c.phone);if((c.type==='Staff'||c.type==='Volunteer')&&c.phone_home)phones.push('🏠 '+c.phone_home);return phones.length?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${phones.join(' · ')}</div>`:'';})()}
             ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
             ${c.website?`<div style="font-size:12px;margin-top:2px">🌐 <a href="${websiteHref}" target="_blank" style="color:var(--accent)">${websiteLabel}</a></div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}
@@ -1011,16 +1011,21 @@ function renderContacts(){
                 <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em">Points of Contact${people.length?` · ${people.length}`:''}</div>
                 <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openAddPersonModal('${c.id}')">+ Add Contact</button>
               </div>
-              ${people.length?people.map((p,i)=>`<div style="font-size:12px;color:var(--text2);padding:4px 0;display:flex;gap:8px;align-items:flex-start">
+              ${people.length?people.map((p,i)=>{
+                const phoneBits=[];
+                if(p.phone)phoneBits.push('📱 '+p.phone);
+                if(p.phone_office){const ext=p.phone_office_ext?' x'+p.phone_office_ext:'';phoneBits.push('📞 '+p.phone_office+ext);}
+                const phonesStr=phoneBits.length?' · '+phoneBits.join(' · '):'';
+                return`<div style="font-size:12px;color:var(--text2);padding:4px 0;display:flex;gap:8px;align-items:flex-start">
                 <div style="flex:1;min-width:0">
-                  <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
+                  <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${phonesStr}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
                   ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
                 </div>
                 <div style="display:flex;gap:4px;flex-shrink:0">
                   <button class="btn btn-edit btn-sm" style="font-size:10px;padding:2px 8px" onclick="openPersonModal('${c.id}',${i})">Edit</button>
                   <button class="btn btn-danger btn-sm" style="font-size:10px;padding:2px 8px" onclick="confirmDeletePerson('${c.id}',${i})">Del</button>
                 </div>
-              </div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0">No points of contact yet.</div>'}
+              </div>`;}).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0">No points of contact yet.</div>'}
             </div>`:''}
             ${isContractor?(c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="badge ${coiExpired?'b-red':coiSoon?'b-amber':'b-green'}" style="font-size:11px">

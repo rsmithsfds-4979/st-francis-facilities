@@ -780,8 +780,12 @@ function renderPMSchedulePersonPicker(){
         <div class="fg"><label>Title</label><input type="text" class="fi" id="new-person-title" placeholder="Sales Rep, A/P, Service Manager…"></div>
       </div>
       <div class="form-row">
-        <div class="fg"><label>Phone</label><input type="text" class="fi" id="new-person-phone"></div>
+        <div class="fg"><label>Cell phone</label><input type="text" class="fi" id="new-person-phone"></div>
         <div class="fg"><label>Email</label><input type="text" class="fi" id="new-person-email"></div>
+      </div>
+      <div class="form-row">
+        <div class="fg"><label>Office phone</label><input type="text" class="fi" id="new-person-phone-office"></div>
+        <div class="fg" style="max-width:120px"><label>Extension</label><input type="text" class="fi" id="new-person-phone-office-ext"></div>
       </div>
       <div style="display:flex;gap:6px;justify-content:flex-end">
         <button type="button" class="btn btn-sm" onclick="cancelAddSchedPerson()">Cancel</button>
@@ -813,6 +817,8 @@ async function saveNewSchedPerson(contactId){
     name,
     title:document.getElementById('new-person-title')?.value.trim()||'',
     phone:document.getElementById('new-person-phone')?.value.trim()||'',
+    phone_office:document.getElementById('new-person-phone-office')?.value.trim()||'',
+    phone_office_ext:document.getElementById('new-person-phone-office-ext')?.value.trim()||'',
     email:document.getElementById('new-person-email')?.value.trim()||'',
   };
   const saved=await addPersonToContact(contactId,person);
@@ -993,10 +999,6 @@ function openContactModal(contact){
       </div>
       <div class="fg"><label>Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
-    <div class="form-row" id="ct-office-row">
-      <div class="fg"><label>Office phone</label><input type="text" class="fi" id="ct-phone-office" value="${v('phone_office')}"></div>
-      <div class="fg" style="max-width:120px"><label>Extension</label><input type="text" class="fi" id="ct-phone-office-ext" value="${v('phone_office_ext')}"></div>
-    </div>
     <div class="fg" id="ct-home-row"><label>Home phone</label><input type="text" class="fi" id="ct-phone-home" value="${v('phone_home')}"></div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
     <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
@@ -1080,9 +1082,7 @@ function toggleTypeSections(type){
   if(coi)coi.style.display=type==='Contractor'?'block':'none';
   const people=document.getElementById('people-section');
   if(people)people.style.display=(type==='Contractor'||type==='Vendor')?'block':'none';
-  // Office phone + ext for Contractor/Vendor; Home phone for Staff/Volunteer.
-  const officeRow=document.getElementById('ct-office-row');
-  if(officeRow)officeRow.style.display=(type==='Contractor'||type==='Vendor')?'':'none';
+  // Home phone only applies to individuals (Staff / Volunteer).
   const homeRow=document.getElementById('ct-home-row');
   if(homeRow)homeRow.style.display=(type==='Staff'||type==='Volunteer')?'':'none';
 }
@@ -1107,13 +1107,12 @@ async function submitContact(){
   const people=(isContractor||isVendor)
     ?peopleDraft.filter(p=>p.name||p.title||p.phone||p.email||p.notes)
     :[];
-  const isOrg=isContractor||isVendor;
   const isIndividual=type==='Staff'||type==='Volunteer';
   saveContact({
     name,role,type,
     phone:document.getElementById('ct-phone')?.value.trim(),
-    phone_office:isOrg?document.getElementById('ct-phone-office')?.value.trim():null,
-    phone_office_ext:isOrg?document.getElementById('ct-phone-office-ext')?.value.trim():null,
+    phone_office:null,
+    phone_office_ext:null,
     phone_home:isIndividual?document.getElementById('ct-phone-home')?.value.trim():null,
     email:document.getElementById('ct-email')?.value.trim(),
     website:document.getElementById('ct-website')?.value.trim(),
@@ -1152,8 +1151,12 @@ function openPersonModal(contactId,personIndex){
       <div class="fg"><label>Title</label><input type="text" class="fi" id="ap-title" placeholder="Sales Rep, A/P, Service Manager…" value="${v('title').replace(/"/g,'&quot;')}"></div>
     </div>
     <div class="form-row">
-      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ap-phone" value="${v('phone').replace(/"/g,'&quot;')}"></div>
+      <div class="fg"><label>Cell phone</label><input type="text" class="fi" id="ap-phone" value="${v('phone').replace(/"/g,'&quot;')}"></div>
       <div class="fg"><label>Email</label><input type="text" class="fi" id="ap-email" value="${v('email').replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Office phone</label><input type="text" class="fi" id="ap-phone-office" value="${v('phone_office').replace(/"/g,'&quot;')}"></div>
+      <div class="fg" style="max-width:120px"><label>Extension</label><input type="text" class="fi" id="ap-phone-office-ext" value="${v('phone_office_ext').replace(/"/g,'&quot;')}"></div>
     </div>
     <div class="fg"><label>Notes</label><input type="text" class="fi" id="ap-notes" placeholder="Optional — best time to reach, preferences, etc." value="${v('notes').replace(/"/g,'&quot;')}"></div>
     <div class="modal-actions">
@@ -1175,6 +1178,8 @@ async function submitPerson(contactId,personIndex){
     name,
     title:document.getElementById('ap-title')?.value.trim()||'',
     phone:document.getElementById('ap-phone')?.value.trim()||'',
+    phone_office:document.getElementById('ap-phone-office')?.value.trim()||'',
+    phone_office_ext:document.getElementById('ap-phone-office-ext')?.value.trim()||'',
     email:document.getElementById('ap-email')?.value.trim()||'',
     notes:document.getElementById('ap-notes')?.value.trim()||'',
   };
