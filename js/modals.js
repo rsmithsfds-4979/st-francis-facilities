@@ -277,6 +277,24 @@ function handleAssignChange(sel){
   openContactModal();
 }
 
+// Inline "+ Add new vendor…" from the quote modal's vendor dropdown.
+// Pre-selects type=Vendor on the contact modal; on save, inserts and selects it.
+function handleQuoteVendorChange(sel){
+  if(sel.value!=='__add_new__')return;
+  sel.value='';
+  currentContactType='Vendor';
+  afterContactSave=(newContact)=>{
+    const opt=document.createElement('option');
+    opt.textContent=newContact.name;
+    opt.value=newContact.name;
+    const anchor=sel.querySelector('option[value="__add_new__"]');
+    if(anchor)sel.insertBefore(opt,anchor);
+    else sel.appendChild(opt);
+    sel.value=newContact.name;
+  };
+  openContactModal();
+}
+
 async function submitWO(){
   const issue=document.getElementById('f-issue')?.value.trim();
   const building=document.getElementById('f-bld')?.value;
@@ -1848,9 +1866,10 @@ function openQuoteModal(quote){
     </div>
     <div class="form-row">
       <div class="fg"><label>Vendor *</label>
-        <select class="fi" id="qt-vendor">
+        <select class="fi" id="qt-vendor" onchange="handleQuoteVendorChange(this)">
           <option value="">Select...</option>
           ${contacts.filter(c=>c.type==='Contractor'||c.type==='Vendor').sort((a,b)=>a.name.localeCompare(b.name)).map(c=>`<option ${v('vendor')===c.name?'selected':''}>${c.name}</option>`).join('')}
+          <option value="__add_new__">+ Add new vendor…</option>
           <option ${v('vendor')==='Other'?'selected':''}>Other</option>
         </select>
       </div>
