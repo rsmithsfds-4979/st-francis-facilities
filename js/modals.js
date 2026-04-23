@@ -160,6 +160,7 @@ function renderAssetPicker(listId){
         <div><div style="font-weight:bold">${a.description}</div><div style="font-size:11px;color:var(--text3)">${a.building} · ${a.room_number||a.location||''} · ${a.category||''}</div></div>
       </div>`;
     }).join(''):'<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:12px;text-align:center">No assets match.</div>'}`;
+  updatePickerCount(listId);
 }
 
 function togglePickerItem(listId,assetId,rowEl){
@@ -173,6 +174,7 @@ function togglePickerItem(listId,assetId,rowEl){
     const cb=rowEl.querySelector('input[type=checkbox]');
     if(cb)cb.checked=isNow;
   }
+  updatePickerCount(listId);
 }
 
 function getPickerChecked(listId){
@@ -194,7 +196,55 @@ function assetPickerFiltersHTML(listId){
         ${categories.map(c=>`<option>${c.name}</option>`).join('')}
       </select>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center;flex-wrap:wrap">
+      <button type="button" class="btn btn-sm" onclick="selectAllVisibleAssets('${listId}')" style="padding:3px 8px;font-size:11px">Select all visible</button>
+      <button type="button" class="btn btn-sm" onclick="clearPickerSelection('${listId}')" style="padding:3px 8px;font-size:11px">Clear</button>
+      <span id="${listId}-count" style="font-family:sans-serif;color:var(--text3);font-size:11px;margin-left:4px"></span>
+    </div>
     <div id="${listId}" style="max-height:260px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px"></div>`;
+}
+
+// Filters the assets list with the same logic renderAssetPicker uses, and returns matches.
+function pickerVisibleAssets(listId){
+  const state=_pickerState[listId];
+  if(!state)return[];
+  const search=(document.getElementById(listId+'-search')?.value||'').toLowerCase();
+  const building=document.getElementById(listId+'-bld')?.value||'all';
+  const category=document.getElementById(listId+'-cat')?.value||'all';
+  if(state.requireBuilding&&building==='all')return[];
+  return assets.filter(a=>{
+    if(building!=='all'&&a.building!==building)return false;
+    if(category!=='all'&&a.category!==category)return false;
+    if(search){
+      const hay=[a.description,a.serial,a.room_number,a.location,a.manufacturer].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(search))return false;
+    }
+    return true;
+  });
+}
+
+function selectAllVisibleAssets(listId){
+  const state=_pickerState[listId];
+  if(!state)return;
+  const visible=pickerVisibleAssets(listId);
+  if(!visible.length){showToast('No assets visible to select');return;}
+  visible.forEach(a=>state.checked.add(a.id));
+  renderAssetPicker(listId);
+}
+
+function clearPickerSelection(listId){
+  const state=_pickerState[listId];
+  if(!state)return;
+  state.checked.clear();
+  renderAssetPicker(listId);
+}
+
+function updatePickerCount(listId){
+  const state=_pickerState[listId];
+  const el=document.getElementById(listId+'-count');
+  if(!el||!state)return;
+  const n=state.checked.size;
+  el.textContent=n?`${n} selected`:'';
 }
 
 // Opens the Asset modal from another modal (e.g. WO or Invoice). After save, adds the new
