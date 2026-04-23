@@ -1987,55 +1987,68 @@ function renderProjectsFinanceReport(){
   const today=new Date().toLocaleDateString();
   const scope=fy==='all'?'All years':`Target year ${fy}`;
 
-  const rowHTML=(p,idx)=>{
+  const prioColor={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};
+  const projectCard=p=>{
     const trail=Array.isArray(p.approval_trail)?p.approval_trail:[];
     const latest=trail[trail.length-1];
-    const meta=[p.building,p.target_year&&'Target '+p.target_year,p.funding_source].filter(Boolean).join(' · ')||'—';
-    const zebra=idx%2===1?'background:var(--bg3)':'';
-    return`<tr style="border-top:1px solid var(--border);${zebra}">
-      <td style="padding:12px 14px;vertical-align:top">
-        <div style="font-weight:bold;color:var(--accent2);font-size:13px;line-height:1.35">${p.title}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5">${meta}</div>
-        ${p.description?`<div style="font-size:12px;color:var(--text2);margin-top:8px;line-height:1.5">${p.description}</div>`:''}
-      </td>
-      <td style="padding:12px 10px;vertical-align:top;font-size:12px;white-space:nowrap">${p.priority||'Medium'}</td>
-      <td style="padding:12px 10px;vertical-align:top;font-size:12px;white-space:nowrap">${p.status||'Proposed'}</td>
-      <td style="padding:12px 10px;vertical-align:top;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${fmt(p.estimated_cost)}</td>
-      <td style="padding:12px 10px;vertical-align:top;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums">${p.actual_cost?fmt(p.actual_cost):'—'}</td>
-      <td style="padding:12px 14px;vertical-align:top;font-size:11px;line-height:1.5">
-        ${latest?`<div><strong>${latest.decision}</strong></div><div style="color:var(--text3);margin-top:2px">${latest.approver||'—'}${latest.date?' · '+latest.date:''}</div>`:'<span style="color:var(--text3)">—</span>'}
-        ${trail.length>1?`<div style="color:var(--text3);font-size:10px;margin-top:4px">+ ${trail.length-1} prior</div>`:''}
-      </td>
-    </tr>`;
+    const metaBits=[
+      p.building&&['Building',p.building],
+      p.target_year&&['Target year',p.target_year],
+      p.funding_source&&['Funding',p.funding_source],
+      p.priority&&['Priority',p.priority],
+    ].filter(Boolean);
+    return`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;page-break-inside:avoid">
+      <!-- Title row -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:200px">
+          <div style="font-size:16px;font-weight:bold;color:var(--accent2);line-height:1.3">${p.title}</div>
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+            <span class="badge ${prioColor[p.priority]||'b-gray'}" style="font-size:10px">${p.priority||'Medium'}</span>
+            ${sb(p.status||'Proposed')}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Estimated</div>
+          <div style="font-size:18px;font-weight:bold;font-variant-numeric:tabular-nums">${fmt(p.estimated_cost)}</div>
+          ${p.actual_cost?`<div style="font-size:11px;color:var(--text3);margin-top:6px;text-transform:uppercase;letter-spacing:.06em">Actual</div><div style="font-size:14px;font-weight:bold;color:var(--success);font-variant-numeric:tabular-nums">${fmt(p.actual_cost)}</div>`:''}
+        </div>
+      </div>
+
+      <!-- Meta grid: label over value so nothing smashes together -->
+      ${metaBits.length?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px 20px;margin-bottom:12px">
+        ${metaBits.map(([k,v])=>`<div>
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">${k}</div>
+          <div style="font-size:13px">${v}</div>
+        </div>`).join('')}
+      </div>`:''}
+
+      <!-- Full-width description block -->
+      ${p.description?`<div style="background:var(--bg3);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:12px 14px;margin-bottom:${p.notes||trail.length?'12px':'0'};line-height:1.6;font-size:13px;color:var(--text)">${p.description.replace(/\n/g,'<br>')}</div>`:''}
+
+      <!-- Optional internal notes, separate from description -->
+      ${p.notes?`<div style="margin-bottom:${trail.length?'12px':'0'}">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Internal Notes</div>
+        <div style="font-size:12.5px;line-height:1.5;color:var(--text2)">${p.notes.replace(/\n/g,'<br>')}</div>
+      </div>`:''}
+
+      <!-- Approval trail -->
+      ${trail.length?`<div style="background:var(--bg3);border-radius:6px;padding:10px 14px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Approval Trail</div>
+        ${trail.map(t=>`<div style="font-size:12px;padding:6px 0;border-top:1px solid var(--border);line-height:1.5">
+          <div><strong>${t.decision||'—'}</strong>${t.date?` <span style="color:var(--text3)">· ${t.date}</span>`:''}${t.approver?` <span style="color:var(--text3)">· by ${t.approver}</span>`:''}</div>
+          ${t.notes?`<div style="color:var(--text2);margin-top:3px;font-size:11.5px">${t.notes.replace(/\n/g,'<br>')}</div>`:''}
+        </div>`).join('')}
+      </div>`:''}
+    </div>`;
   };
 
   const section=(label,list,showActual)=>list.length?`
-    <div style="margin-top:22px">
-      <div style="font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin-bottom:8px">${label} · ${list.length}</div>
-      <table class="finance-report-tbl" style="width:100%;border-collapse:separate;border-spacing:0;font-family:sans-serif;font-size:12px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-        <colgroup>
-          <col style="width:46%"><col style="width:8%"><col style="width:10%"><col style="width:11%"><col style="width:10%"><col style="width:15%">
-        </colgroup>
-        <thead style="background:var(--bg3)">
-          <tr style="text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;color:var(--text3)">
-            <th style="padding:10px 14px;text-align:left;font-weight:bold">Project</th>
-            <th style="padding:10px;text-align:left;font-weight:bold">Priority</th>
-            <th style="padding:10px;text-align:left;font-weight:bold">Status</th>
-            <th style="padding:10px;text-align:right;font-weight:bold">Estimated</th>
-            <th style="padding:10px;text-align:right;font-weight:bold">Actual</th>
-            <th style="padding:10px 14px;text-align:left;font-weight:bold">Latest decision</th>
-          </tr>
-        </thead>
-        <tbody>${list.map((p,i)=>rowHTML(p,i)).join('')}</tbody>
-        <tfoot style="background:var(--bg3);font-weight:bold">
-          <tr>
-            <td colspan="3" style="padding:10px 14px;text-align:right;text-transform:uppercase;letter-spacing:.06em;font-size:11px;color:var(--text3)">Subtotal</td>
-            <td style="padding:10px;text-align:right;font-variant-numeric:tabular-nums">${fmt(sum(list))}</td>
-            <td style="padding:10px;text-align:right;font-variant-numeric:tabular-nums">${showActual?fmt(sumActual(list)):'—'}</td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
+    <div style="margin-top:24px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:bold;color:var(--accent2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid var(--accent)">
+        <span>${label} · ${list.length} project${list.length!==1?'s':''}</span>
+        <span style="font-size:12px;color:var(--text2);letter-spacing:.04em">Estimated ${fmt(sum(list))}${showActual?` · Actual ${fmt(sumActual(list))}`:''}</span>
+      </div>
+      ${list.map(projectCard).join('')}
     </div>`:'';
 
   el.innerHTML=`
