@@ -1002,7 +1002,16 @@ function renderContacts(){
           <div style="flex:1;min-width:0">
             <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${c.name}</div>
             <div style="font-size:12px;color:var(--text3)">${c.role}${c.email?' · '+c.email:''}</div>
-            ${(()=>{const phones=[];const isOrg=c.type==='Contractor'||c.type==='Vendor';if(c.phone)phones.push((isOrg?'📞':'📱')+' '+c.phone);if(!isOrg&&c.phone_home)phones.push('🏠 '+c.phone_home);return phones.length?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${phones.join(' · ')}</div>`:'';})()}
+            ${(()=>{
+              const phones=[];
+              const isOrg=c.type==='Contractor'||c.type==='Vendor';
+              if(c.phone)phones.push((isOrg?'📞':'📱')+' '+c.phone);
+              if(!isOrg){
+                const extras=Array.isArray(c.additional_phones)?c.additional_phones:[];
+                extras.forEach(p=>{if(p.number)phones.push('📞 '+(p.label?p.label+': ':'')+p.number);});
+              }
+              return phones.length?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${phones.join(' · ')}</div>`:'';
+            })()}
             ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
             ${c.website?`<div style="font-size:12px;margin-top:2px">🌐 <a href="${websiteHref}" target="_blank" style="color:var(--accent)">${websiteLabel}</a></div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}

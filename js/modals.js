@@ -999,7 +999,16 @@ function openContactModal(contact){
       </div>
       <div class="fg"><label id="ct-phone-label">Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
-    <div class="fg" id="ct-home-row"><label>Home phone</label><input type="text" class="fi" id="ct-phone-home" value="${v('phone_home')}"></div>
+    <div id="ct-phones-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:bold;color:var(--accent2);font-family:sans-serif">Additional phone numbers</div>
+        <button type="button" class="btn btn-sm" onclick="addContactPhone()">+ Add phone</button>
+      </div>
+      <div id="ct-phones-list"></div>
+      <datalist id="ct-phone-label-opts">
+        <option value="Home"><option value="Work"><option value="2nd Cell"><option value="Office"><option value="Pager"><option value="Fax">
+      </datalist>
+    </div>
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
     <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Street address</label><input type="text" class="fi" id="ct-address" placeholder="123 Main St" value="${v('address')}"></div>
@@ -1035,6 +1044,8 @@ function openContactModal(contact){
     </div>`;
   peopleDraft=Array.isArray(contact?.people)?contact.people.map(p=>({...p})):[];
   renderPeopleList();
+  phonesDraft=Array.isArray(contact?.additional_phones)?contact.additional_phones.map(p=>({...p})):[];
+  renderContactPhonesList();
   // Sync visibility of COI + people + phone rows based on the initially selected type
   toggleTypeSections(document.getElementById('ct-type')?.value||'');
   document.getElementById('contact-modal').classList.add('open');
@@ -1082,13 +1093,38 @@ function toggleTypeSections(type){
   if(coi)coi.style.display=type==='Contractor'?'block':'none';
   const people=document.getElementById('people-section');
   if(people)people.style.display=(type==='Contractor'||type==='Vendor')?'block':'none';
-  // Home phone only applies to individuals (Staff / Volunteer).
-  const homeRow=document.getElementById('ct-home-row');
-  if(homeRow)homeRow.style.display=(type==='Staff'||type==='Volunteer')?'':'none';
+  // Additional phone list only applies to individuals (Staff / Volunteer).
+  const phonesSection=document.getElementById('ct-phones-section');
+  if(phonesSection)phonesSection.style.display=(type==='Staff'||type==='Volunteer')?'':'none';
   // The primary phone is a Main business number for orgs, a Cell for individuals.
   const phoneLabel=document.getElementById('ct-phone-label');
   if(phoneLabel)phoneLabel.textContent=(type==='Contractor'||type==='Vendor')?'Main phone':'Cell phone';
 }
+
+// Local draft of the additional-phones list while the contact modal is open.
+let phonesDraft=[];
+
+function renderContactPhonesList(){
+  const el=document.getElementById('ct-phones-list');
+  if(!el)return;
+  if(!phonesDraft.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);font-family:sans-serif;padding:4px 0">None yet.</div>';return;}
+  el.innerHTML=phonesDraft.map((ph,i)=>`
+    <div class="phone-row" data-i="${i}" style="display:grid;grid-template-columns:160px 1fr auto;gap:6px;margin-bottom:6px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">
+      <input type="text" class="fi phone-label-input" list="ct-phone-label-opts" placeholder="Label" value="${(ph.label||'').replace(/"/g,'&quot;')}">
+      <input type="text" class="fi phone-number-input" placeholder="Number" value="${(ph.number||'').replace(/"/g,'&quot;')}">
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeContactPhone(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+
+function captureContactPhonesDraft(){
+  phonesDraft=[...document.querySelectorAll('#ct-phones-list .phone-row')].map(r=>({
+    label:r.querySelector('.phone-label-input')?.value.trim()||'',
+    number:r.querySelector('.phone-number-input')?.value.trim()||'',
+  }));
+}
+
+function addContactPhone(){captureContactPhonesDraft();phonesDraft.push({label:'',number:''});renderContactPhonesList();}
+function removeContactPhone(i){captureContactPhonesDraft();phonesDraft.splice(i,1);renderContactPhonesList();}
 
 async function submitContact(){
   const name=document.getElementById('ct-name')?.value.trim();
@@ -1111,12 +1147,16 @@ async function submitContact(){
     ?peopleDraft.filter(p=>p.name||p.title||p.phone||p.email||p.notes)
     :[];
   const isIndividual=type==='Staff'||type==='Volunteer';
+  // Capture any in-progress phone-row inputs and drop rows with neither a label nor number
+  captureContactPhonesDraft();
+  const additional_phones=isIndividual?phonesDraft.filter(p=>p.label||p.number):[];
   saveContact({
     name,role,type,
     phone:document.getElementById('ct-phone')?.value.trim(),
     phone_office:null,
     phone_office_ext:null,
-    phone_home:isIndividual?document.getElementById('ct-phone-home')?.value.trim():null,
+    phone_home:null, // superseded by additional_phones for Staff/Volunteer
+    additional_phones,
     email:document.getElementById('ct-email')?.value.trim(),
     website:document.getElementById('ct-website')?.value.trim(),
     address:document.getElementById('ct-address')?.value.trim(),

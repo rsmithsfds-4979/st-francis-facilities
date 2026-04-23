@@ -535,7 +535,12 @@ async function loadContacts(){
   try{
     const{data,error}=await db.from('contacts').select('*').order('type').order('name');
     if(error)throw error;
-    contacts=(data||[]).map(c=>({...c,people:normalizeIdArray(c.people)}));
+    contacts=(data||[]).map(c=>{
+      let additional_phones=normalizeIdArray(c.additional_phones);
+      // One-shot migration: adopt legacy phone_home as a "Home" entry when no list exists
+      if(c.phone_home&&!additional_phones.length)additional_phones=[{label:'Home',number:c.phone_home}];
+      return{...c,people:normalizeIdArray(c.people),additional_phones};
+    });
   }catch(e){console.error(e);contacts=[];}
   renderContacts();populateContactDropdowns();
 }
