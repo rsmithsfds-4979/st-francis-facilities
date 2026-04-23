@@ -1116,6 +1116,46 @@ async function submitContact(){
 
 function editContact(id){const c=contacts.find(x=>x.id===id);if(c)openContactModal(c);}
 
+// ---- ADD POINT OF CONTACT MODAL (quick, no-full-edit) ----
+function openAddPersonModal(contactId){
+  const contact=contacts.find(c=>c.id===contactId);
+  if(!contact)return;
+  document.getElementById('add-person-modal-sub').textContent=`Appending a new contact to ${contact.name}.`;
+  document.getElementById('add-person-body').innerHTML=`
+    <div class="form-row">
+      <div class="fg"><label>Name *</label><input type="text" class="fi" id="ap-name" placeholder="Full name"></div>
+      <div class="fg"><label>Title</label><input type="text" class="fi" id="ap-title" placeholder="Sales Rep, A/P, Service Manager…"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>Phone</label><input type="text" class="fi" id="ap-phone"></div>
+      <div class="fg"><label>Email</label><input type="text" class="fi" id="ap-email"></div>
+    </div>
+    <div class="fg"><label>Notes</label><input type="text" class="fi" id="ap-notes" placeholder="Optional — best time to reach, preferences, etc."></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('add-person-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddPerson('${contactId}')">Add Contact</button>
+    </div>`;
+  document.getElementById('add-person-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('ap-name')?.focus(),50);
+}
+
+async function submitAddPerson(contactId){
+  const name=document.getElementById('ap-name')?.value.trim();
+  if(!name){showToast('Name is required');return;}
+  const person={
+    name,
+    title:document.getElementById('ap-title')?.value.trim()||'',
+    phone:document.getElementById('ap-phone')?.value.trim()||'',
+    email:document.getElementById('ap-email')?.value.trim()||'',
+    notes:document.getElementById('ap-notes')?.value.trim()||'',
+  };
+  const saved=await addPersonToContact(contactId,person);
+  if(!saved)return;
+  closeModal('add-person-modal');
+  showToast('Point of contact added');
+  renderContacts();
+}
+
 // ---- HISTORY DETAIL MODAL ----
 function showHistDetail(inv){
   const h=serviceHistory.find(x=>x.inv===inv);if(!h)return;
@@ -1160,8 +1200,11 @@ function confirmDeletePM(id){
   document.getElementById('confirm-overlay').classList.add('open');
 }
 function confirmDeleteContact(id,name){
+  const c=contacts.find(x=>x.id===id);
+  const pocCount=Array.isArray(c?.people)?c.people.length:0;
+  const extras=pocCount>0?` This also removes ${pocCount} linked point${pocCount===1?'':'s'} of contact.`:'';
   document.getElementById('conf-h').textContent='Delete contact?';
-  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.`;
+  document.getElementById('conf-msg').textContent=`"${name}" will be permanently removed.${extras} This cannot be undone.`;
   document.getElementById('conf-ok').onclick=()=>{deleteContact(id);closeConfirm();};
   document.getElementById('confirm-overlay').classList.add('open');
 }

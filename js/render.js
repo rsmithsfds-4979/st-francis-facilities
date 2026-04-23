@@ -1005,12 +1005,15 @@ function renderContacts(){
             ${addrLine?`<div style="font-size:12px;color:var(--text3);margin-top:2px">📍 ${addrLine}</div>`:''}
             ${c.website?`<div style="font-size:12px;margin-top:2px">🌐 <a href="${websiteHref}" target="_blank" style="color:var(--accent)">${websiteLabel}</a></div>`:''}
             ${c.notes?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${c.notes}</div>`:''}
-            ${(isContractor||isVendor)&&people.length?`<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:6px">
-              <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em;margin-bottom:4px">Points of Contact</div>
-              ${people.map(p=>`<div style="font-size:12px;color:var(--text2);padding:2px 0">
+            ${(isContractor||isVendor)?`<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:6px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                <div style="font-size:10px;font-weight:bold;text-transform:uppercase;color:var(--text3);letter-spacing:.08em">Points of Contact${people.length?` · ${people.length}`:''}</div>
+                <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openAddPersonModal('${c.id}')">+ Add Contact</button>
+              </div>
+              ${people.length?people.map(p=>`<div style="font-size:12px;color:var(--text2);padding:2px 0">
                 <strong>${p.name||'—'}</strong>${p.title?` — ${p.title}`:''}${p.phone?` · 📞 ${p.phone}`:''}${p.email?` · ✉ <a href="mailto:${p.email}" style="color:var(--accent)">${p.email}</a>`:''}
                 ${p.notes?`<div style="font-size:11px;color:var(--text3);margin-left:8px">${p.notes}</div>`:''}
-              </div>`).join('')}
+              </div>`).join(''):'<div style="font-size:11px;color:var(--text3);font-style:italic;padding:2px 0">No points of contact yet.</div>'}
             </div>`:''}
             ${isContractor?(c.coi_expiry?`<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="badge ${coiExpired?'b-red':coiSoon?'b-amber':'b-green'}" style="font-size:11px">
