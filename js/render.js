@@ -747,6 +747,10 @@ function renderPM(){
   const el=document.getElementById('pm-list');
   if(!el)return;
 
+  renderPMStats();
+  renderPMConflicts();
+  updatePMViewTabs();
+
   // Populate Building filter from actual data
   const blds=[...new Set(pmTasks.map(p=>p.building).filter(Boolean))].sort();
   syncDropdown('pm-f-bld',blds,'All buildings');
@@ -756,12 +760,26 @@ function renderPM(){
   const sort=document.getElementById('pm-sort')?.value||'due-asc';
   const q=(document.getElementById('pm-search')?.value||'').toLowerCase();
 
+  const now=new Date();now.setHours(0,0,0,0);
+  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
+  const qStart=new Date(now.getFullYear(),Math.floor(now.getMonth()/3)*3,1);
+  const qEnd=new Date(qStart.getFullYear(),qStart.getMonth()+3,0,23,59,59);
+  const yearEnd=new Date(now.getFullYear(),11,31,23,59,59);
+
   let filtered=pmTasks.filter(p=>{
     if(fs!=='all'&&p.status!==fs)return false;
     if(fb!=='all'&&p.building!==fb)return false;
     if(q){
       const hay=[p.title,p.building,p.assigned_to,p.description,p.frequency,p.status,p.next_due].filter(Boolean).join(' ').toLowerCase();
       if(!hay.includes(q))return false;
+    }
+    // View-based time window — only applied to Month/Quarter/Year views
+    if(pmView==='month'||pmView==='quarter'||pmView==='year'){
+      const due=parseDate(p.next_due);
+      if(!due)return false;
+      if(pmView==='month'&&(due<now||due>monthEnd))return false;
+      if(pmView==='quarter'&&(due<qStart||due>qEnd))return false;
+      if(pmView==='year'&&(due<now||due>yearEnd))return false;
     }
     return true;
   });
@@ -787,12 +805,39 @@ function renderPM(){
       :'<div class="empty-state"><p>No PM tasks yet.</p></div>';
     return;
   }
-  el.innerHTML=filtered.map(p=>{
-    const due=parseDate(p.next_due);
-    const conflicts=due?eventsOnDate(due):[];
-    const assetIds=Array.isArray(p.asset_ids)?p.asset_ids:[];
-    const linkedAssets=assetIds.map(id=>assets.find(a=>a.id===id)).filter(Boolean);
-    return`<div class="pm-card">
+
+  // Grouped renderings
+  if(pmView==='freq'){
+    const groupOrder=['Monthly','Quarterly','Semi-Annual','Annual','As Needed'];
+    const groups={};
+    filtered.forEach(p=>{const k=p.frequency||'Other';(groups[k]=groups[k]||[]).push(p);});
+    const order=[...groupOrder.filter(k=>groups[k]),...Object.keys(groups).filter(k=>!groupOrder.includes(k))];
+    el.innerHTML=order.map(k=>`
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px">${k} · ${groups[k].length}</div>
+      ${groups[k].map(pmCardHTML).join('')}
+    `).join('');
+    return;
+  }
+  if(pmView==='bld'){
+    const groups={};
+    filtered.forEach(p=>{const k=p.building||'—';(groups[k]=groups[k]||[]).push(p);});
+    el.innerHTML=Object.keys(groups).sort().map(k=>`
+      <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-family:sans-serif;margin:14px 0 6px">${k} · ${groups[k].length}</div>
+      ${groups[k].map(pmCardHTML).join('')}
+    `).join('');
+    return;
+  }
+
+  // Flat rendering (All / Month / Quarter / Year)
+  el.innerHTML=filtered.map(pmCardHTML).join('');
+}
+
+function pmCardHTML(p){
+  const due=parseDate(p.next_due);
+  const conflicts=due?eventsOnDate(due):[];
+  const assetIds=Array.isArray(p.asset_ids)?p.asset_ids:[];
+  const linkedAssets=assetIds.map(id=>assets.find(a=>a.id===id)).filter(Boolean);
+  return`<div class="pm-card">
     <div style="width:38px;height:38px;border-radius:8px;background:var(--warning-bg);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">🔧</div>
     <div class="pm-info">
       <div class="pm-title">${p.title}</div>
@@ -809,7 +854,69 @@ function renderPM(){
       <button class="btn btn-danger btn-sm" onclick="confirmDeletePM('${p.id}')">Del</button>
     </div>
   </div>`;
-  }).join('');
+}
+
+function setPMView(v){pmView=v;renderPM();}
+
+function updatePMViewTabs(){
+  const tabs={all:'All',month:'Month',quarter:'Quarter',year:'Year',freq:'By Frequency',bld:'By Building'};
+  const container=document.getElementById('pm-view-tabs');
+  if(!container)return;
+  container.querySelectorAll('button').forEach(btn=>{
+    const key=btn.getAttribute('onclick').match(/setPMView\('(\w+)'\)/)?.[1];
+    btn.classList.toggle('btn-primary',key===pmView);
+  });
+}
+
+function renderPMStats(){
+  const el=document.getElementById('pm-stats');
+  if(!el)return;
+  const now=new Date();now.setHours(0,0,0,0);
+  const monthEnd=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
+  const qStart=new Date(now.getFullYear(),Math.floor(now.getMonth()/3)*3,1);
+  const qEnd=new Date(qStart.getFullYear(),qStart.getMonth()+3,0,23,59,59);
+  const year=now.getFullYear();
+
+  const active=pmTasks.filter(p=>p.status!=='Done');
+  const overdue=active.filter(p=>{const d=parseDate(p.next_due);return d&&d<now;});
+  const dueMonth=active.filter(p=>{const d=parseDate(p.next_due);return d&&d>=now&&d<=monthEnd;});
+  const dueQuarter=active.filter(p=>{const d=parseDate(p.next_due);return d&&d>=qStart&&d<=qEnd;});
+  const doneYTD=pmTasks.filter(p=>p.status==='Done'&&(()=>{const d=parseDate(p.last_completed);return d&&d.getFullYear()===year;})());
+
+  el.innerHTML=`
+    <div class="stat-card"><div class="stat-label">Overdue</div><div class="stat-value" style="color:var(--danger)">${overdue.length}</div><div class="stat-delta">past due date</div></div>
+    <div class="stat-card"><div class="stat-label">Due This Month</div><div class="stat-value" style="color:var(--warning)">${dueMonth.length}</div><div class="stat-delta">${now.toLocaleDateString('en-US',{month:'long'})}</div></div>
+    <div class="stat-card"><div class="stat-label">Due This Quarter</div><div class="stat-value" style="color:var(--accent)">${dueQuarter.length}</div><div class="stat-delta">Q${Math.floor(now.getMonth()/3)+1} ${year}</div></div>
+    <div class="stat-card"><div class="stat-label">Completed YTD</div><div class="stat-value" style="color:var(--success)">${doneYTD.length}</div><div class="stat-delta">this year</div></div>
+  `;
+}
+
+function renderPMConflicts(){
+  const el=document.getElementById('pm-conflicts');
+  if(!el)return;
+  const activePMs=pmTasks.filter(p=>p.status!=='Done');
+  const conflictRows=[];
+  activePMs.forEach(p=>{
+    const d=parseDate(p.next_due);
+    if(!d)return;
+    const evts=eventsOnDate(d);
+    if(evts.length)conflictRows.push({pm:p,date:d,events:evts});
+  });
+  if(!conflictRows.length){el.innerHTML='';return;}
+  conflictRows.sort((a,b)=>a.date-b.date);
+  el.innerHTML=`<div class="card" style="margin-bottom:16px;border-left:4px solid var(--warning)">
+    <div class="card-header"><div class="card-title">⚠️ Parish event conflicts · ${conflictRows.length}</div></div>
+    <div>
+      ${conflictRows.slice(0,8).map(r=>`<div style="display:flex;gap:10px;align-items:baseline;padding:8px 18px;border-bottom:1px solid var(--border);font-family:sans-serif;font-size:13px">
+        <span style="font-weight:bold;color:var(--accent2);min-width:110px">${fmtDate(r.date)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:bold"><a onclick="editPM('${r.pm.id}')" style="color:inherit;cursor:pointer;text-decoration:underline">${r.pm.title}</a></div>
+          <div style="font-size:11px;color:var(--text3)">Parish event that day: ${r.events.map(e=>e.title).join(', ')}</div>
+        </div>
+      </div>`).join('')}
+      ${conflictRows.length>8?`<div style="padding:8px 18px;font-size:12px;color:var(--text3);font-family:sans-serif">+${conflictRows.length-8} more conflicts…</div>`:''}
+    </div>
+  </div>`;
 }
 
 // ---- RENDER CONTACTS ----

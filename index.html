@@ -165,6 +165,16 @@
     </div>
   </div>
   <div class="content">
+    <div id="pm-stats" class="stats-row" style="grid-template-columns:repeat(4,1fr)"></div>
+    <div id="pm-conflicts"></div>
+    <div id="pm-view-tabs" class="cal-view-toggle" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="setPMView('all')">All</button>
+      <button class="btn btn-sm" onclick="setPMView('month')">Month</button>
+      <button class="btn btn-sm" onclick="setPMView('quarter')">Quarter</button>
+      <button class="btn btn-sm" onclick="setPMView('year')">Year</button>
+      <button class="btn btn-sm" onclick="setPMView('freq')">By Frequency</button>
+      <button class="btn btn-sm" onclick="setPMView('bld')">By Building</button>
+    </div>
     <input type="text" class="search-bar" id="pm-search" placeholder="Search PM tasks…" oninput="renderPM()">
     <div id="pm-list"><div class="loading">Loading...</div></div>
   </div>
