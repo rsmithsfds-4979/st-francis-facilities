@@ -1529,6 +1529,48 @@ function autoCloseMobileSidebar(){
   document.querySelector('.app')?.classList.remove('sidebar-open');
 }
 
+// ---- QUICK ADD DROPDOWN ----
+function toggleQuickAdd(e){
+  if(e)e.stopPropagation();
+  document.getElementById('quick-add-menu')?.classList.toggle('open');
+}
+
+function closeQuickAdd(){document.getElementById('quick-add-menu')?.classList.remove('open');}
+
+// Routes a quick-add choice to the right page + modal. Some entries are
+// building-scoped (utility) or require a list to pick from (pm completion)
+// — those navigate to the relevant page so the user sees context.
+function quickAdd(kind){
+  closeQuickAdd();
+  const open=(fn,nav)=>{
+    if(nav)go(nav);
+    setTimeout(fn,80);
+  };
+  switch(kind){
+    case'utility':
+      // Requires a current building; if none, send the user to pick one.
+      if(currentBuildingId){openUtilityModal();}
+      else{go('buildings');showToast('Open a building first, then click + Add Reading');}
+      break;
+    case'invoice':open(openInvoiceModal,'invoices');break;
+    case'quote':open(openQuoteModal,'quotes');break;
+    case'pm':go('pm');showToast('Pick a PM task, then click Mark Done');break;
+    case'project':open(openProjectModal,'projects');break;
+    case'asset':open(openAssetModal,'assets');break;
+    case'contact':
+      currentContactType='Contractor';
+      open(openContactModal,'contacts');
+      break;
+    case'supply':open(openSupplyModal,'supplies');break;
+  }
+}
+
+// Close the menu when clicking outside of it.
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.quick-add-wrap');
+  if(wrap&&!wrap.contains(e.target))closeQuickAdd();
+});
+
 // ---- INIT ----
 setupDragDropUploads();
 initCollapsibleNav();

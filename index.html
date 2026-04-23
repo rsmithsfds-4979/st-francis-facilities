@@ -75,8 +75,20 @@
   <div class="topbar">
     <div class="topbar-title">Dashboard</div>
     <div class="topbar-actions">
-      <button class="btn" onclick="go('assets');setTimeout(openAssetModal,100)">+ Add Asset</button>
       <button class="btn btn-primary" onclick="openWOModal()">+ New Work Order</button>
+      <div class="quick-add-wrap">
+        <button class="btn" id="quick-add-btn" onclick="toggleQuickAdd(event)">+ Quick Add ▾</button>
+        <div class="quick-add-menu" id="quick-add-menu">
+          <div class="quick-add-item" onclick="quickAdd('utility')">💡 <span>Log Utility Reading</span></div>
+          <div class="quick-add-item" onclick="quickAdd('invoice')">🧾 <span>Upload Invoice</span></div>
+          <div class="quick-add-item" onclick="quickAdd('quote')">📋 <span>Add Quote</span></div>
+          <div class="quick-add-item" onclick="quickAdd('pm')">🔧 <span>Complete PM Task</span></div>
+          <div class="quick-add-item" onclick="quickAdd('project')">🏗️ <span>Add Project</span></div>
+          <div class="quick-add-item" onclick="quickAdd('asset')">📦 <span>Add Asset</span></div>
+          <div class="quick-add-item" onclick="quickAdd('contact')">👤 <span>Add Contact</span></div>
+          <div class="quick-add-item" onclick="quickAdd('supply')">🧴 <span>Add Supply</span></div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="content">
