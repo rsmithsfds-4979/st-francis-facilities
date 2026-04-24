@@ -31,14 +31,14 @@ async function loadProjects(){
 async function saveProject(d){
   try{
     if(editingProjectId){
-      const{data,error}=await db.from('projects').update({...d,updated_at:new Date().toISOString()}).eq('id',editingProjectId).select();
+      const{data,error}=await db.from('projects').update(stamp({...d,updated_at:new Date().toISOString()},false)).eq('id',editingProjectId).select();
       if(error)throw error;
       const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
       const i=projects.findIndex(p=>p.id===editingProjectId);
       if(i>-1)projects[i]=normalized;
       showToast('Project updated!');
     }else{
-      const{data,error}=await db.from('projects').insert([d]).select();
+      const{data,error}=await db.from('projects').insert([stamp(d,true)]).select();
       if(error)throw error;
       const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
       projects.unshift(normalized);
@@ -81,11 +81,11 @@ async function loadCalendarEvents(){
 async function saveCalendarEvent(d){
   try{
     if(editingEventId){
-      const{data,error}=await db.from('calendar_events').update({...d,updated_at:new Date().toISOString()}).eq('id',editingEventId).select();
+      const{data,error}=await db.from('calendar_events').update(stamp({...d,updated_at:new Date().toISOString()},false)).eq('id',editingEventId).select();
       if(error)throw error;
       showToast('Event updated!');
     }else{
-      const{data,error}=await db.from('calendar_events').insert([d]).select();
+      const{data,error}=await db.from('calendar_events').insert([stamp(d,true)]).select();
       if(error)throw error;
       showToast('Event added!');
     }
@@ -189,13 +189,13 @@ async function loadQuotes(){
 async function saveQuote(d){
   try{
     if(editingQuoteId){
-      const{data,error}=await db.from('quotes').update({...d,updated_at:new Date().toISOString()}).eq('id',editingQuoteId).select();
+      const{data,error}=await db.from('quotes').update(stamp({...d,updated_at:new Date().toISOString()},false)).eq('id',editingQuoteId).select();
       if(error)throw error;
       const i=quotes.findIndex(q=>q.id===editingQuoteId);
       if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls),work_order_ids:normalizeIdArray(data[0].work_order_ids)};
       showToast('Quote updated!');
     }else{
-      const{data,error}=await db.from('quotes').insert([d]).select();
+      const{data,error}=await db.from('quotes').insert([stamp(d,true)]).select();
       if(error)throw error;
       quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls),work_order_ids:normalizeIdArray(data[0].work_order_ids)});
       showToast('Quote saved!');
@@ -220,7 +220,7 @@ async function createWOFromQuote(id){
     asset_ids:Array.isArray(q.asset_ids)?q.asset_ids:[],
   };
   try{
-    const{data,error}=await db.from('work_orders').insert([woData]).select();
+    const{data,error}=await db.from('work_orders').insert([stamp(woData,true)]).select();
     if(error)throw error;
     const newWO={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
     workOrders.unshift(newWO);
@@ -267,7 +267,7 @@ async function saveContactRole(d){
     if(editingContactRoleId){
       const old=contactRoles.find(r=>r.id===editingContactRoleId);
       const renamed=old&&old.name!==d.name;
-      const{data,error}=await db.from('contact_roles').update(d).eq('id',editingContactRoleId).select();
+      const{data,error}=await db.from('contact_roles').update(stamp(d,false)).eq('id',editingContactRoleId).select();
       if(error)throw error;
       const i=contactRoles.findIndex(r=>r.id===editingContactRoleId);
       if(i>-1)contactRoles[i]=data[0];
@@ -287,7 +287,7 @@ async function saveContactRole(d){
       showToast('Role updated!');
     }else{
       const sort_order=(contactRoles.reduce((m,r)=>Math.max(m,r.sort_order||0),0))+1;
-      const{data,error}=await db.from('contact_roles').insert([{...d,sort_order}]).select();
+      const{data,error}=await db.from('contact_roles').insert([stamp({...d,sort_order},true)]).select();
       if(error)throw error;
       contactRoles.push(data[0]);
       showToast('Role added!');
@@ -333,7 +333,7 @@ async function saveRoomType(d){
     if(editingRoomTypeId){
       const old=roomTypes.find(r=>r.id===editingRoomTypeId);
       const renamed=old&&old.name!==d.name;
-      const{data,error}=await db.from('room_types').update(d).eq('id',editingRoomTypeId).select();
+      const{data,error}=await db.from('room_types').update(stamp(d,false)).eq('id',editingRoomTypeId).select();
       if(error)throw error;
       const i=roomTypes.findIndex(r=>r.id===editingRoomTypeId);
       if(i>-1)roomTypes[i]=data[0];
@@ -345,7 +345,7 @@ async function saveRoomType(d){
       showToast('Room type updated!');
     }else{
       const sort_order=(roomTypes.reduce((m,r)=>Math.max(m,r.sort_order||0),0))+1;
-      const{data,error}=await db.from('room_types').insert([{...d,sort_order}]).select();
+      const{data,error}=await db.from('room_types').insert([stamp({...d,sort_order},true)]).select();
       if(error)throw error;
       roomTypes.push(data[0]);
       showToast('Room type added!');
@@ -380,13 +380,13 @@ async function loadUtilities(){
 async function saveUtility(d){
   try{
     if(editingUtilityId){
-      const{data,error}=await db.from('utility_readings').update(d).eq('id',editingUtilityId).select();
+      const{data,error}=await db.from('utility_readings').update(stamp(d,false)).eq('id',editingUtilityId).select();
       if(error)throw error;
       const i=utilityReadings.findIndex(u=>u.id===editingUtilityId);
       if(i>-1)utilityReadings[i]={...data[0],pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       showToast('Utility reading updated!');
     }else{
-      const{data,error}=await db.from('utility_readings').insert([d]).select();
+      const{data,error}=await db.from('utility_readings').insert([stamp(d,true)]).select();
       if(error)throw error;
       utilityReadings.unshift({...data[0],pdf_urls:normalizeIdArray(data[0].pdf_urls)});
       showToast('Utility reading saved!');
@@ -428,13 +428,13 @@ async function seedSupplies(){
 async function saveSupply(d){
   try{
     if(editingSupplyId){
-      const{data,error}=await db.from('supplies').update({...d,updated_at:new Date().toISOString()}).eq('id',editingSupplyId).select();
+      const{data,error}=await db.from('supplies').update(stamp({...d,updated_at:new Date().toISOString()},false)).eq('id',editingSupplyId).select();
       if(error)throw error;
       const i=supplies.findIndex(s=>s.id===editingSupplyId);
       if(i>-1)supplies[i]=data[0];
       showToast('Supply updated!');
     }else{
-      const{data,error}=await db.from('supplies').insert([d]).select();
+      const{data,error}=await db.from('supplies').insert([stamp(d,true)]).select();
       if(error)throw error;
       supplies.push(data[0]);
       showToast('Supply added!');
@@ -728,13 +728,13 @@ async function loadInvoices(){
 async function saveBuilding(d){
   try{
     if(editingBldId){
-      const{data,error}=await db.from('buildings').update(d).eq('id',editingBldId).select();
+      const{data,error}=await db.from('buildings').update(stamp(d,false)).eq('id',editingBldId).select();
       if(error)throw error;
       const i=buildings.findIndex(b=>b.id===editingBldId);
       if(i>-1)buildings[i]={...data[0],photo_urls:normalizeIdArray(data[0].photo_urls),tracked_utilities:data[0].tracked_utilities==null?null:normalizeIdArray(data[0].tracked_utilities)};
       showToast('Building updated!');
     }else{
-      const{data,error}=await db.from('buildings').insert([d]).select();
+      const{data,error}=await db.from('buildings').insert([stamp(d,true)]).select();
       if(error)throw error;
       buildings.push({...data[0],photo_urls:normalizeIdArray(data[0].photo_urls),tracked_utilities:data[0].tracked_utilities==null?null:normalizeIdArray(data[0].tracked_utilities)});
       showToast('Building added!');
@@ -748,13 +748,13 @@ async function saveBuilding(d){
 async function saveRoom(d){
   try{
     if(editingRoomId){
-      const{data,error}=await db.from('rooms').update(d).eq('id',editingRoomId).select();
+      const{data,error}=await db.from('rooms').update(stamp(d,false)).eq('id',editingRoomId).select();
       if(error)throw error;
       const i=rooms.findIndex(r=>r.id===editingRoomId);
       if(i>-1)rooms[i]=data[0];
       showToast('Room updated!');
     }else{
-      const{data,error}=await db.from('rooms').insert([d]).select();
+      const{data,error}=await db.from('rooms').insert([stamp(d,true)]).select();
       if(error)throw error;
       rooms.push(data[0]);
       showToast('Room added!');
@@ -769,14 +769,14 @@ async function saveAsset(d){
   try{
     let saved=null;
     if(editingAssetId){
-      const{data,error}=await db.from('assets').update(d).eq('id',editingAssetId).select();
+      const{data,error}=await db.from('assets').update(stamp(d,false)).eq('id',editingAssetId).select();
       if(error)throw error;
       const i=assets.findIndex(a=>a.id===editingAssetId);
       if(i>-1)assets[i]=data[0];
       saved=data[0];
       showToast('Asset updated!');
     }else{
-      const{data,error}=await db.from('assets').insert([d]).select();
+      const{data,error}=await db.from('assets').insert([stamp(d,true)]).select();
       if(error)throw error;
       assets.unshift(data[0]);
       saved=data[0];
@@ -804,13 +804,13 @@ async function deleteAsset(id){
 async function saveWO(d){
   try{
     if(editingWOId){
-      const{data,error}=await db.from('work_orders').update(d).eq('id',editingWOId).select();
+      const{data,error}=await db.from('work_orders').update(stamp(d,false)).eq('id',editingWOId).select();
       if(error)throw error;
       const i=workOrders.findIndex(w=>w.id===editingWOId);
       if(i>-1)workOrders[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
       showToast('Work order updated!');
     }else{
-      const{data,error}=await db.from('work_orders').insert([d]).select();
+      const{data,error}=await db.from('work_orders').insert([stamp(d,true)]).select();
       if(error)throw error;
       const row={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
       workOrders.unshift(row);
@@ -845,7 +845,10 @@ async function deleteWO(id){
 
 async function addComment(woId,author,comment){
   try{
-    const{error}=await db.from('wo_comments').insert([{work_order_id:woId,author,comment}]);
+    // Auto-stamp the comment with the signed-in user's name + id, falling
+    // back to whatever the caller passed (legacy callers may pass "You").
+    const finalAuthor=currentUserName()||author||'Unknown';
+    const{error}=await db.from('wo_comments').insert([stamp({work_order_id:woId,author:finalAuthor,comment},true)]);
     if(error)throw error;
     showToast('Comment added!');openWODetail(woId);
   }catch(e){showToast('Error adding comment');}
@@ -854,13 +857,13 @@ async function addComment(woId,author,comment){
 async function savePM(d){
   try{
     if(editingPMId){
-      const{data,error}=await db.from('pm_schedule').update(d).eq('id',editingPMId).select();
+      const{data,error}=await db.from('pm_schedule').update(stamp(d,false)).eq('id',editingPMId).select();
       if(error)throw error;
       const i=pmTasks.findIndex(p=>p.id===editingPMId);
       if(i>-1)pmTasks[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)};
       showToast('PM task updated!');
     }else{
-      const{data,error}=await db.from('pm_schedule').insert([d]).select();
+      const{data,error}=await db.from('pm_schedule').insert([stamp(d,true)]).select();
       if(error)throw error;
       pmTasks.push({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids)});
       showToast('PM task added!');
@@ -894,7 +897,7 @@ async function schedulePM(id,{date,time,withWhom,contactPerson,notes,createWO}){
         asset_ids:Array.isArray(pm.asset_ids)?pm.asset_ids:[],
       };
       try{
-        const{data:woRes,error:woErr}=await db.from('work_orders').insert([woData]).select();
+        const{data:woRes,error:woErr}=await db.from('work_orders').insert([stamp(woData,true)]).select();
         if(!woErr&&woRes?.[0]){
           workOrders.unshift({...woRes[0],asset_ids:normalizeIdArray(woRes[0].asset_ids),invoice_ids:normalizeIdArray(woRes[0].invoice_ids),photo_urls:normalizeIdArray(woRes[0].photo_urls)});
           toastMsg='PM scheduled + Work Order created';
@@ -944,7 +947,7 @@ async function markPMDone(id){
         notes:`Auto-logged from PM completion${pm.description?': '+pm.description:''}`,
         asset_ids:pmAssets,
       };
-      const{data:woRes,error:woErr}=await db.from('work_orders').insert([woData]).select();
+      const{data:woRes,error:woErr}=await db.from('work_orders').insert([stamp(woData,true)]).select();
       if(!woErr&&woRes?.[0]){
         const row={...woRes[0],asset_ids:normalizeIdArray(woRes[0].asset_ids),invoice_ids:normalizeIdArray(woRes[0].invoice_ids),photo_urls:normalizeIdArray(woRes[0].photo_urls)};
         workOrders.unshift(row);
@@ -969,14 +972,14 @@ async function saveContact(d){
   try{
     let saved=null;
     if(editingContactId){
-      const{data,error}=await db.from('contacts').update(d).eq('id',editingContactId).select();
+      const{data,error}=await db.from('contacts').update(stamp(d,false)).eq('id',editingContactId).select();
       if(error)throw error;
       const i=contacts.findIndex(c=>c.id===editingContactId);
       if(i>-1)contacts[i]=data[0];
       saved=data[0];
       showToast('Contact updated!');
     }else{
-      const{data,error}=await db.from('contacts').insert([d]).select();
+      const{data,error}=await db.from('contacts').insert([stamp(d,true)]).select();
       if(error)throw error;
       contacts.push(data[0]);
       saved=data[0];
@@ -1046,7 +1049,7 @@ async function saveInvoice(d){
     const oldWOIds=editingInvId?(invoices.find(x=>x.id===editingInvId)?.work_order_ids||[]):[];
     let saved;
     if(editingInvId){
-      const{data,error}=await db.from('vendor_invoices').update(d).eq('id',editingInvId).select();
+      const{data,error}=await db.from('vendor_invoices').update(stamp(d,false)).eq('id',editingInvId).select();
       if(error)throw error;
       const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       const i=invoices.findIndex(x=>x.id===editingInvId);
@@ -1054,7 +1057,7 @@ async function saveInvoice(d){
       saved=normalized;
       showToast('Invoice updated!');
     }else{
-      const{data,error}=await db.from('vendor_invoices').insert([d]).select();
+      const{data,error}=await db.from('vendor_invoices').insert([stamp(d,true)]).select();
       if(error)throw error;
       const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
       invoices.unshift(normalized);
@@ -1099,7 +1102,7 @@ async function saveCategory(d){
     if(editingCategoryId){
       const old=categories.find(c=>c.id===editingCategoryId);
       const renamed=old&&old.name!==d.name;
-      const{data,error}=await db.from('categories').update(d).eq('id',editingCategoryId).select();
+      const{data,error}=await db.from('categories').update(stamp(d,false)).eq('id',editingCategoryId).select();
       if(error)throw error;
       const i=categories.findIndex(c=>c.id===editingCategoryId);
       if(i>-1)categories[i]=data[0];
@@ -1111,7 +1114,7 @@ async function saveCategory(d){
       showToast('Category updated!');
     }else{
       const sort_order=(categories.reduce((m,c)=>Math.max(m,c.sort_order||0),0))+1;
-      const{data,error}=await db.from('categories').insert([{...d,sort_order}]).select();
+      const{data,error}=await db.from('categories').insert([stamp({...d,sort_order},true)]).select();
       if(error)throw error;
       categories.push(data[0]);
       showToast('Category added!');
@@ -1350,7 +1353,7 @@ async function saveBudget(d){
       if(i>-1)budgets[i]=data[0];
       showToast('Budget updated!');
     }else{
-      const{data,error}=await db.from('budgets').insert([d]).select();
+      const{data,error}=await db.from('budgets').insert([stamp(d,true)]).select();
       if(error)throw error;
       budgets.push(data[0]);
       showToast('Budget saved!');
@@ -1936,10 +1939,19 @@ document.addEventListener('click',e=>{
 // a valid session exists. On sign-in/sign-out we react via onAuthStateChange.
 let _currentUser=null;
 function isSignedIn(){return !!_currentUser;}
+function currentUserId(){return _currentUser?.id||null;}
 function currentUserEmail(){return _currentUser?.email||'';}
 function currentUserName(){
   const md=_currentUser?.user_metadata||{};
   return md.full_name||md.name||currentUserEmail()||'';
+}
+
+// Adds created_by/updated_by to a save payload. Inserts get both stamps;
+// updates only refresh updated_by so the original author is preserved.
+function stamp(data,isInsert){
+  const uid=currentUserId();
+  if(!uid)return data;
+  return isInsert?{...data,created_by:uid,updated_by:uid}:{...data,updated_by:uid};
 }
 
 function showAuthOverlay(){document.getElementById('auth-overlay')?.classList.add('open');}

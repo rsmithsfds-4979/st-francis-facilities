@@ -1817,6 +1817,10 @@ async function submitProjectApproval(){
     approver,
     date:document.getElementById('pa-date')?.value.trim()||new Date().toLocaleDateString(),
     notes:document.getElementById('pa-notes')?.value.trim()||null,
+    // Capture who actually clicked the button, separately from the "approver"
+    // text (which may name a body like "Finance Council").
+    actor_user_id:currentUserId(),
+    actor_user_name:currentUserName(),
   };
   const trail=[...(Array.isArray(p.approval_trail)?p.approval_trail:[]),entry];
   const upd={status:newStatus,approval_trail:trail,updated_at:new Date().toISOString()};
@@ -1825,7 +1829,7 @@ async function submitProjectApproval(){
     if(actualVal)upd.actual_cost=parseFloat(actualVal);
   }
   try{
-    const{data,error}=await db.from('projects').update(upd).eq('id',id).select();
+    const{data,error}=await db.from('projects').update(stamp(upd,false)).eq('id',id).select();
     if(error)throw error;
     const normalized={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),quote_ids:normalizeIdArray(data[0].quote_ids),work_order_ids:normalizeIdArray(data[0].work_order_ids),approval_trail:normalizeIdArray(data[0].approval_trail),pdf_urls:normalizeIdArray(data[0].pdf_urls),photo_urls:normalizeIdArray(data[0].photo_urls)};
     const i=projects.findIndex(x=>x.id===id);
