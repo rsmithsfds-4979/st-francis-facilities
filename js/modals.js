@@ -1029,6 +1029,9 @@ async function submitInvoice(){
 
 // ---- CONTACT MODAL ----
 function openContactModal(contact){
+  // Clear any stale AI-COI path from a prior abandoned dropzone flow; routeCOI
+  // re-sets this after calling openContactModal, so the live AI path survives.
+  if(typeof _pendingAICOIPath!=='undefined')_pendingAICOIPath=null;
   editingContactId=contact?contact.id:null;
   document.getElementById('contact-modal-h').textContent=contact?'Edit Contact':'Add Contact';
   const v=k=>contact?.[k]||'';
@@ -1274,6 +1277,12 @@ async function submitContact(){
     coi_url=editingContactId?contacts.find(c=>c.id===editingContactId)?.coi_url:null;
     const coiFile=document.getElementById('coi-file-input')?.files[0];
     if(coiFile)coi_url=await uploadFile(coiFile,'coi');
+    // AI ingestion path: if a PDF was uploaded by the dropzone and the user
+    // didn't pick a different file, use the AI's PDF as the COI document.
+    else if(typeof _pendingAICOIPath!=='undefined'&&_pendingAICOIPath){
+      coi_url=_pendingAICOIPath;
+      _pendingAICOIPath=null;
+    }
   }
   // Capture latest person-row input values before saving
   capturePeopleDraft();

@@ -1823,7 +1823,7 @@ function routeParsedDoc(result,pdfPath){
       setTimeout(()=>prefillQuoteForm({...fields,buildingName,confidence,notes,pdfPath}),120);
       break;
     case'coi':
-      showToast('Detected: Certificate of Insurance — open the contractor and use Update COI');
+      routeCOI({...fields,confidence,notes,pdfPath});
       break;
     default:
       showToast(`AI couldn't classify this document (${confidence||'low'} confidence)`);
@@ -1932,6 +1932,48 @@ function prefillQuoteForm(d){
     photoStates['quote'].existing=[...(photoStates['quote'].existing||[]),d.pdfPath];
     renderPDFList('quote','qt-pdf-list');
   }
+}
+
+// COI: try to match an existing contractor by name (case-insensitive, fuzzy);
+// fall back to a brand-new Contractor with the AI-extracted name pre-filled.
+// The just-uploaded PDF path is stashed in _pendingAICOIPath; submitContact
+// reads it and uses it as coi_url so saving keeps the document linked.
+let _pendingAICOIPath=null;
+function routeCOI(d){
+  const wanted=(d.contractor||'').toLowerCase().trim();
+  const contractors=contacts.filter(c=>c.type==='Contractor');
+  let match=null;
+  if(wanted){
+    match=contractors.find(c=>(c.name||'').toLowerCase()===wanted)
+      ||contractors.find(c=>(c.name||'').toLowerCase().includes(wanted)||wanted.includes((c.name||'').toLowerCase()));
+  }
+  if(match){
+    editContact(match.id);
+  }else{
+    currentContactType='Contractor';
+    openContactModal();
+  }
+  // Set AFTER opening (openContactModal clears stale paths at the top); the
+  // prefill timeout below picks it up so it survives the modal init.
+  _pendingAICOIPath=d.pdfPath||null;
+  setTimeout(()=>{
+    if(!match)setVal('ct-name',d.contractor||'');
+    prefillCOIForm(d);
+  },140);
+}
+
+function prefillCOIForm(d){
+  const body=document.getElementById('contact-body');
+  if(body&&!body.querySelector('.ai-prefill-banner')){
+    body.insertAdjacentHTML('afterbegin',aiBanner(d.confidence,d.notes));
+  }
+  // Make sure the COI section is visible (it only shows for type=Contractor)
+  if(typeof toggleTypeSections==='function')toggleTypeSections('Contractor');
+  setVal('ct-coi-exp',d.expiration_date);
+  setVal('ct-coi-pol',d.policy_number);
+  // Stash the AI pdf path; submitContact will pick it up if no new file is chosen.
+  const preview=document.getElementById('coi-preview');
+  if(preview&&d.pdfPath)preview.textContent='✓ AI-uploaded PDF will be saved as the COI document';
 }
 
 // Drag-and-drop on the dashboard dropzone (in addition to click-to-pick).
