@@ -1850,9 +1850,91 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.quick-add-wrap'))closeQuickAdd();
 });
 
+// ---- AUTH GATE ----
+// Magic-link flow via Supabase Auth. The app stays gated by an overlay until
+// a valid session exists. On sign-in/sign-out we react via onAuthStateChange.
+let _currentUser=null;
+function isSignedIn(){return !!_currentUser;}
+function currentUserEmail(){return _currentUser?.email||'';}
+function currentUserName(){
+  const md=_currentUser?.user_metadata||{};
+  return md.full_name||md.name||currentUserEmail()||'';
+}
+
+function showAuthOverlay(){document.getElementById('auth-overlay')?.classList.add('open');}
+function hideAuthOverlay(){document.getElementById('auth-overlay')?.classList.remove('open');}
+
+function setAuthMsg(text,kind){
+  const el=document.getElementById('auth-msg');
+  if(!el)return;
+  el.className='auth-msg '+(kind||'');
+  el.textContent=text||'';
+}
+
+async function sendMagicLink(e){
+  if(e)e.preventDefault();
+  const email=document.getElementById('auth-email')?.value.trim();
+  if(!email)return;
+  const btn=document.getElementById('auth-btn');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  try{
+    const{error}=await db.auth.signInWithOtp({
+      email,
+      options:{emailRedirectTo:window.location.origin,shouldCreateUser:false},
+    });
+    if(error)throw error;
+    setAuthMsg('Check your email for the sign-in link. You can close this tab — clicking the link will log you in.','ok');
+  }catch(err){
+    console.error(err);
+    setAuthMsg(err.message||'Could not send link','err');
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Send sign-in link';}
+  }
+}
+
+async function signOut(){
+  try{await db.auth.signOut();}catch(e){console.error(e);}
+  _currentUser=null;
+  showAuthOverlay();
+  // Hard reload so all in-memory state is cleared.
+  setTimeout(()=>window.location.reload(),100);
+}
+
+function refreshSidebarUser(){
+  const el=document.getElementById('sidebar-user');
+  if(el)el.textContent=currentUserName()||'—';
+}
+
+// On signed-in: hide gate, populate sidebar, kick off data load (only once per session).
+let _initialLoadStarted=false;
+async function onSignedIn(user){
+  _currentUser=user;
+  hideAuthOverlay();
+  refreshSidebarUser();
+  if(!_initialLoadStarted){
+    _initialLoadStarted=true;
+    await loadAll();
+  }
+}
+
+async function initAuth(){
+  // Pull current session on boot. Supabase parses the magic-link hash on its own.
+  const{data:{session}}=await db.auth.getSession();
+  if(session?.user){
+    onSignedIn(session.user);
+  }else{
+    showAuthOverlay();
+  }
+  // React to logins (other tab, magic-link return) and logouts.
+  db.auth.onAuthStateChange((event,sess)=>{
+    if(event==='SIGNED_IN'&&sess?.user){onSignedIn(sess.user);}
+    else if(event==='SIGNED_OUT'){_currentUser=null;showAuthOverlay();}
+  });
+}
+
 // ---- INIT ----
 setupDragDropUploads();
 initCollapsibleNav();
 initSidebarState();
 injectQuickAddIntoTopbars();
-loadAll();
+initAuth();

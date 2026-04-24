@@ -12,6 +12,17 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-title">St. Francis Facility Manager</div>
+    <div class="auth-sub">Sign in to continue. We'll email you a one-time link.</div>
+    <form id="auth-form" onsubmit="sendMagicLink(event)">
+      <input type="email" class="fi" id="auth-email" placeholder="you@saintfrancisdesales.org" required autocomplete="email">
+      <button type="submit" class="btn btn-primary" id="auth-btn" style="width:100%;margin-top:10px">Send sign-in link</button>
+    </form>
+    <div class="auth-msg" id="auth-msg"></div>
+  </div>
+</div>
 <div class="app">
 <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">☰</button>
 <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -65,6 +76,10 @@
   <div class="nav-section" data-nav="admin">
     <div class="nav-label" onclick="toggleNavSection(this)"><span>Admin</span><span class="nav-chev">▾</span></div>
     <div class="nav-item" onclick="go('settings',this)"><span>Settings</span></div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sidebar-user" id="sidebar-user">—</div>
+    <button class="sidebar-logout" onclick="signOut()" title="Sign out">Sign out</button>
   </div>
 </div>
 
