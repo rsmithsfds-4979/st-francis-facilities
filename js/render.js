@@ -1536,6 +1536,26 @@ function renderRoomTypesList(){
   }).join('');
 }
 
+function renderSupplyCategoriesList(){
+  const el=document.getElementById('supply-categories-list');
+  if(!el)return;
+  if(!supplyCategories.length){el.innerHTML='<div class="empty-state"><p>No supply categories yet.</p></div>';return;}
+  el.innerHTML=supplyCategories.map(sc=>{
+    const inUse=supplies.filter(s=>s.category===sc.name).length;
+    const jv=sc.janitor_visible?'<span class="badge b-green" style="margin-left:8px">Janitor-visible</span>':'';
+    return`<div style="display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:bold;font-size:14px;color:var(--accent2)">${sc.name}${jv}</div>
+        <div style="font-size:12px;color:var(--text3)">${inUse} suppl${inUse===1?'y':'ies'} using this category</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-edit btn-sm" onclick="editSupplyCategory('${sc.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteSupplyCategory('${sc.id}','${sc.name.replace(/'/g,"\\'")}')">Del</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function populateCategoryDropdown(){
   const el=document.getElementById('af-cat');
   if(!el)return;
@@ -1906,6 +1926,7 @@ function supplyStockStatus(s){
 function renderSupplies(){
   const el=document.getElementById('supplies-list');
   if(!el)return;
+  syncDropdown('sup-f-cat',supplyCategories.map(c=>c.name),'All categories');
   const q=(document.getElementById('sup-search')?.value||'').toLowerCase();
   const fc=document.getElementById('sup-f-cat')?.value||'all';
   const fs=document.getElementById('sup-f-stock')?.value||'all';
@@ -1959,6 +1980,7 @@ function renderSettings(){
   }
   renderRoomTypesList();
   renderContactRolesList();
+  renderSupplyCategoriesList();
   const el=document.getElementById('categories-list');
   if(!el)return;
   if(!categories.length){el.innerHTML='<div class="empty-state"><p>No categories yet.</p></div>';return;}

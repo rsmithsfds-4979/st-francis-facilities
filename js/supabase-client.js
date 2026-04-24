@@ -5,7 +5,7 @@ const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // Shared state
-let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[],projects=[],profiles=[];
+let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[],projects=[],profiles=[],supplyCategories=[];
 let appSettings={},gcalEvents=[];
 // Calendar page view state
 let calView='month',calDate=new Date();
@@ -14,7 +14,7 @@ let pmMode='upcoming'; // 'upcoming' | 'history'
 let pmWindow='current'; // upcoming: 'current' (overdue + next 30d) | 'month' | 'quarter' | 'year' | 'all'
                         // history: 'all-done' | 'year'
 let pmYear=new Date().getFullYear();
-let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null,editingWOId=null,editingUtilityId=null,editingRoomTypeId=null,editingQuoteId=null,editingEventId=null,editingContactRoleId=null,editingProjectId=null;
+let editingAssetId=null,editingContactId=null,editingPMId=null,editingInvId=null,editingBldId=null,editingRoomId=null,editingCategoryId=null,editingBudgetId=null,editingSupplyId=null,editingWOId=null,editingUtilityId=null,editingRoomTypeId=null,editingQuoteId=null,editingEventId=null,editingContactRoleId=null,editingProjectId=null,editingSupplyCategoryId=null;
 let currentBuildingId=null,currentRoomId=null,currentContactType='Contractor';
 // One-shot callbacks fired after the next successful save (used by inline "+ Add new…" flows).
 let afterContactSave=null,afterAssetSave=null;

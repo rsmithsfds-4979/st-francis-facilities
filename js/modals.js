@@ -2003,10 +2003,8 @@ function openSupplyModal(supply){
       <div class="fg"><label>Category</label>
         <select class="fi" id="sup-cat">
           <option value="">Select...</option>
-          <option ${sel('category','Restroom')}>Restroom</option>
-          <option ${sel('category','Kitchen')}>Kitchen</option>
-          <option ${sel('category','Cleaning')}>Cleaning</option>
-          <option ${sel('category','General')}>General</option>
+          ${supplyCategories.map(c=>`<option ${sel('category',c.name)}>${c.name}</option>`).join('')}
+          ${supply?.category&&!supplyCategories.find(c=>c.name===supply.category)?`<option selected>${supply.category}</option>`:''}
         </select>
       </div>
       <div class="fg"><label>Unit</label><input type="text" class="fi" id="sup-unit" placeholder="case, box, bottle" value="${v('unit')}"></div>
@@ -2286,6 +2284,46 @@ function confirmDeleteRoomType(id,name){
     ?`"${name}" is used by ${inUse} room${inUse>1?'s':''}. Reassign them before deleting.`
     :`"${name}" will be permanently removed.`;
   document.getElementById('conf-ok').onclick=()=>{deleteRoomType(id);closeConfirm();};
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+
+// ---- SUPPLY CATEGORY MODAL ----
+function openSupplyCategoryModal(sc){
+  editingSupplyCategoryId=sc?sc.id:null;
+  document.getElementById('supply-category-modal-h').textContent=sc?'Edit Supply Category':'Add Supply Category';
+  document.getElementById('supply-category-body').innerHTML=`
+    <div class="fg"><label>Name *</label><input type="text" class="fi" id="sc-name" placeholder="e.g. Janitorial, Office, Maintenance" value="${(sc?.name||'').replace(/"/g,'&quot;')}"></div>
+    <div class="fg" style="display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="sc-janitor" ${sc?.janitor_visible?'checked':''} style="width:auto">
+      <label for="sc-janitor" style="margin:0;cursor:pointer">Visible to janitors when requesting supplies</label>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">
+      ${sc?'Renaming will update every supply using this category.':'Only supplies in "janitor-visible" categories appear in the janitor supply-request dropdown.'}
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('supply-category-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSupplyCategory()">${sc?'Save Changes':'Add Category'}</button>
+    </div>`;
+  document.getElementById('supply-category-modal').classList.add('open');
+}
+
+function submitSupplyCategory(){
+  const name=document.getElementById('sc-name')?.value.trim();
+  if(!name){showToast('Please enter a name');return;}
+  const janitor_visible=!!document.getElementById('sc-janitor')?.checked;
+  saveSupplyCategory({name,janitor_visible});
+}
+
+function editSupplyCategory(id){const sc=supplyCategories.find(x=>x.id===id);if(sc)openSupplyCategoryModal(sc);}
+
+function confirmDeleteSupplyCategory(id,name){
+  const sc=supplyCategories.find(x=>x.id===id);
+  const inUse=sc?supplies.filter(s=>s.category===sc.name).length:0;
+  document.getElementById('conf-h').textContent='Delete supply category?';
+  document.getElementById('conf-msg').textContent=inUse>0
+    ?`"${name}" is used by ${inUse} suppl${inUse>1?'ies':'y'}. Reassign them before deleting.`
+    :`"${name}" will be permanently removed.`;
+  document.getElementById('conf-ok').onclick=()=>{deleteSupplyCategory(id);closeConfirm();};
   document.getElementById('confirm-overlay').classList.add('open');
 }
 

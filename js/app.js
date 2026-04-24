@@ -5,7 +5,7 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects(),loadProfiles()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects(),loadProfiles(),loadSupplyCategories()]);
   // Generate signed URLs for every stored photo/pdf/coi path before anything
   // renders. Without this, images/links would point at raw paths and 404.
   await refreshSignedUrls();
@@ -352,6 +352,58 @@ async function deleteRoomType(id){
     if(error)throw error;
     roomTypes=roomTypes.filter(x=>x.id!==id);
     showToast('Room type deleted');renderSettings();
+  }catch(e){showToast('Error deleting');}
+}
+
+// ---- SUPPLY CATEGORIES ----
+// Admin-managed list of top-level supply departments (Janitorial, Office, Maintenance, …).
+// `janitor_visible` flags which categories surface in the janitor supply-request dropdown.
+async function loadSupplyCategories(){
+  try{
+    const{data,error}=await db.from('supply_categories').select('*').order('sort_order').order('name');
+    if(error)throw error;
+    supplyCategories=data||[];
+  }catch(e){console.error(e);supplyCategories=[];}
+}
+
+async function saveSupplyCategory(d){
+  try{
+    if(editingSupplyCategoryId){
+      const old=supplyCategories.find(c=>c.id===editingSupplyCategoryId);
+      const renamed=old&&old.name!==d.name;
+      const{data,error}=await db.from('supply_categories').update(stamp(d,false)).eq('id',editingSupplyCategoryId).select();
+      if(error)throw error;
+      const i=supplyCategories.findIndex(c=>c.id===editingSupplyCategoryId);
+      if(i>-1)supplyCategories[i]=data[0];
+      // Rename cascade: update every supply that used the old category name
+      if(renamed){
+        await db.from('supplies').update({category:d.name}).eq('category',old.name);
+        supplies.forEach(s=>{if(s.category===old.name)s.category=d.name;});
+      }
+      showToast('Category updated!');
+    }else{
+      const sort_order=(supplyCategories.reduce((m,c)=>Math.max(m,c.sort_order||0),0))+1;
+      const{data,error}=await db.from('supply_categories').insert([stamp({...d,sort_order},true)]).select();
+      if(error)throw error;
+      supplyCategories.push(data[0]);
+      showToast('Category added!');
+    }
+    editingSupplyCategoryId=null;closeModal('supply-category-modal');
+    renderSettings();
+    renderSupplies();
+  }catch(e){console.error(e);showToast('Error saving category');}
+}
+
+async function deleteSupplyCategory(id){
+  const sc=supplyCategories.find(x=>x.id===id);
+  if(!sc)return;
+  const inUse=supplies.filter(s=>s.category===sc.name).length;
+  if(inUse>0){showToast(`Cannot delete — ${inUse} suppl${inUse>1?'ies':'y'} still use "${sc.name}"`);return;}
+  try{
+    const{error}=await db.from('supply_categories').delete().eq('id',id);
+    if(error)throw error;
+    supplyCategories=supplyCategories.filter(x=>x.id!==id);
+    showToast('Category deleted');renderSettings();
   }catch(e){showToast('Error deleting');}
 }
 

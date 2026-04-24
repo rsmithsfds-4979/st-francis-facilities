@@ -266,7 +266,7 @@
   <div class="topbar">
     <div class="topbar-title">Supplies</div>
     <div class="topbar-actions">
-      <select class="btn" id="sup-f-cat" onchange="renderSupplies()"><option value="all">All categories</option><option>Restroom</option><option>Kitchen</option><option>Cleaning</option><option>General</option></select>
+      <select class="btn" id="sup-f-cat" onchange="renderSupplies()"><option value="all">All categories</option></select>
       <select class="btn" id="sup-f-stock" onchange="renderSupplies()"><option value="all">All stock</option><option value="low">Low / Out</option><option value="ok">Stocked</option></select>
       <button class="btn btn-primary" onclick="openSupplyModal()">+ Add Supply</button>
     </div>
@@ -528,6 +528,13 @@
       </div>
       <div id="room-types-list"><div class="loading">Loading...</div></div>
     </div>
+    <div class="card collapsible" data-collapse-id="settings-supply-categories">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Supply Categories</div>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openSupplyCategoryModal()">+ Add Category</button>
+      </div>
+      <div id="supply-categories-list"><div class="loading">Loading...</div></div>
+    </div>
     <div class="card collapsible" data-collapse-id="settings-contact-roles">
       <div class="card-header" onclick="toggleCard(this.parentNode)">
         <div class="card-title"><span class="cc-chevron">▼</span>Contact Roles</div>
@@ -603,6 +610,9 @@
 </div>
 <div class="modal-overlay" id="room-type-modal" onclick="outsideClose(event,'room-type-modal')">
   <div class="modal"><h3 id="room-type-modal-h">Add Room Type</h3><div class="modal-sub">Manage the room type list used across all buildings.</div><div id="room-type-body"></div></div>
+</div>
+<div class="modal-overlay" id="supply-category-modal" onclick="outsideClose(event,'supply-category-modal')">
+  <div class="modal"><h3 id="supply-category-modal-h">Add Supply Category</h3><div class="modal-sub">Top-level departments for supplies (Janitorial, Office, …).</div><div id="supply-category-body"></div></div>
 </div>
 <div class="modal-overlay" id="contact-role-modal" onclick="outsideClose(event,'contact-role-modal')">
   <div class="modal"><h3 id="contact-role-modal-h">Add Role</h3><div class="modal-sub">Roles are scoped by contact type (Contractor / Vendor / Staff / Volunteer).</div><div id="contact-role-body"></div></div>
