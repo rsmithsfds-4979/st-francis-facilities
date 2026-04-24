@@ -5,7 +5,7 @@ const{createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // Shared state
-let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[],projects=[],profiles=[],supplyCategories=[];
+let workOrders=[],assets=[],pmTasks=[],contacts=[],invoices=[],buildings=[],rooms=[],categories=[],budgets=[],supplies=[],utilityReadings=[],roomTypes=[],quotes=[],calendarEvents=[],contactRoles=[],projects=[],profiles=[],supplyCategories=[],supplyRequests=[];
 let appSettings={},gcalEvents=[];
 // Calendar page view state
 let calView='month',calDate=new Date();

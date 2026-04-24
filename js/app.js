@@ -5,7 +5,7 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects(),loadProfiles(),loadSupplyCategories()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects(),loadProfiles(),loadSupplyCategories(),loadSupplyRequests()]);
   // Generate signed URLs for every stored photo/pdf/coi path before anything
   // renders. Without this, images/links would point at raw paths and 404.
   await refreshSignedUrls();
@@ -405,6 +405,63 @@ async function deleteSupplyCategory(id){
     supplyCategories=supplyCategories.filter(x=>x.id!==id);
     showToast('Category deleted');renderSettings();
   }catch(e){showToast('Error deleting');}
+}
+
+// ---- SUPPLY REQUESTS ----
+// Janitors create pending requests from the My Work page; managers approve
+// (one-shot: decrements inventory + marks approved) or deny on the Supplies page.
+async function loadSupplyRequests(){
+  try{
+    const{data,error}=await db.from('supply_requests').select('*').order('created_at',{ascending:false});
+    if(error)throw error;
+    supplyRequests=data||[];
+  }catch(e){console.error(e);supplyRequests=[];}
+}
+
+async function createSupplyRequest(d){
+  try{
+    const payload=stamp({...d,status:'pending',requested_by:currentUserId()},true);
+    const{data,error}=await db.from('supply_requests').insert([payload]).select();
+    if(error)throw error;
+    supplyRequests.unshift(data[0]);
+    showToast('Request submitted');
+    return data[0];
+  }catch(e){console.error(e);showToast('Error submitting request');return null;}
+}
+
+async function approveSupplyRequest(id){
+  const r=supplyRequests.find(x=>x.id===id);
+  if(!r||r.status!=='pending')return;
+  const sup=supplies.find(s=>s.id===r.supply_id);
+  try{
+    // One-shot: decrement inventory then mark approved
+    if(sup){
+      const newStock=Math.max(0,(Number(sup.current_stock)||0)-(Number(r.quantity)||0));
+      const{error:e1}=await db.from('supplies').update(stamp({current_stock:newStock},false)).eq('id',sup.id);
+      if(e1)throw e1;
+      sup.current_stock=newStock;
+    }
+    const upd={status:'approved',decided_by:currentUserId(),decided_at:new Date().toISOString()};
+    const{data,error}=await db.from('supply_requests').update(stamp(upd,false)).eq('id',id).select();
+    if(error)throw error;
+    Object.assign(r,data[0]);
+    showToast('Approved — inventory updated');
+    renderSupplyRequestsList?.();
+    renderSupplies?.();
+  }catch(e){console.error(e);showToast('Error approving');}
+}
+
+async function denySupplyRequest(id){
+  const r=supplyRequests.find(x=>x.id===id);
+  if(!r||r.status!=='pending')return;
+  try{
+    const upd={status:'denied',decided_by:currentUserId(),decided_at:new Date().toISOString()};
+    const{data,error}=await db.from('supply_requests').update(stamp(upd,false)).eq('id',id).select();
+    if(error)throw error;
+    Object.assign(r,data[0]);
+    showToast('Request denied');
+    renderSupplyRequestsList?.();
+  }catch(e){console.error(e);showToast('Error denying');}
 }
 
 async function loadUtilities(){
@@ -1523,12 +1580,13 @@ function go(name,el){
   if(name==='coi-report')renderCOIReport();
   if(name==='finance')renderFinance();
   if(name==='calendar')loadCalEvents();
-  if(name==='supplies')renderSupplies();
+  if(name==='supplies'){renderSupplies();renderSupplyRequestsList();}
   if(name==='quotes')renderQuotes();
   if(name==='projects')renderProjects();
   if(name==='projects-finance-report')renderProjectsFinanceReport();
   if(name==='projects-parish-report')renderProjectsParishReport();
   if(name==='conflicts')renderConflicts();
+  if(name==='my-work')renderMyWork();
   renderHistory();
   autoCloseMobileSidebar();
 }
@@ -1997,10 +2055,22 @@ function stamp(data,isInsert){
 // by the auth.users trigger. Used for attribution AND access control.
 async function loadProfiles(){
   try{
-    const{data,error}=await db.from('profiles').select('id,email,display_name,role,assigned_building_ids');
+    const{data,error}=await db.from('profiles').select('id,email,display_name,role,assigned_building_ids,language');
     if(error)throw error;
     profiles=(data||[]).map(p=>({...p,assigned_building_ids:normalizeIdArray(p.assigned_building_ids)}));
   }catch(e){console.error(e);profiles=[];}
+}
+
+async function setMyLanguage(lang){
+  const uid=currentUserId();
+  if(!uid)return;
+  try{
+    const{error}=await db.from('profiles').update({language:lang}).eq('id',uid);
+    if(error)throw error;
+    const me=profiles.find(p=>p.id===uid);
+    if(me)me.language=lang;
+    renderMyWork?.();
+  }catch(e){console.error(e);showToast('Could not save language');}
 }
 
 function userNameById(uid){
@@ -2013,17 +2083,17 @@ function userNameById(uid){
 // ---- ROLES & PERMISSIONS ----
 // Six roles: admin, manager, facilities, finance, dept_head, viewer.
 // Permissions are nav-list + edit-list per role; a "*" in nav means everything.
-const ROLE_LIST=['admin','manager','facilities','finance','dept_head','viewer'];
-const ROLE_LABELS={admin:'Admin',manager:'Manager',facilities:'Facilities',finance:'Finance',dept_head:'Department Head',viewer:'Viewer'};
+const ROLE_LIST=['admin','manager','facilities','finance','dept_head','janitor','viewer'];
+const ROLE_LABELS={admin:'Admin',manager:'Manager',facilities:'Facilities',finance:'Finance',dept_head:'Department Head',janitor:'Janitor',viewer:'Viewer'};
 
 const PERMS={
   admin:{nav:['*'],canEdit:'all'},
   manager:{
-    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
+    nav:['my-work','dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
     canEdit:'all',
   },
   facilities:{
-    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','pm-report','coi-report','projects-parish-report','conflicts'],
+    nav:['my-work','dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','pm-report','coi-report','projects-parish-report','conflicts'],
     canEdit:['workorders','pm','history','assets','supplies','buildings','rooms','contacts','projects','utility'],
   },
   finance:{
@@ -2033,6 +2103,11 @@ const PERMS={
   dept_head:{
     nav:['dashboard','calendar','workorders','buildings','contacts','projects-parish-report'],
     canEdit:['workorders'],
+  },
+  janitor:{
+    // Mobile-only role: lives entirely on the My Work page.
+    nav:['my-work'],
+    canEdit:['workorders','supply-requests'],
   },
   viewer:{
     nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
@@ -2079,6 +2154,10 @@ function applyNavVisibility(){
   // Hide entire Admin section if not admin
   document.querySelectorAll('.nav-section[data-nav="admin"]').forEach(sec=>{
     sec.style.display=isAdmin()?'':'none';
+  });
+  // Hide entire My Work section for roles that don't have it
+  document.querySelectorAll('.nav-section[data-nav="my-work"]').forEach(sec=>{
+    sec.style.display=canViewNav('my-work')?'':'none';
   });
 }
 
@@ -2156,6 +2235,11 @@ async function onSignedIn(user){
   if(!_initialLoadStarted){
     _initialLoadStarted=true;
     await loadAll();
+    // Janitors land on My Work — they have no other nav access anyway.
+    if(userRole()==='janitor'){
+      const navItem=document.querySelector('.nav-item[onclick*="my-work"]');
+      go('my-work',navItem||null);
+    }
   }
 }
 

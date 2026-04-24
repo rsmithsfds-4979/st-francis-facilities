@@ -44,6 +44,13 @@ function openWOModal(presetRoomId,presetBldId){
         <option ${wo?.assignee==='Other'?'selected':''}>Other</option>
       </select>
     </div>
+    <div class="fg"><label>Assign to staff (optional)</label>
+      <select class="fi" id="f-assign-user">
+        <option value="">— None —</option>
+        ${profiles.filter(p=>['janitor','facilities','manager','admin'].includes(p.role||'')).sort((a,b)=>(a.display_name||a.email||'').localeCompare(b.display_name||b.email||'')).map(p=>`<option value="${p.id}" ${wo?.assigned_user_id===p.id?'selected':''}>${p.display_name||p.email} (${ROLE_LABELS[p.role]||p.role})</option>`).join('')}
+      </select>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Internal staff/janitors see this WO on their My Work page.</div>
+    </div>
     <div class="fg">
       <label>Assets being serviced</label>
       ${assetPickerFiltersHTML('asset-select-list')}
@@ -330,6 +337,7 @@ async function submitWO(){
     room_id:roomId,
     due_date:document.getElementById('f-due')?.value.trim(),
     priority,assignee,
+    assigned_user_id:document.getElementById('f-assign-user')?.value||null,
     notes:document.getElementById('f-notes')?.value.trim(),
     status,
     completed_date:status==='Completed'?completed_date:null,
@@ -688,6 +696,13 @@ function openPMModal(pm){
         </select>
       </div>
     </div>
+    <div class="fg"><label>Assign to staff (optional)</label>
+      <select class="fi" id="pm-assign-user">
+        <option value="">— None —</option>
+        ${profiles.filter(p=>['janitor','facilities','manager','admin'].includes(p.role||'')).sort((a,b)=>(a.display_name||a.email||'').localeCompare(b.display_name||b.email||'')).map(p=>`<option value="${p.id}" ${pm?.assigned_user_id===p.id?'selected':''}>${p.display_name||p.email} (${ROLE_LABELS[p.role]||p.role})</option>`).join('')}
+      </select>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Internal staff/janitors see this PM on their My Work page.</div>
+    </div>
     <div class="fg"><label>Description</label><textarea class="fi" id="pm-desc">${v('description')}</textarea></div>
     <div class="fg"><label>Assets covered by this PM</label>
       ${assetPickerFiltersHTML('pm-asset-list')}
@@ -722,6 +737,7 @@ function submitPM(){
     title,building,frequency,
     next_due:document.getElementById('pm-due')?.value.trim(),
     assigned_to:document.getElementById('pm-assign')?.value,
+    assigned_user_id:document.getElementById('pm-assign-user')?.value||null,
     description:document.getElementById('pm-desc')?.value.trim(),
     status:document.getElementById('pm-status')?.value,
     asset_ids,

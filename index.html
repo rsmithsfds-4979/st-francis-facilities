@@ -34,6 +34,10 @@
     </div>
     <button class="sidebar-close" onclick="toggleSidebar()" aria-label="Close menu">✕</button>
   </div>
+  <div class="nav-section" data-nav="my-work">
+    <div class="nav-label" onclick="toggleNavSection(this)"><span>My Work</span><span class="nav-chev">▾</span></div>
+    <div class="nav-item" onclick="go('my-work',this)"><span>My Work</span></div>
+  </div>
   <div class="nav-section" data-nav="overview">
     <div class="nav-label" onclick="toggleNavSection(this)"><span>Overview</span><span class="nav-chev">▾</span></div>
     <div class="nav-item active" onclick="go('dashboard',this)"><span>Dashboard</span></div>
@@ -160,6 +164,20 @@
   <div class="content" id="cal-content"><div class="loading">Loading...</div></div>
 </div>
 
+<!-- MY WORK (mobile-first janitor module) -->
+<div class="view" id="view-my-work">
+  <div class="topbar">
+    <div class="topbar-title" id="mw-title">My Work</div>
+    <div class="topbar-actions">
+      <select id="mw-lang" onchange="setMyLanguage(this.value)" class="btn" style="width:auto;padding:6px 10px">
+        <option value="en">EN</option>
+        <option value="es">ES</option>
+      </select>
+    </div>
+  </div>
+  <div class="content" id="mw-content"><div class="loading">Loading...</div></div>
+</div>
+
 <!-- WORK ORDERS -->
 <div class="view" id="view-workorders">
   <div class="topbar">
@@ -272,6 +290,12 @@
     </div>
   </div>
   <div class="content">
+    <div class="card collapsible" data-collapse-id="supply-requests">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Pending Supply Requests</div>
+      </div>
+      <div id="supply-requests-list"><div class="loading">Loading...</div></div>
+    </div>
     <input type="text" class="search-bar" id="sup-search" placeholder="Search supplies..." oninput="renderSupplies()">
     <div id="supplies-list"><div class="loading">Loading supplies...</div></div>
   </div>
@@ -613,6 +637,12 @@
 </div>
 <div class="modal-overlay" id="supply-category-modal" onclick="outsideClose(event,'supply-category-modal')">
   <div class="modal"><h3 id="supply-category-modal-h">Add Supply Category</h3><div class="modal-sub">Top-level departments for supplies (Janitorial, Office, …).</div><div id="supply-category-body"></div></div>
+</div>
+<div class="modal-overlay" id="supply-request-modal" onclick="outsideClose(event,'supply-request-modal')">
+  <div class="modal"><h3 id="sreq-modal-h">Request Supply</h3><div class="modal-sub" id="sreq-modal-sub">Pick the item and quantity you need.</div><div id="sreq-body"></div></div>
+</div>
+<div class="modal-overlay" id="mwo-modal" onclick="outsideClose(event,'mwo-modal')">
+  <div class="modal"><h3 id="mwo-modal-h">Work Order</h3><div class="modal-sub" id="mwo-modal-sub"></div><div id="mwo-body"></div></div>
 </div>
 <div class="modal-overlay" id="contact-role-modal" onclick="outsideClose(event,'contact-role-modal')">
   <div class="modal"><h3 id="contact-role-modal-h">Add Role</h3><div class="modal-sub">Roles are scoped by contact type (Contractor / Vendor / Staff / Volunteer).</div><div id="contact-role-body"></div></div>

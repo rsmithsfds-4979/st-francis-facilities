@@ -2338,3 +2338,240 @@ async function toggleUserBuilding(uid,bldId,checked){
   }catch(e){console.error(e);showToast('Could not update buildings');}
 }
 
+// ---- MY WORK (mobile-first janitor page) ----
+// EN/ES translations for UI chrome only. Free text (WO descriptions, supply
+// names, building names) stays in whatever language the author entered.
+const MW_T={
+  en:{
+    title:'My Work', wos:'My Work Orders', today:"Today's Schedule",
+    supplies:'Supplies', request:'+ Request Supply', recent:'My Recent Requests',
+    none_wos:'No work orders assigned to you.', none_today:'Nothing scheduled today.',
+    none_requests:'No requests yet.',
+    open_wo:'Open', complete:'Mark Complete', priority:'Priority',
+    building:'Building', due:'Due', notes:'Notes', completion_note:'Completion notes',
+    submit:'Submit', cancel:'Cancel', supply:'Supply', quantity:'Quantity',
+    optional_note:'Note (optional)', pending:'Pending', approved:'Approved',
+    denied:'Denied', request_supply_h:'Request a Supply',
+    pick_supply:'Pick a supply', pick_building:'Pick a building',
+    qty_required:'Enter a quantity', complete_wo_h:'Complete Work Order',
+    photo:'Photo (optional)', view_wo:'View',
+  },
+  es:{
+    title:'Mi Trabajo', wos:'Mis Órdenes de Trabajo', today:'Horario de Hoy',
+    supplies:'Suministros', request:'+ Solicitar Suministro', recent:'Mis Solicitudes Recientes',
+    none_wos:'No tiene órdenes de trabajo asignadas.', none_today:'Nada programado hoy.',
+    none_requests:'Sin solicitudes.',
+    open_wo:'Abierta', complete:'Marcar como Completa', priority:'Prioridad',
+    building:'Edificio', due:'Vence', notes:'Notas', completion_note:'Notas de finalización',
+    submit:'Enviar', cancel:'Cancelar', supply:'Suministro', quantity:'Cantidad',
+    optional_note:'Nota (opcional)', pending:'Pendiente', approved:'Aprobada',
+    denied:'Denegada', request_supply_h:'Solicitar un Suministro',
+    pick_supply:'Elija un suministro', pick_building:'Elija un edificio',
+    qty_required:'Ingrese una cantidad', complete_wo_h:'Completar Orden de Trabajo',
+    photo:'Foto (opcional)', view_wo:'Ver',
+  },
+};
+function myLang(){return _myProfile()?.language==='es'?'es':'en';}
+function t(k){return MW_T[myLang()][k]||MW_T.en[k]||k;}
+
+function renderMyWork(){
+  const el=document.getElementById('mw-content');
+  if(!el)return;
+  const uid=currentUserId();
+  document.getElementById('mw-title').textContent=t('title');
+  const langSel=document.getElementById('mw-lang');
+  if(langSel)langSel.value=myLang();
+  const myWOs=workOrders.filter(w=>w.assigned_user_id===uid&&w.status!=='Completed')
+    .sort((a,b)=>{
+      const pri={Critical:0,High:1,Medium:2,Low:3};
+      return(pri[a.priority]??9)-(pri[b.priority]??9);
+    });
+  const todayStr=new Date().toLocaleDateString();
+  const me=_myProfile();
+  const myName=me?.display_name||me?.email||'';
+  const todayPM=pmTasks.filter(p=>(p.assigned_user_id===uid||(p.assigned_to===myName&&!p.assigned_user_id))&&p.scheduled_date===todayStr);
+  const todayWOs=myWOs.filter(w=>w.due_date===todayStr);
+  const myReqs=supplyRequests.filter(r=>r.requested_by===uid).slice(0,8);
+  const priBadge=p=>{const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};return`<span class="badge ${m[p]||'b-gray'}">${p||'—'}</span>`;};
+  const reqBadge=s=>{const m={pending:'b-amber',approved:'b-green',denied:'b-gray'};const lbl={pending:t('pending'),approved:t('approved'),denied:t('denied')};return`<span class="badge ${m[s]||'b-gray'}">${lbl[s]||s}</span>`;};
+  const woRow=w=>{
+    const bldRoom=[w.building,w.location].filter(Boolean).join(' · ');
+    return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg2)">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:6px">
+        <div style="font-weight:bold;font-size:15px;flex:1">${w.issue||''}</div>
+        ${priBadge(w.priority)}
+      </div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">${bldRoom}${w.due_date?` · ${t('due')} ${w.due_date}`:''}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="openMobileWO('${w.id}')" style="flex:1;min-width:120px;padding:10px">${t('view_wo')}</button>
+        <button class="btn btn-success btn-sm" onclick="openMobileWO('${w.id}')" style="flex:1;min-width:140px;padding:10px">✓ ${t('complete')}</button>
+      </div>
+    </div>`;
+  };
+  const reqRow=r=>{
+    const sup=supplies.find(s=>s.id===r.supply_id);
+    const bld=buildings.find(b=>b.id===r.building_id);
+    const dt=r.created_at?new Date(r.created_at).toLocaleDateString():'';
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:bold;font-size:14px">${sup?.name||'(deleted)'} × ${r.quantity}</div>
+        <div style="font-size:12px;color:var(--text3)">${bld?.name||''} · ${dt}</div>
+      </div>
+      ${reqBadge(r.status)}
+    </div>`;
+  };
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-header"><div class="card-title">${t('wos')} (${myWOs.length})</div></div>
+      <div style="padding:14px 18px">
+        ${myWOs.length?myWOs.map(woRow).join(''):`<div style="color:var(--text3);font-size:13px;padding:6px 0">${t('none_wos')}</div>`}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">${t('today')}</div></div>
+      <div style="padding:14px 18px">
+        ${(todayWOs.length||todayPM.length)
+          ?[...todayWOs.map(w=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">🛠 ${w.issue} <span style="color:var(--text3);font-size:12px">· ${w.building}</span></div>`),
+            ...todayPM.map(p=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">🔧 ${p.title} <span style="color:var(--text3);font-size:12px">· ${p.building}${p.scheduled_time?' · '+p.scheduled_time:''}</span></div>`)].join('')
+          :`<div style="color:var(--text3);font-size:13px">${t('none_today')}</div>`}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">${t('supplies')}</div>
+        <button class="btn btn-primary" onclick="openSupplyRequestModal()" style="padding:10px 16px">${t('request')}</button>
+      </div>
+      <div style="padding:14px 18px">
+        <div style="font-weight:bold;font-size:13px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">${t('recent')}</div>
+        ${myReqs.length?myReqs.map(reqRow).join(''):`<div style="color:var(--text3);font-size:13px">${t('none_requests')}</div>`}
+      </div>
+    </div>`;
+}
+
+// ---- MY WORK · MOBILE WO COMPLETE MODAL (Phase 3) ----
+let _mwoEditingId=null;
+function openMobileWO(id){
+  const w=workOrders.find(x=>x.id===id);
+  if(!w)return;
+  _mwoEditingId=id;
+  document.getElementById('mwo-modal-h').textContent=t('complete_wo_h');
+  document.getElementById('mwo-modal-sub').textContent=[w.building,w.location].filter(Boolean).join(' · ');
+  const photos=Array.isArray(w.photo_urls)?w.photo_urls:[];
+  document.getElementById('mwo-body').innerHTML=`
+    <div style="margin-bottom:14px">
+      <div style="font-weight:bold;font-size:16px;margin-bottom:6px">${w.issue||''}</div>
+      <div style="font-size:13px;color:var(--text2)">${t('priority')}: ${w.priority||'—'}${w.due_date?` · ${t('due')} ${w.due_date}`:''}</div>
+    </div>
+    ${w.notes?`<div class="fg"><label>${t('notes')}</label><div style="background:var(--bg);padding:10px;border-radius:6px;font-size:13px;white-space:pre-wrap">${w.notes}</div></div>`:''}
+    ${photos.length?`<div class="fg"><label>📷</label><div class="photo-gallery">${photos.map(p=>`<img src="${p}" style="max-width:120px;max-height:120px;border-radius:6px;margin:4px">`).join('')}</div></div>`:''}
+    <div class="fg"><label>${t('completion_note')}</label>
+      <textarea class="fi" id="mwo-note" rows="3" placeholder="${t('completion_note')}"></textarea>
+    </div>
+    <div class="fg"><label>${t('photo')}</label>
+      <div class="photo-gallery" id="mwo-photo-gallery"></div>
+      <div class="photo-upload" onclick="document.getElementById('mwo-photo-input').click()">📷<input type="file" id="mwo-photo-input" accept="image/*" multiple style="display:none" onchange="addPendingPhotos('mwo',event,'mwo-photo-gallery')"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('mwo-modal')">${t('cancel')}</button>
+      <button class="btn btn-success" onclick="submitMobileWOComplete()">✓ ${t('complete')}</button>
+    </div>`;
+  initPhotoState('mwo',[]);
+  renderPhotoGallery('mwo','mwo-photo-gallery');
+  document.getElementById('mwo-modal').classList.add('open');
+}
+async function submitMobileWOComplete(){
+  const id=_mwoEditingId;
+  if(!id)return;
+  const w=workOrders.find(x=>x.id===id);
+  if(!w)return;
+  const note=document.getElementById('mwo-note')?.value.trim();
+  const newPhotos=await finalizePhotos('mwo','work-orders');
+  const merged=[...(Array.isArray(w.photo_urls)?w.photo_urls:[]),...newPhotos];
+  const today=new Date().toLocaleDateString();
+  const appendedNotes=note?((w.notes?w.notes+'\n\n':'')+`[${userNameById(currentUserId())} · ${today}] ${note}`):w.notes;
+  try{
+    const upd={status:'Completed',completed_date:today,notes:appendedNotes,photo_urls:merged};
+    const{error}=await db.from('work_orders').update(stamp(upd,false)).eq('id',id);
+    if(error)throw error;
+    Object.assign(w,upd);
+    showToast('Work order completed');
+    closeModal('mwo-modal');
+    renderMyWork();
+  }catch(e){console.error(e);showToast('Error completing');}
+}
+
+// ---- MY WORK · SUPPLY REQUEST MODAL (Phase 4) ----
+function openSupplyRequestModal(){
+  const me=_myProfile();
+  const myBldIds=me?.assigned_building_ids||[];
+  const visibleSupplies=supplies.filter(s=>{
+    const cat=supplyCategories.find(c=>c.name===s.category);
+    return cat?.janitor_visible;
+  }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  document.getElementById('sreq-modal-h').textContent=t('request_supply_h');
+  document.getElementById('sreq-body').innerHTML=`
+    <div class="fg"><label>${t('building')} *</label>
+      <select class="fi" id="sreq-bld">
+        <option value="">${t('pick_building')}…</option>
+        ${buildings.map(b=>`<option value="${b.id}" ${myBldIds.length===1&&myBldIds[0]===b.id?'selected':''}>${b.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg"><label>${t('supply')} *</label>
+      <select class="fi" id="sreq-sup">
+        <option value="">${t('pick_supply')}…</option>
+        ${visibleSupplies.map(s=>`<option value="${s.id}">${s.name}${s.unit?' ('+s.unit+')':''}</option>`).join('')}
+      </select>
+    </div>
+    <div class="fg"><label>${t('quantity')} *</label>
+      <input type="number" class="fi" id="sreq-qty" min="1" step="1" value="1">
+    </div>
+    <div class="fg"><label>${t('optional_note')}</label>
+      <textarea class="fi" id="sreq-note" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('supply-request-modal')">${t('cancel')}</button>
+      <button class="btn btn-primary" onclick="submitSupplyRequest()">${t('submit')}</button>
+    </div>`;
+  document.getElementById('supply-request-modal').classList.add('open');
+}
+async function submitSupplyRequest(){
+  const supply_id=document.getElementById('sreq-sup')?.value;
+  const building_id=document.getElementById('sreq-bld')?.value;
+  const quantity=parseFloat(document.getElementById('sreq-qty')?.value)||0;
+  const note=document.getElementById('sreq-note')?.value.trim();
+  if(!supply_id){showToast(t('pick_supply'));return;}
+  if(!building_id){showToast(t('pick_building'));return;}
+  if(!quantity||quantity<=0){showToast(t('qty_required'));return;}
+  const ok=await createSupplyRequest({supply_id,building_id,quantity,note:note||null});
+  if(ok){closeModal('supply-request-modal');renderMyWork();}
+}
+
+// ---- SUPPLY REQUESTS APPROVAL CARD (Phase 5) ----
+function renderSupplyRequestsList(){
+  const el=document.getElementById('supply-requests-list');
+  if(!el)return;
+  const pending=supplyRequests.filter(r=>r.status==='pending').sort((a,b)=>(a.created_at||'').localeCompare(b.created_at||''));
+  if(!pending.length){
+    el.innerHTML='<div style="padding:14px 18px;color:var(--text3);font-size:13px">No pending supply requests.</div>';
+    return;
+  }
+  el.innerHTML=pending.map(r=>{
+    const sup=supplies.find(s=>s.id===r.supply_id);
+    const bld=buildings.find(b=>b.id===r.building_id);
+    const who=userNameById(r.requested_by);
+    const dt=r.created_at?new Date(r.created_at).toLocaleDateString():'';
+    const stockNote=sup?`(stock: ${sup.current_stock??0})`:'';
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-weight:bold;font-size:14px">${sup?.name||'(deleted)'} × ${r.quantity} <span style="font-size:11px;color:var(--text3);font-weight:normal">${stockNote}</span></div>
+        <div style="font-size:12px;color:var(--text3)">${bld?.name||''} · ${who} · ${dt}</div>
+        ${r.note?`<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">"${r.note}"</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-success btn-sm" onclick="approveSupplyRequest('${r.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm" onclick="denySupplyRequest('${r.id}')">Deny</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
