@@ -148,21 +148,6 @@ function combinedCalendarEvents(){
     });
   });
 
-  // Pending quotes by expiry
-  (quotes||[]).filter(q=>q.status==='Pending'&&q.valid_until).forEach(q=>{
-    const d=parseDate(q.valid_until);
-    if(!d)return;
-    const k=ymd(d);
-    out.push({
-      id:'q-'+q.id,
-      title:'💰 '+(q.vendor||'Quote')+' expires',
-      start:k,end:k,allDay:true,
-      description:[q.description,q.amount&&fmt(q.amount)].filter(Boolean).join(' · '),
-      location:q.building||'',
-      source:'quote',_ref:{type:'quote',id:q.id},
-    });
-  });
-
   // Custom app events
   (calendarEvents||[]).forEach(e=>out.push(e));
 
