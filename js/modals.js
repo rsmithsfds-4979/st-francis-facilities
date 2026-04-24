@@ -1071,7 +1071,18 @@ function openContactModal(contact){
   populateContactRoleDropdown(selectedType,existingRoles);
   // Sync visibility of COI + people + phone rows based on the initially selected type
   toggleTypeSections(selectedType);
-  document.getElementById('contact-modal').classList.add('open');
+  openModalStacked('contact-modal');
+}
+
+// Opens a modal-overlay and bumps its z-index above any currently-open modals
+// so it appears on top instead of being hidden by an earlier-opened sibling
+// (modals share z-index:100 by default and the latest in DOM order wins).
+function openModalStacked(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const otherOpen=[...document.querySelectorAll('.modal-overlay.open')].filter(o=>o.id!==id);
+  el.style.zIndex=String(100+otherOpen.length+1);
+  el.classList.add('open');
 }
 
 // Local draft of the points-of-contact list while the contact modal is open.
