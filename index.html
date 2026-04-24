@@ -508,6 +508,12 @@
     <div class="topbar-title">Settings</div>
   </div>
   <div class="content">
+    <div class="card collapsible" data-collapse-id="settings-users">
+      <div class="card-header" onclick="toggleCard(this.parentNode)">
+        <div class="card-title"><span class="cc-chevron">▼</span>Users &amp; Roles</div>
+      </div>
+      <div id="users-list"><div class="loading">Loading...</div></div>
+    </div>
     <div class="card collapsible" data-collapse-id="settings-categories">
       <div class="card-header" onclick="toggleCard(this.parentNode)">
         <div class="card-title"><span class="cc-chevron">▼</span>Asset Categories</div>

@@ -1940,6 +1940,7 @@ function renderSupplies(){
 // ---- RENDER SETTINGS ----
 function renderSettings(){
   initCollapsibleCards();
+  renderUsers();
   const statusEl=document.getElementById('gcal-status');
   if(statusEl){
     const configured=appSettings.gcal_api_key&&appSettings.gcal_calendar_id;
@@ -2245,5 +2246,73 @@ function renderConflicts(){
         </div>
       </div>`;
     }).join('')}`;
+}
+
+// ---- USERS & ROLES (admin-only on Settings page) ----
+function renderUsers(){
+  const el=document.getElementById('users-list');
+  if(!el)return;
+  if(!isAdmin()){
+    el.innerHTML=`<div style="padding:14px 18px;font-size:13px;color:var(--text3)">Only an Admin can manage users. Your role: <strong>${ROLE_LABELS[userRole()]||userRole()}</strong>.</div>`;
+    return;
+  }
+  if(!profiles.length){
+    el.innerHTML='<div style="padding:14px 18px;color:var(--text3)">Loading…</div>';
+    return;
+  }
+  const sorted=[...profiles].sort((a,b)=>(a.display_name||a.email||'').localeCompare(b.display_name||b.email||''));
+  el.innerHTML=sorted.map(p=>{
+    const isMe=p.id===currentUserId();
+    const role=p.role||'viewer';
+    const ids=Array.isArray(p.assigned_building_ids)?p.assigned_building_ids:[];
+    return`<div style="padding:12px 18px;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:200px">
+          <div style="font-weight:bold">${p.display_name||p.email||'(no name)'}${isMe?' <span style="font-size:11px;color:var(--text3)">(you)</span>':''}</div>
+          <div style="font-size:12px;color:var(--text3)">${p.email||'—'}</div>
+        </div>
+        <select class="fi" style="width:auto;flex:0 0 auto" onchange="updateUserRole('${p.id}',this.value)" ${isMe?'disabled title="You cannot change your own role"':''}>
+          ${ROLE_LIST.map(r=>`<option value="${r}" ${role===r?'selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
+        </select>
+      </div>
+      ${role==='dept_head'?`<div style="margin-top:10px">
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Assigned buildings</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${buildings.length?buildings.map(b=>`<label style="font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:${ids.includes(b.id)?'var(--info-bg)':'transparent'}">
+            <input type="checkbox" ${ids.includes(b.id)?'checked':''} onchange="toggleUserBuilding('${p.id}','${b.id}',this.checked)">
+            ${b.name}
+          </label>`).join(''):'<span style="font-size:12px;color:var(--text3)">No buildings yet</span>'}
+        </div>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function updateUserRole(uid,role){
+  try{
+    const{error}=await db.from('profiles').update({role}).eq('id',uid);
+    if(error)throw error;
+    const p=profiles.find(x=>x.id===uid);
+    if(p)p.role=role;
+    showToast('Role updated');
+    renderUsers();
+    // If admin changed their own role to something less (shouldn't happen — disabled),
+    // or anyone's role that affects nav, refresh nav visibility.
+    applyNavVisibility();
+  }catch(e){console.error(e);showToast('Could not update role');}
+}
+
+async function toggleUserBuilding(uid,bldId,checked){
+  const p=profiles.find(x=>x.id===uid);
+  if(!p)return;
+  const ids=Array.isArray(p.assigned_building_ids)?[...p.assigned_building_ids]:[];
+  if(checked&&!ids.includes(bldId))ids.push(bldId);
+  if(!checked){const i=ids.indexOf(bldId);if(i>-1)ids.splice(i,1);}
+  try{
+    const{error}=await db.from('profiles').update({assigned_building_ids:ids}).eq('id',uid);
+    if(error)throw error;
+    p.assigned_building_ids=ids;
+    renderUsers();
+  }catch(e){console.error(e);showToast('Could not update buildings');}
 }
 

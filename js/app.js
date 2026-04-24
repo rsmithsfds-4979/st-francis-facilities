@@ -9,6 +9,7 @@ async function loadAll(){
   // Generate signed URLs for every stored photo/pdf/coi path before anything
   // renders. Without this, images/links would point at raw paths and 404.
   await refreshSignedUrls();
+  applyNavVisibility();
   renderHistory();renderDash();
 }
 
@@ -1940,13 +1941,13 @@ function stamp(data,isInsert){
   return isInsert?{...data,created_by:uid,updated_by:uid}:{...data,updated_by:uid};
 }
 
-// Loads the profiles table (id → display_name) populated by the auth.users
-// trigger. Used to render attribution like "Created by Rick Smith".
+// Loads the profiles table (id → display_name + role + buildings) populated
+// by the auth.users trigger. Used for attribution AND access control.
 async function loadProfiles(){
   try{
-    const{data,error}=await db.from('profiles').select('id,email,display_name');
+    const{data,error}=await db.from('profiles').select('id,email,display_name,role,assigned_building_ids');
     if(error)throw error;
-    profiles=data||[];
+    profiles=(data||[]).map(p=>({...p,assigned_building_ids:normalizeIdArray(p.assigned_building_ids)}));
   }catch(e){console.error(e);profiles=[];}
 }
 
@@ -1955,6 +1956,78 @@ function userNameById(uid){
   if(uid===currentUserId())return'you';
   const p=profiles.find(x=>x.id===uid);
   return p?(p.display_name||p.email||'Unknown'):'Unknown';
+}
+
+// ---- ROLES & PERMISSIONS ----
+// Six roles: admin, manager, facilities, finance, dept_head, viewer.
+// Permissions are nav-list + edit-list per role; a "*" in nav means everything.
+const ROLE_LIST=['admin','manager','facilities','finance','dept_head','viewer'];
+const ROLE_LABELS={admin:'Admin',manager:'Manager',facilities:'Facilities',finance:'Finance',dept_head:'Department Head',viewer:'Viewer'};
+
+const PERMS={
+  admin:{nav:['*'],canEdit:'all'},
+  manager:{
+    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
+    canEdit:'all',
+  },
+  facilities:{
+    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','pm-report','coi-report','projects-parish-report','conflicts'],
+    canEdit:['workorders','pm','history','assets','supplies','buildings','rooms','contacts','projects','utility'],
+  },
+  finance:{
+    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
+    canEdit:['quotes','invoices','projects','budgets'],
+  },
+  dept_head:{
+    nav:['dashboard','calendar','workorders','buildings','contacts','projects-parish-report'],
+    canEdit:['workorders'],
+  },
+  viewer:{
+    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
+    canEdit:[],
+  },
+};
+
+function _myProfile(){return profiles.find(p=>p.id===currentUserId())||null;}
+function userRole(){return _myProfile()?.role||'viewer';}
+function userBuildingIds(){return _myProfile()?.assigned_building_ids||[];}
+function isAdmin(){return userRole()==='admin';}
+
+function canViewNav(name){
+  const p=PERMS[userRole()];
+  if(!p)return false;
+  return p.nav.includes('*')||p.nav.includes(name);
+}
+
+function canEdit(module){
+  const p=PERMS[userRole()];
+  if(!p)return false;
+  return p.canEdit==='all'||(Array.isArray(p.canEdit)&&p.canEdit.includes(module));
+}
+
+// Department Heads see only the buildings explicitly assigned to them; every
+// other role sees all buildings. Used to scope renders for that role.
+function buildingsVisibleToUser(){
+  if(userRole()!=='dept_head')return buildings;
+  const ids=userBuildingIds();
+  return buildings.filter(b=>ids.includes(b.id));
+}
+
+// Hide nav items the current role can't access; hide the Settings section
+// entirely for non-admins (it manages users + system config).
+function applyNavVisibility(){
+  document.querySelectorAll('.nav-item[onclick]').forEach(el=>{
+    const m=el.getAttribute('onclick')?.match(/go(?:Contacts)?\(['"]([^'"]+)['"]/);
+    if(!m)return;
+    const view=m[1];
+    // Contacts page uses goContacts('Contractor', ...) etc — all contact subroutes share the 'contacts' nav perm
+    const navKey=el.getAttribute('onclick').includes('goContacts')?'contacts':view;
+    el.style.display=canViewNav(navKey)?'':'none';
+  });
+  // Hide entire Admin section if not admin
+  document.querySelectorAll('.nav-section[data-nav="admin"]').forEach(sec=>{
+    sec.style.display=isAdmin()?'':'none';
+  });
 }
 
 // Tiny "Created by X · 4/24/2026" footer rendered at the bottom of detail
