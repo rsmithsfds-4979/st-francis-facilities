@@ -661,7 +661,7 @@ function openPMModal(pm){
     <div class="fg"><label>Title *</label><input type="text" class="fi" id="pm-title" value="${v('title')}" placeholder="e.g. Trimark Spring PM"></div>
     <div class="form-row">
       <div class="fg"><label>Building *</label>
-        <select class="fi" id="pm-bld">
+        <select class="fi" id="pm-bld" onchange="syncPickerBuilding('pm-asset-list',this.value)">
           <option value="">Select...</option>
           <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
           ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
@@ -705,7 +705,7 @@ function openPMModal(pm){
       <button class="btn btn-primary" onclick="submitPM()">${pm?'Save Changes':'Add PM Task'}</button>
     </div>`;
   const pmBld=pm?.building&&pm.building!=='All Buildings'?pm.building:'all';
-  initAssetPicker('pm-asset-list',pm?.asset_ids||[],pmBld,false);
+  initAssetPicker('pm-asset-list',pm?.asset_ids||[],pmBld,true);
   const pmBldSel=document.getElementById('pm-asset-list-bld');
   if(pmBldSel&&pmBld!=='all')pmBldSel.value=pmBld;
   renderAssetPicker('pm-asset-list');
