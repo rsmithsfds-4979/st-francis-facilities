@@ -118,6 +118,17 @@ Notes:
 - Be conservative with confidence: 'high' only when fields are unambiguous.`;
 
   try {
+    // Fetch the PDF and base64-encode it. Anthropic's URL-source path requires
+    // the URL to be reachable from their fetcher, which sometimes fails for very
+    // fresh Supabase Storage URLs. Base64 is universally reliable.
+    const pdfRes = await fetch(pdfUrl);
+    if (!pdfRes.ok) {
+      res.status(502).json({ error: 'Could not fetch PDF', detail: `HTTP ${pdfRes.status} from ${pdfUrl}` });
+      return;
+    }
+    const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
+    const pdfBase64 = pdfBuf.toString('base64');
+
     const apiRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
       headers: {
@@ -134,7 +145,7 @@ Notes:
           {
             role: 'user',
             content: [
-              { type: 'document', source: { type: 'url', url: pdfUrl } },
+              { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: pdfBase64 } },
               { type: 'text', text: prompt },
             ],
           },
@@ -144,14 +155,14 @@ Notes:
 
     if (!apiRes.ok) {
       const err = await apiRes.text();
-      res.status(502).json({ error: 'Anthropic API error', detail: err });
+      res.status(502).json({ error: 'Anthropic API error', detail: err.slice(0, 500) });
       return;
     }
 
     const data = await apiRes.json();
     const toolBlock = (data.content || []).find(b => b.type === 'tool_use');
     if (!toolBlock) {
-      res.status(502).json({ error: 'No tool_use block in response', raw: data });
+      res.status(502).json({ error: 'No tool_use block in response', raw: JSON.stringify(data).slice(0, 500) });
       return;
     }
 

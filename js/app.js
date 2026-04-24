@@ -1573,11 +1573,16 @@ async function parseAndRouteDoc(file){
     });
     if(!res.ok){
       const detail=await res.text();
-      console.error('parse-doc failed:',detail);
-      showToast('Could not analyze document');
+      console.error('parse-doc failed:',res.status,detail);
+      showToast(`Analyze failed (${res.status}): ${detail.slice(0,140)}`);
       return;
     }
     const result=await res.json();
+    if(result?.error){
+      console.error('parse-doc error:',result);
+      showToast(`AI: ${result.error} — ${(result.detail||'').toString().slice(0,140)}`);
+      return;
+    }
     routeParsedDoc(result,pdfUrl);
   }catch(e){
     console.error(e);showToast('Error processing document');
