@@ -93,6 +93,14 @@
   </div>
   <div class="content">
     <div id="d-weather"></div>
+    <div class="ai-dropzone" id="ai-dropzone" onclick="document.getElementById('ai-dropzone-input').click()">
+      <input type="file" id="ai-dropzone-input" accept=".pdf" style="display:none" onchange="handleAIDrop(event)">
+      <div class="ai-dropzone-icon">✨</div>
+      <div>
+        <div class="ai-dropzone-title">Drop a document — invoice, utility bill, quote, or COI</div>
+        <div class="ai-dropzone-sub">AI will read it, figure out what it is, and pre-fill the right form for you to review</div>
+      </div>
+    </div>
     <div class="stats-row">
       <div class="stat-card" style="cursor:pointer" onclick="dashGoOpenWOs()"><div class="stat-label">Open Work Orders</div><div class="stat-value" id="d-wo" style="color:var(--danger)">—</div><div class="stat-delta">active issues →</div></div>
       <div class="stat-card" style="cursor:pointer" onclick="go('assets')"><div class="stat-label">Assets Tracked</div><div class="stat-value" id="d-assets" style="color:var(--accent)">—</div><div class="stat-delta">all buildings →</div></div>

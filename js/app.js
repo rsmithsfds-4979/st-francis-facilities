@@ -1529,6 +1529,207 @@ function autoCloseMobileSidebar(){
   document.querySelector('.app')?.classList.remove('sidebar-open');
 }
 
+// ---- AI DOCUMENT UPLOAD ----
+// Drop a PDF on the dashboard → upload to Supabase Storage → call /api/parse-doc
+// → open the matching modal pre-filled with what the AI extracted, with a banner
+// telling the user to review before saving.
+
+function handleAIDrop(event){
+  const file=event?.target?.files?.[0];
+  if(!file)return;
+  parseAndRouteDoc(file);
+  // Reset so the same file can be picked again later
+  event.target.value='';
+}
+
+async function parseAndRouteDoc(file){
+  if(!file||file.type!=='application/pdf'){showToast('Please drop a PDF');return;}
+  showSpinner('Uploading & analyzing document…');
+  try{
+    // 1. Upload to Supabase Storage so the AI function can fetch it by URL.
+    const ext=file.name.split('.').pop()||'pdf';
+    const path=`inbox/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const{error:upErr}=await db.storage.from('documents').upload(path,file);
+    if(upErr)throw upErr;
+    const{data:pubData}=db.storage.from('documents').getPublicUrl(path);
+    const pdfUrl=pubData.publicUrl;
+
+    // 2. Build context — buildings (with utility account numbers from existing readings)
+    //    and currently-open work orders, so the AI can suggest a match.
+    const bldContext=buildings.map(b=>{
+      const accts=[...new Set(utilityReadings.filter(u=>u.building_id===b.id&&u.account_number).map(u=>u.account_number))];
+      return{id:b.id,name:b.name,utility_account_numbers:accts};
+    });
+    const openWOContext=workOrders
+      .filter(w=>w.status!=='Completed')
+      .slice(0,40)
+      .map(w=>({id:w.id,vendor:w.assignee,issue:w.issue,date:w.due_date||w.created_at}));
+
+    // 3. Call the serverless function.
+    const res=await fetch('/api/parse-doc',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({pdfUrl,buildings:bldContext,openWOs:openWOContext}),
+    });
+    if(!res.ok){
+      const detail=await res.text();
+      console.error('parse-doc failed:',detail);
+      showToast('Could not analyze document');
+      return;
+    }
+    const result=await res.json();
+    routeParsedDoc(result,pdfUrl);
+  }catch(e){
+    console.error(e);showToast('Error processing document');
+  }finally{hideSpinner();}
+}
+
+// Takes the AI's parsed result + the stored PDF URL, picks the right modal,
+// opens it, then fills in fields. The PDF is attached to the new record's
+// pdf_urls so it stays linked even if the user just hits Save.
+function routeParsedDoc(result,pdfUrl){
+  const{type,confidence,fields={},matched_wo_id,notes}=result||{};
+  const buildingId=resolveBuildingId(fields.building_hint,fields.account_number);
+  const buildingName=buildingId?(buildings.find(b=>b.id===buildingId)?.name||null):null;
+
+  switch(type){
+    case'invoice':
+      openInvoiceModal();
+      setTimeout(()=>prefillInvoiceForm({...fields,buildingName,matched_wo_id,confidence,notes,pdfUrl}),120);
+      break;
+    case'utility_bill':
+      openUtilityModal();
+      setTimeout(()=>prefillUtilityForm({...fields,buildingId,confidence,notes,pdfUrl}),120);
+      break;
+    case'quote':
+      openQuoteModal();
+      setTimeout(()=>prefillQuoteForm({...fields,buildingName,confidence,notes,pdfUrl}),120);
+      break;
+    case'coi':
+      showToast('Detected: Certificate of Insurance — open the contractor and use Update COI');
+      break;
+    default:
+      showToast(`AI couldn't classify this document (${confidence||'low'} confidence)`);
+  }
+}
+
+// Try to map building_hint/account_number to one of the parish buildings.
+function resolveBuildingId(hint,acct){
+  if(acct){
+    const bldByAcct=buildings.find(b=>utilityReadings.some(u=>u.building_id===b.id&&u.account_number===acct));
+    if(bldByAcct)return bldByAcct.id;
+  }
+  if(hint){
+    const lower=hint.toLowerCase();
+    const exact=buildings.find(b=>b.name.toLowerCase()===lower);
+    if(exact)return exact.id;
+    const partial=buildings.find(b=>lower.includes(b.name.toLowerCase())||b.name.toLowerCase().includes(lower));
+    if(partial)return partial.id;
+  }
+  return null;
+}
+
+function aiBanner(confidence,notes){
+  return`<div class="ai-prefill-banner">
+    <span style="font-size:16px">✨</span>
+    <div>
+      <strong>AI pre-filled this from your document (${confidence||'medium'} confidence).</strong>
+      Please review every field before saving.
+      ${notes?`<div style="margin-top:4px;font-size:11.5px;font-style:italic">${notes}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function setVal(id,val){
+  if(val===null||val===undefined||val==='')return;
+  const el=document.getElementById(id);
+  if(!el)return;
+  // For selects, only set if the option exists; otherwise leave blank for the user to pick
+  if(el.tagName==='SELECT'){
+    const opt=[...el.options].find(o=>o.value===String(val)||o.textContent===String(val));
+    if(opt)el.value=opt.value;
+  }else{
+    el.value=val;
+  }
+}
+
+function prefillInvoiceForm(d){
+  const body=document.getElementById('inv-body');
+  if(body&&!body.querySelector('.ai-prefill-banner')){
+    body.insertAdjacentHTML('afterbegin',aiBanner(d.confidence,d.notes));
+  }
+  setVal('inv-num',d.invoice_number);
+  setVal('inv-date',d.date);
+  setVal('inv-vendor',d.vendor);
+  setVal('inv-bld',d.buildingName);
+  setVal('inv-desc',d.description);
+  setVal('inv-amount',d.amount);
+  // Attach the source PDF so saving keeps it linked
+  if(d.pdfUrl&&photoStates['invoice']){
+    photoStates['invoice'].existing=[...(photoStates['invoice'].existing||[]),d.pdfUrl];
+    renderPDFList('invoice','inv-pdf-list');
+  }
+  // Pre-check the matched WO
+  if(d.matched_wo_id&&typeof _invWoCheckedState!=='undefined'){
+    _invWoCheckedState.add(d.matched_wo_id);
+    if(typeof renderInvoiceWOPicker==='function')renderInvoiceWOPicker();
+  }
+}
+
+function prefillUtilityForm(d){
+  const body=document.getElementById('utility-body');
+  if(body&&!body.querySelector('.ai-prefill-banner')){
+    body.insertAdjacentHTML('afterbegin',aiBanner(d.confidence,d.notes));
+  }
+  if(d.buildingId)setVal('ur-bld',d.buildingId);
+  if(d.utility_type){
+    if(typeof refreshUtilityTypeOptions==='function')refreshUtilityTypeOptions(d.utility_type);
+    setVal('ur-type',d.utility_type);
+  }
+  setVal('ur-start',d.period_start);
+  setVal('ur-end',d.period_end);
+  setVal('ur-usage',d.usage);
+  setVal('ur-unit',d.usage_unit);
+  setVal('ur-cost',d.cost);
+  setVal('ur-provider',d.provider);
+  setVal('ur-account',d.account_number);
+  if(d.pdfUrl&&photoStates['utility']){
+    photoStates['utility'].existing=[...(photoStates['utility'].existing||[]),d.pdfUrl];
+    renderPDFList('utility','ur-pdf-list');
+  }
+}
+
+function prefillQuoteForm(d){
+  const body=document.getElementById('quote-body');
+  if(body&&!body.querySelector('.ai-prefill-banner')){
+    body.insertAdjacentHTML('afterbegin',aiBanner(d.confidence,d.notes));
+  }
+  setVal('qt-num',d.quote_number);
+  setVal('qt-date',d.date);
+  setVal('qt-vendor',d.vendor);
+  setVal('qt-bld',d.buildingName);
+  setVal('qt-desc',d.description);
+  setVal('qt-amount',d.amount);
+  setVal('qt-valid',d.valid_until);
+  if(d.pdfUrl&&photoStates['quote']){
+    photoStates['quote'].existing=[...(photoStates['quote'].existing||[]),d.pdfUrl];
+    renderPDFList('quote','qt-pdf-list');
+  }
+}
+
+// Drag-and-drop on the dashboard dropzone (in addition to click-to-pick).
+document.addEventListener('DOMContentLoaded',()=>{
+  const dz=document.getElementById('ai-dropzone');
+  if(!dz)return;
+  ['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('dragover');}));
+  ['dragleave','dragend','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('dragover');}));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault();
+    const file=e.dataTransfer?.files?.[0];
+    if(file)parseAndRouteDoc(file);
+  });
+});
+
 // ---- QUICK ADD DROPDOWN ----
 function toggleQuickAdd(e){
   if(e)e.stopPropagation();
