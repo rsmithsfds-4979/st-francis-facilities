@@ -1880,7 +1880,10 @@ async function sendMagicLink(e){
   try{
     const{error}=await db.auth.signInWithOtp({
       email,
-      options:{emailRedirectTo:window.location.origin,shouldCreateUser:false},
+      // Allow self-signup so first-time users (you) don't need a pre-created
+      // record. Real access control comes from the Supabase RLS lockdown
+      // (next commit) plus the Site-URL restriction.
+      options:{emailRedirectTo:window.location.origin,shouldCreateUser:true},
     });
     if(error)throw error;
     setAuthMsg('Check your email for the sign-in link. You can close this tab — clicking the link will log you in.','ok');
