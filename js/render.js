@@ -2152,3 +2152,98 @@ function renderProjectsParishReport(){
     `).join('')}
   `;
 }
+
+// ---- CONFLICT CALENDAR ----
+// Surfaces every scheduled facility task (PM, work order, internal calendar
+// event) that lands on the same date as a parish event, so staff can see
+// scheduling collisions across the whole app in one place.
+function renderConflicts(){
+  const el=document.getElementById('conf-content');
+  if(!el)return;
+  const win=document.getElementById('conf-window')?.value||'90';
+  const today=new Date();today.setHours(0,0,0,0);
+  const horizon=win==='all'?null:new Date(today.getTime()+Number(win)*86400000);
+  const inWindow=d=>d&&d>=today&&(!horizon||d<=horizon);
+
+  // Build the list of items to check, each: {date, title, building, kind, openHref}
+  const items=[];
+  pmTasks.forEach(p=>{
+    if(p.status==='Done')return;
+    const sched=parseDate(p.scheduled_date);
+    const due=parseDate(p.next_due);
+    const d=sched||due;
+    if(!inWindow(d))return;
+    items.push({date:d,title:p.title,building:p.building,kind:'PM',badge:'b-amber',
+      open:`go('pm');setTimeout(()=>openPMScheduleModal('${p.id}'),100)`});
+  });
+  workOrders.forEach(w=>{
+    if(w.status==='Completed')return;
+    const d=parseDate(w.due_date);
+    if(!inWindow(d))return;
+    items.push({date:d,title:w.issue,building:w.building,kind:'Work Order',badge:'b-red',
+      open:`go('workorders');setTimeout(()=>openWODetail('${w.id}'),100)`});
+  });
+  (calendarEvents||[]).forEach(e=>{
+    const d=e.start?new Date(e.start):null;
+    if(!inWindow(d))return;
+    items.push({date:d,title:e.title,building:e.building||'',kind:'Internal event',badge:'b-blue',
+      open:`go('calendar')`});
+  });
+
+  // For each, find parish events on the same date
+  const conflicts=[];
+  items.forEach(it=>{
+    const overlaps=eventsOnDate(it.date);
+    if(overlaps.length)conflicts.push({...it,overlaps});
+  });
+  conflicts.sort((a,b)=>a.date-b.date);
+
+  const winLabel={30:'next 30 days',90:'next 90 days',365:'next year',all:'all upcoming'}[win]||win;
+  if(!conflicts.length){
+    el.innerHTML=`<div class="empty-state"><p>✅ No conflicts in the ${winLabel}.</p><small>Nothing on the parish calendar overlaps with scheduled PMs, work orders, or internal events.</small></div>`;
+    return;
+  }
+
+  // Group by date for scannable layout
+  const byDate={};
+  conflicts.forEach(c=>{
+    const k=c.date.toISOString().slice(0,10);
+    (byDate[k]=byDate[k]||[]).push(c);
+  });
+
+  el.innerHTML=`
+    <div style="margin-bottom:12px;font-size:13px;color:var(--text2)">
+      ⚠️ ${conflicts.length} item${conflicts.length===1?'':'s'} scheduled during a parish event in the ${winLabel}.
+    </div>
+    ${Object.keys(byDate).sort().map(k=>{
+      const list=byDate[k];
+      const date=list[0].date;
+      const dateStr=date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+      return`<div class="card" style="margin-bottom:12px">
+        <div class="card-header">
+          <div class="card-title">${dateStr}</div>
+          <div style="font-size:11px;color:var(--text3)">${list.length} conflict${list.length===1?'':'s'}</div>
+        </div>
+        <div style="padding:8px 14px">
+          ${list.map(c=>`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+              <div style="flex:1;min-width:200px">
+                <div style="display:flex;gap:8px;align-items:baseline;flex-wrap:wrap">
+                  <span class="badge ${c.badge}" style="font-size:10px">${c.kind}</span>
+                  <span style="font-weight:bold">${c.title}</span>
+                </div>
+                <div style="font-size:11px;color:var(--text3);margin-top:3px">${c.building||'—'}</div>
+                <div style="font-size:12px;color:var(--warning);margin-top:6px;background:var(--warning-bg);padding:6px 10px;border-radius:6px;border:1px solid #f0d060">
+                  ⚠️ Conflicts with: ${c.overlaps.map(e=>`<strong>${e.title}</strong>${e.allDay?'':' ('+(eventDate(e)?.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})||'')+')'}`).join(', ')}
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                <button class="btn btn-edit btn-sm" onclick="${c.open}">Open</button>
+              </div>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+

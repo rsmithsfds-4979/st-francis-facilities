@@ -72,6 +72,7 @@
     <div class="nav-item" onclick="go('coi-report',this)"><span>Vendor &amp; COI</span></div>
     <div class="nav-item" onclick="go('projects-finance-report',this)"><span>Projects · Finance</span></div>
     <div class="nav-item" onclick="go('projects-parish-report',this)"><span>Projects · Parish</span></div>
+    <div class="nav-item" onclick="go('conflicts',this)"><span>Conflicts</span></div>
   </div>
   <div class="nav-section" data-nav="admin">
     <div class="nav-label" onclick="toggleNavSection(this)"><span>Admin</span><span class="nav-chev">▾</span></div>
@@ -471,6 +472,22 @@
     </div>
   </div>
   <div class="content" id="pfr-content"><div class="loading">Loading...</div></div>
+</div>
+
+<!-- CONFLICT CALENDAR -->
+<div class="view" id="view-conflicts">
+  <div class="topbar">
+    <div class="topbar-title">Conflicts</div>
+    <div class="topbar-actions no-print">
+      <select class="btn" id="conf-window" onchange="renderConflicts()">
+        <option value="30">Next 30 days</option>
+        <option value="90" selected>Next 90 days</option>
+        <option value="365">Next year</option>
+        <option value="all">All upcoming</option>
+      </select>
+    </div>
+  </div>
+  <div class="content" id="conf-content"><div class="loading">Loading...</div></div>
 </div>
 
 <!-- PROJECTS · PARISH REPORT -->

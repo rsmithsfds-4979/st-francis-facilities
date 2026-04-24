@@ -1490,6 +1490,7 @@ function go(name,el){
   if(name==='projects')renderProjects();
   if(name==='projects-finance-report')renderProjectsFinanceReport();
   if(name==='projects-parish-report')renderProjectsParishReport();
+  if(name==='conflicts')renderConflicts();
   renderHistory();
   autoCloseMobileSidebar();
 }
