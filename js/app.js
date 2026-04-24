@@ -2198,16 +2198,22 @@ async function sendMagicLink(e){
   try{
     const{error}=await db.auth.signInWithOtp({
       email,
-      // Allow self-signup so first-time users (you) don't need a pre-created
-      // record. Real access control comes from the Supabase RLS lockdown
-      // (next commit) plus the Site-URL restriction.
-      options:{emailRedirectTo:window.location.origin,shouldCreateUser:true},
+      // Self-signup is OFF. New users must be invited via the Supabase
+      // Dashboard (Authentication → Users → Invite). The trigger creates
+      // their profile row, then they sign in with this magic-link form.
+      options:{emailRedirectTo:window.location.origin,shouldCreateUser:false},
     });
     if(error)throw error;
     setAuthMsg('Check your email for the sign-in link. You can close this tab — clicking the link will log you in.','ok');
   }catch(err){
     console.error(err);
-    setAuthMsg(err.message||'Could not send link','err');
+    // Supabase returns "Signups not allowed for otp" (or similar) when the
+    // email isn't already in auth.users. Translate to something useful.
+    const raw=(err.message||'').toLowerCase();
+    const looksLikeUnknown=raw.includes('signup')||raw.includes('not allowed')||raw.includes('not found');
+    setAuthMsg(looksLikeUnknown
+      ?"This email isn't authorized for this app. Ask your admin to invite you."
+      :(err.message||'Could not send link'),'err');
   }finally{
     if(btn){btn.disabled=false;btn.textContent='Send sign-in link';}
   }
@@ -2235,6 +2241,14 @@ async function onSignedIn(user){
   if(!_initialLoadStarted){
     _initialLoadStarted=true;
     await loadAll();
+    // Defense in depth: if no profile row exists for this auth user, the
+    // account isn't fully provisioned (or shouldn't be in the app). Sign
+    // them out before they can do anything.
+    if(!_myProfile()){
+      showToast('Account not authorized — contact your admin.');
+      setTimeout(signOut,2500);
+      return;
+    }
     // Janitors land on My Work — they have no other nav access anyway.
     if(userRole()==='janitor'){
       const navItem=document.querySelector('.nav-item[onclick*="my-work"]');
