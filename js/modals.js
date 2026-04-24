@@ -1002,7 +1002,6 @@ function openContactModal(contact){
   const v=k=>contact?.[k]||'';
   const sel=(k,val)=>contact?.[k]===val?'selected':'';
   document.getElementById('contact-body').innerHTML=`
-    <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
         <select class="fi" id="ct-type" onchange="toggleTypeSections(this.value)">
@@ -1014,6 +1013,7 @@ function openContactModal(contact){
       </div>
       <div class="fg"><label id="ct-phone-label">Main phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
     </div>
+    <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
     <div class="fg"><label>Role(s) — pick one or more *</label>
       <div id="ct-roles-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px;background:var(--bg2)"></div>
       <div style="font-size:11px;color:var(--text3);margin-top:4px">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
@@ -1028,14 +1028,14 @@ function openContactModal(contact){
         <option value="Home"><option value="Work"><option value="2nd Cell"><option value="Office"><option value="Pager"><option value="Fax">
       </datalist>
     </div>
-    <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
-    <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Street address</label><input type="text" class="fi" id="ct-address" placeholder="123 Main St" value="${v('address')}"></div>
     <div class="form-row">
       <div class="fg"><label>City</label><input type="text" class="fi" id="ct-city" value="${v('city')}"></div>
       <div class="fg"><label>State</label><input type="text" class="fi" id="ct-state" value="${v('state')}"></div>
     </div>
     <div class="fg"><label>Zip</label><input type="text" class="fi" id="ct-zip" value="${v('zip')}"></div>
+    <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
+    <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
     <div id="people-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor'||(contact?.type||currentContactType)==='Vendor')?'block':'none'}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
