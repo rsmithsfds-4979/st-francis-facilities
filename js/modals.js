@@ -128,11 +128,12 @@ function renderAssetPicker(listId){
   const el=document.getElementById(listId);
   if(!el)return;
 
-  // When requireBuilding is set (Work Order flow), don't show assets until a building is picked.
-  if(state.requireBuilding&&building==='all'){
+  // When requireBuilding is set, don't show the full asset list until a building is picked —
+  // unless the user is actively searching, in which case we let search hits across all buildings come through.
+  if(state.requireBuilding&&building==='all'&&!search){
     el.innerHTML=`
       <div class="asset-select-item" onclick="handleAddAssetInline('${listId}')" style="color:var(--accent);font-weight:bold;justify-content:center">+ Add new asset…</div>
-      <div style="font-size:12px;color:var(--text3);padding:20px;text-align:center">Select a building above to see its assets.</div>`;
+      <div style="font-size:12px;color:var(--text3);padding:20px;text-align:center">Select a building above to see its assets, or type to search across all buildings.</div>`;
     return;
   }
 
@@ -225,7 +226,7 @@ function pickerVisibleAssets(listId){
   const search=(document.getElementById(listId+'-search')?.value||'').toLowerCase();
   const building=document.getElementById(listId+'-bld')?.value||'all';
   const category=document.getElementById(listId+'-cat')?.value||'all';
-  if(state.requireBuilding&&building==='all')return[];
+  if(state.requireBuilding&&building==='all'&&!search)return[];
   return assets.filter(a=>{
     if(building!=='all'&&a.building!==building)return false;
     if(category!=='all'&&a.category!==category)return false;
