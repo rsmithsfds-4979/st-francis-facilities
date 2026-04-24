@@ -1003,10 +1003,6 @@ function openContactModal(contact){
   const sel=(k,val)=>contact?.[k]===val?'selected':'';
   document.getElementById('contact-body').innerHTML=`
     <div class="fg"><label>Name *</label><input type="text" class="fi" id="ct-name" placeholder="Full name or company" value="${v('name')}"></div>
-    <div class="fg"><label>Role(s) — pick one or more *</label>
-      <div id="ct-roles-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px;background:var(--bg2)"></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
-    </div>
     <div class="form-row">
       <div class="fg"><label>Type *</label>
         <select class="fi" id="ct-type" onchange="toggleTypeSections(this.value)">
@@ -1016,7 +1012,11 @@ function openContactModal(contact){
           <option ${sel('type','Volunteer')||(!contact&&currentContactType==='Volunteer'?'selected':'')}>Volunteer</option>
         </select>
       </div>
-      <div class="fg"><label id="ct-phone-label">Cell phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
+      <div class="fg"><label id="ct-phone-label">Main phone</label><input type="text" class="fi" id="ct-phone" value="${v('phone')}"></div>
+    </div>
+    <div class="fg"><label>Role(s) — pick one or more *</label>
+      <div id="ct-roles-list" style="max-height:180px;overflow-y:auto;border:1px solid var(--border2);border-radius:6px;padding:6px;background:var(--bg2)"></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Manage the role list in <strong>Settings → Contact Roles</strong>.</div>
     </div>
     <div id="ct-phones-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
