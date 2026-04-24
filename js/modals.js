@@ -370,7 +370,8 @@ async function openWODetail(id){
       <button class="btn btn-edit" onclick="editWO('${w.id}')">Edit</button>
       ${w.status!=='Completed'?`<button class="btn btn-success" onclick="updateWOStatus('${w.id}','Completed');closeModal('wo-detail-modal')">✓ Mark Done</button>`:''}
       <button class="btn btn-primary" onclick="submitComment('${w.id}')">Add Comment</button>
-    </div>`;
+    </div>
+    ${metaFooter(w)}`;
   document.getElementById('wo-detail-modal').classList.add('open');
 }
 
@@ -1734,10 +1735,14 @@ function renderProjectApprovalTrail(project){
   if(!trail.length)return'';
   return`<div style="background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:12px">
     <div style="font-size:11px;font-weight:bold;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Approval Trail</div>
-    ${trail.map(t=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
-      <strong>${t.decision||'—'}</strong>${t.date?' · '+t.date:''}${t.approver?' · by '+t.approver:''}
-      ${t.notes?`<div style="color:var(--text3);margin-top:2px">${t.notes}</div>`:''}
-    </div>`).join('')}
+    ${trail.map(t=>{
+      const actor=t.actor_user_name||(t.actor_user_id?userNameById(t.actor_user_id):'');
+      const actorTag=actor?` <span style="color:var(--text3)">(logged by ${actor})</span>`:'';
+      return`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)">
+        <strong>${t.decision||'—'}</strong>${t.date?' · '+t.date:''}${t.approver?' · by '+t.approver:''}${actorTag}
+        ${t.notes?`<div style="color:var(--text3);margin-top:2px">${t.notes}</div>`:''}
+      </div>`;
+    }).join('')}
   </div>`;
 }
 

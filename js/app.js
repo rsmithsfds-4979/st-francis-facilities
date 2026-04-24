@@ -5,7 +5,7 @@ async function loadAll(){
   // Categories must load before assets so catIcon is populated when renderAssets runs.
   await loadCategories();
   await loadSettings();
-  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects()]);
+  await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects(),loadProfiles()]);
   // Generate signed URLs for every stored photo/pdf/coi path before anything
   // renders. Without this, images/links would point at raw paths and 404.
   await refreshSignedUrls();
@@ -1952,6 +1952,41 @@ function stamp(data,isInsert){
   const uid=currentUserId();
   if(!uid)return data;
   return isInsert?{...data,created_by:uid,updated_by:uid}:{...data,updated_by:uid};
+}
+
+// Loads the profiles table (id → display_name) populated by the auth.users
+// trigger. Used to render attribution like "Created by Rick Smith".
+async function loadProfiles(){
+  try{
+    const{data,error}=await db.from('profiles').select('id,email,display_name');
+    if(error)throw error;
+    profiles=data||[];
+  }catch(e){console.error(e);profiles=[];}
+}
+
+function userNameById(uid){
+  if(!uid)return'';
+  if(uid===currentUserId())return'you';
+  const p=profiles.find(x=>x.id===uid);
+  return p?(p.display_name||p.email||'Unknown'):'Unknown';
+}
+
+// Tiny "Created by X · 4/24/2026" footer rendered at the bottom of detail
+// modals and cards. Uses created_at / updated_at if present on the row.
+function metaFooter(obj){
+  if(!obj)return'';
+  const cBy=obj.created_by?userNameById(obj.created_by):null;
+  const uBy=obj.updated_by?userNameById(obj.updated_by):null;
+  const cAt=obj.created_at?new Date(obj.created_at):null;
+  const uAt=obj.updated_at?new Date(obj.updated_at):null;
+  const fmtD=d=>d?d.toLocaleDateString():'';
+  const parts=[];
+  if(cBy||cAt)parts.push(`<span>Created${cBy?` by <strong>${cBy}</strong>`:''}${cAt?` · ${fmtD(cAt)}`:''}</span>`);
+  if((uBy&&uBy!==cBy)||(uAt&&cAt&&uAt.getTime()-cAt.getTime()>60000)){
+    parts.push(`<span>Updated${uBy?` by <strong>${uBy}</strong>`:''}${uAt?` · ${fmtD(uAt)}`:''}</span>`);
+  }
+  if(!parts.length)return'';
+  return`<div style="font-size:11px;color:var(--text3);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:12px;flex-wrap:wrap">${parts.join('')}</div>`;
 }
 
 function showAuthOverlay(){document.getElementById('auth-overlay')?.classList.add('open');}

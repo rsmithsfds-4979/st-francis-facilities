@@ -1305,6 +1305,7 @@ function projectCardHTML(p){
         <button class="btn btn-danger btn-sm" onclick="confirmDeleteProject('${p.id}','${(p.title||'').replace(/'/g,"\\'")}')">Del</button>
       </div>
     </div>
+    <div style="padding:0 16px 12px">${metaFooter(p)}</div>
   </div>`;
 }
 
