@@ -1899,9 +1899,9 @@ function quickAdd(kind){
   };
   switch(kind){
     case'utility':
-      // Requires a current building; if none, send the user to pick one.
-      if(currentBuildingId){openUtilityModal();}
-      else{go('buildings');showToast('Open a building first, then click + Add Reading');}
+      // Modal has its own building picker (defaults to current or first) — open it in place.
+      if(buildings.length){openUtilityModal();}
+      else{showToast('Add a building first');}
       break;
     case'invoice':open(openInvoiceModal,'invoices');break;
     case'quote':open(openQuoteModal,'quotes');break;
