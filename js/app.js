@@ -6,6 +6,9 @@ async function loadAll(){
   await loadCategories();
   await loadSettings();
   await Promise.all([loadBuildings(),loadWorkOrders(),loadAssets(),loadPM(),loadContacts(),loadInvoices(),loadBudgets(),loadGCalEvents(),loadSupplies(),loadUtilities(),loadRoomTypes(),loadQuotes(),loadCalendarEvents(),loadContactRoles(),loadWeather(),loadProjects()]);
+  // Generate signed URLs for every stored photo/pdf/coi path before anything
+  // renders. Without this, images/links would point at raw paths and 404.
+  await refreshSignedUrls();
   renderHistory();renderDash();
 }
 
@@ -1156,7 +1159,10 @@ function renderPhotoGallery(key,galleryId){
   if(!el||!s)return;
   const kept=s.existing.filter(u=>!s.removed.includes(u));
   const thumbs=[
-    ...kept.map(u=>`<div class="photo-thumb"><img src="${u}" onclick="openLightbox('${u}')"><button type="button" onclick="removeExistingPhoto('${key}','${u}','${galleryId}')">×</button></div>`),
+    ...kept.map(p=>{
+      const display=signedPhotoUrl(p);
+      return`<div class="photo-thumb"><img src="${display}" onclick="openLightbox('${display}')"><button type="button" onclick="removeExistingPhoto('${key}','${p}','${galleryId}')">×</button></div>`;
+    }),
     ...s.pendingPreviews.map((p,i)=>`<div class="photo-thumb"><img src="${p}"><button type="button" onclick="removePendingPhoto('${key}',${i},'${galleryId}')">×</button></div>`),
   ];
   el.innerHTML=thumbs.join('')||'<div style="font-size:12px;color:var(--text3);padding:4px 0">No photos yet</div>';
@@ -1199,25 +1205,91 @@ async function finalizePhotos(key,folder){
   return[...kept,...uploaded];
 }
 
-// Returns the first available photo URL from either photo_urls[] or legacy photo_url.
+// ---- SIGNED URL CACHE ----
+// After the storage lockdown, every stored photo/PDF/COI value in the DB is a
+// RELATIVE PATH inside a Supabase bucket (e.g. "assets/1712-abc.jpg"), not a
+// full URL. We generate signed URLs for everything in memory on load and keep
+// them in this cache. Display code goes through signedPhotoUrl/signedDocUrl
+// so no callsite needs to know about buckets.
+const _signedUrlCache=new Map();
+const SIGNED_URL_TTL_SECONDS=60*60*12; // 12 hours; refreshSignedUrls runs after loadAll
+
+// Heuristic: values that start with http are legacy rows that weren't migrated
+// to paths yet. Return them as-is so nothing 404s during the transition.
+function _looksLikeUrl(v){return typeof v==='string'&&v.startsWith('http');}
+
+function signedPhotoUrl(path){
+  if(!path)return'';
+  if(_looksLikeUrl(path))return path;
+  return _signedUrlCache.get(path)||path;
+}
+function signedDocUrl(path){
+  if(!path)return'';
+  if(_looksLikeUrl(path))return path;
+  return _signedUrlCache.get(path)||path;
+}
+
+// Collects every storage path in memory and mints signed URLs in batches.
+// Called by loadAll after all tables have been fetched.
+async function refreshSignedUrls(){
+  const photoPaths=new Set();
+  const docPaths=new Set();
+  const addP=v=>{if(v&&!_looksLikeUrl(v))photoPaths.add(v);};
+  const addD=v=>{if(v&&!_looksLikeUrl(v))docPaths.add(v);};
+  const takePhotos=arr=>{(arr||[]).forEach(o=>{(o.photo_urls||[]).forEach(addP);if(o.photo_url)addP(o.photo_url);});};
+  const takePDFs=arr=>{(arr||[]).forEach(o=>{(o.pdf_urls||[]).forEach(addD);if(o.pdf_url)addD(o.pdf_url);});};
+  takePhotos(assets);takePhotos(workOrders);takePhotos(rooms);takePhotos(buildings);takePhotos(projects);
+  takePDFs(quotes);takePDFs(invoices);takePDFs(utilityReadings);takePDFs(projects);
+  (contacts||[]).forEach(c=>{if(c.coi_url)addD(c.coi_url);});
+  await Promise.all([
+    _batchSign('asset-photos',[...photoPaths]),
+    _batchSign('documents',[...docPaths]),
+  ]);
+}
+
+async function _batchSign(bucket,paths){
+  if(!paths.length)return;
+  try{
+    // createSignedUrls takes an array; returns one entry per path with signedUrl or error
+    const{data,error}=await db.storage.from(bucket).createSignedUrls(paths,SIGNED_URL_TTL_SECONDS);
+    if(error){console.error('batch sign',bucket,error);return;}
+    for(const item of(data||[])){
+      if(item.signedUrl&&!item.error)_signedUrlCache.set(item.path,item.signedUrl);
+    }
+  }catch(e){console.error('batch sign failed',bucket,e);}
+}
+
+// Mint one signed URL and pop it in the cache (used right after an upload so
+// the just-saved record displays without waiting for a full cache refresh).
+async function _signOne(bucket,path){
+  try{
+    const{data,error}=await db.storage.from(bucket).createSignedUrl(path,SIGNED_URL_TTL_SECONDS);
+    if(!error&&data?.signedUrl)_signedUrlCache.set(path,data.signedUrl);
+  }catch(e){console.error('sign one failed',bucket,path,e);}
+}
+
+// Returns the first available photo URL (resolved through the signed-URL cache).
 function firstPhoto(obj){
-  if(obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0)return obj.photo_urls[0];
-  return obj?.photo_url||null;
+  const p=obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0?obj.photo_urls[0]:obj?.photo_url||null;
+  return p?signedPhotoUrl(p):null;
 }
 function photoCount(obj){
   if(obj?.photo_urls&&Array.isArray(obj.photo_urls))return obj.photo_urls.length;
   return obj?.photo_url?1:0;
 }
 function allPhotos(obj){
-  if(obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0)return obj.photo_urls;
-  return obj?.photo_url?[obj.photo_url]:[];
+  const paths=obj?.photo_urls&&Array.isArray(obj.photo_urls)&&obj.photo_urls.length>0?obj.photo_urls:(obj?.photo_url?[obj.photo_url]:[]);
+  return paths.map(signedPhotoUrl);
 }
 
 // Same pattern for PDFs: pdf_urls[] with fallback to single pdf_url
 function allPDFs(obj){
-  if(obj?.pdf_urls&&Array.isArray(obj.pdf_urls)&&obj.pdf_urls.length>0)return obj.pdf_urls;
-  return obj?.pdf_url?[obj.pdf_url]:[];
+  const paths=obj?.pdf_urls&&Array.isArray(obj.pdf_urls)&&obj.pdf_urls.length>0?obj.pdf_urls:(obj?.pdf_url?[obj.pdf_url]:[]);
+  return paths.map(signedDocUrl);
 }
+
+// COI documents are stored as a scalar path on the contact row.
+function coiUrl(obj){return obj?.coi_url?signedDocUrl(obj.coi_url):'';}
 
 // PDF list UI (reuses photoStates for pending/existing/removed tracking)
 function addPendingPDFs(key,event,listId){
@@ -1235,10 +1307,11 @@ function renderPDFList(key,listId){
   const kept=s.existing.filter(u=>!s.removed.includes(u));
   const escape=str=>(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const rows=[];
-  kept.forEach((u,i)=>{
-    const filename=decodeURIComponent((u.split('/').pop()||'document.pdf').split('?')[0]);
+  kept.forEach((p,i)=>{
+    const display=signedDocUrl(p);
+    const filename=decodeURIComponent((p.split('/').pop()||'document.pdf').split('?')[0]);
     rows.push(`<div class="pdf-row">
-      <a href="${u}" target="_blank" class="pdf-link" onclick="event.stopPropagation()">📄 ${escape(filename)}</a>
+      <a href="${display}" target="_blank" class="pdf-link" onclick="event.stopPropagation()">📄 ${escape(filename)}</a>
       <button type="button" class="btn btn-danger btn-sm" onclick="removePDFExisting('${key}',${i},'${listId}')">✕</button>
     </div>`);
   });
@@ -1312,8 +1385,10 @@ async function uploadFile(file,folder){
     const bucket=(folder==='coi'||folder==='invoices'||folder==='quotes'||folder==='utilities')?'documents':'asset-photos';
     const{error}=await db.storage.from(bucket).upload(path,file);
     if(error)throw error;
-    const{data}=db.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
+    // Pre-cache a signed URL so the just-saved record displays immediately;
+    // the record in the DB stores the RELATIVE PATH only.
+    await _signOne(bucket,path);
+    return path;
   }catch(e){console.error(e);showToast('Error uploading file');return null;}
   finally{hideSpinner();}
 }
@@ -1578,12 +1653,17 @@ async function parseAndRouteDoc(file){
   showSpinner('Uploading & analyzing document…');
   try{
     // 1. Upload to Supabase Storage so the AI function can fetch it by URL.
+    //    Bucket is private now, so we mint a short-lived signed URL for the
+    //    serverless function to fetch. The stored DB value is just the path.
     const ext=file.name.split('.').pop()||'pdf';
     const path=`inbox/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
     const{error:upErr}=await db.storage.from('documents').upload(path,file);
     if(upErr)throw upErr;
-    const{data:pubData}=db.storage.from('documents').getPublicUrl(path);
-    const pdfUrl=pubData.publicUrl;
+    const{data:signed,error:sErr}=await db.storage.from('documents').createSignedUrl(path,60*5);
+    if(sErr||!signed?.signedUrl)throw(sErr||new Error('could not sign URL'));
+    const pdfUrl=signed.signedUrl;
+    // Also pre-cache a longer-lived signed URL so the final record displays it
+    await _signOne('documents',path);
 
     // 2. Build context — buildings (with utility account numbers from existing readings)
     //    and currently-open work orders, so the AI can suggest a match.
@@ -1614,16 +1694,17 @@ async function parseAndRouteDoc(file){
       showToast(`AI: ${result.error} — ${(result.detail||'').toString().slice(0,140)}`);
       return;
     }
-    routeParsedDoc(result,pdfUrl);
+    routeParsedDoc(result,path);
   }catch(e){
     console.error(e);showToast('Error processing document');
   }finally{hideSpinner();}
 }
 
-// Takes the AI's parsed result + the stored PDF URL, picks the right modal,
+// Takes the AI's parsed result + the stored PDF path, picks the right modal,
 // opens it, then fills in fields. The PDF is attached to the new record's
-// pdf_urls so it stays linked even if the user just hits Save.
-function routeParsedDoc(result,pdfUrl){
+// pdf_urls (as a PATH — display code resolves to a signed URL via the cache)
+// so it stays linked even if the user just hits Save.
+function routeParsedDoc(result,pdfPath){
   const{type,confidence,fields={},matched_wo_id,notes}=result||{};
   const buildingId=resolveBuildingId(fields.building_hint,fields.account_number);
   const buildingName=buildingId?(buildings.find(b=>b.id===buildingId)?.name||null):null;
@@ -1631,15 +1712,15 @@ function routeParsedDoc(result,pdfUrl){
   switch(type){
     case'invoice':
       openInvoiceModal();
-      setTimeout(()=>prefillInvoiceForm({...fields,buildingName,matched_wo_id,confidence,notes,pdfUrl}),120);
+      setTimeout(()=>prefillInvoiceForm({...fields,buildingName,matched_wo_id,confidence,notes,pdfPath}),120);
       break;
     case'utility_bill':
       openUtilityModal();
-      setTimeout(()=>prefillUtilityForm({...fields,buildingId,confidence,notes,pdfUrl}),120);
+      setTimeout(()=>prefillUtilityForm({...fields,buildingId,confidence,notes,pdfPath}),120);
       break;
     case'quote':
       openQuoteModal();
-      setTimeout(()=>prefillQuoteForm({...fields,buildingName,confidence,notes,pdfUrl}),120);
+      setTimeout(()=>prefillQuoteForm({...fields,buildingName,confidence,notes,pdfPath}),120);
       break;
     case'coi':
       showToast('Detected: Certificate of Insurance — open the contractor and use Update COI');
@@ -1701,8 +1782,8 @@ function prefillInvoiceForm(d){
   setVal('inv-desc',d.description);
   setVal('inv-amount',d.amount);
   // Attach the source PDF so saving keeps it linked
-  if(d.pdfUrl&&photoStates['invoice']){
-    photoStates['invoice'].existing=[...(photoStates['invoice'].existing||[]),d.pdfUrl];
+  if(d.pdfPath&&photoStates['invoice']){
+    photoStates['invoice'].existing=[...(photoStates['invoice'].existing||[]),d.pdfPath];
     renderPDFList('invoice','inv-pdf-list');
   }
   // Pre-check the matched WO
@@ -1729,8 +1810,8 @@ function prefillUtilityForm(d){
   setVal('ur-cost',d.cost);
   setVal('ur-provider',d.provider);
   setVal('ur-account',d.account_number);
-  if(d.pdfUrl&&photoStates['utility']){
-    photoStates['utility'].existing=[...(photoStates['utility'].existing||[]),d.pdfUrl];
+  if(d.pdfPath&&photoStates['utility']){
+    photoStates['utility'].existing=[...(photoStates['utility'].existing||[]),d.pdfPath];
     renderPDFList('utility','ur-pdf-list');
   }
 }
@@ -1747,8 +1828,8 @@ function prefillQuoteForm(d){
   setVal('qt-desc',d.description);
   setVal('qt-amount',d.amount);
   setVal('qt-valid',d.valid_until);
-  if(d.pdfUrl&&photoStates['quote']){
-    photoStates['quote'].existing=[...(photoStates['quote'].existing||[]),d.pdfUrl];
+  if(d.pdfPath&&photoStates['quote']){
+    photoStates['quote'].existing=[...(photoStates['quote'].existing||[]),d.pdfPath];
     renderPDFList('quote','qt-pdf-list');
   }
 }

@@ -1125,7 +1125,7 @@ function renderContacts(){
                 ${coiExpired?'🚨 COI EXPIRED':'⚡ COI'}: ${c.coi_expiry}
               </span>
               ${c.coi_insurer?`<span style="font-size:11px;color:var(--text3)">${c.coi_insurer}</span>`:''}
-              ${c.coi_url?`<a href="${c.coi_url}" target="_blank" style="font-size:11px;color:var(--accent)">📄 View COI</a>`:''}
+              ${c.coi_url?`<a href="${coiUrl(c)}" target="_blank" style="font-size:11px;color:var(--accent)">📄 View COI</a>`:''}
               <button class="btn btn-sm" style="font-size:10px;padding:2px 8px" onclick="openCOIModal('${c.id}')">Update</button>
             </div>`:`<div style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span style="font-size:11px;color:var(--text3)">No COI on file</span>
@@ -1864,7 +1864,7 @@ function renderCOIReport(){
       <td>${ageLabel}</td>
       <td>${c.coi_insurer||'—'}</td>
       <td>${c.coi_policy_number||'—'}</td>
-      <td class="no-print">${c.coi_url?`<a href="${c.coi_url}" target="_blank">📄</a>`:''}</td>
+      <td class="no-print">${c.coi_url?`<a href="${coiUrl(c)}" target="_blank">📄</a>`:''}</td>
     </tr>`;
   };
 

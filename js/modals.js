@@ -1067,7 +1067,7 @@ function openContactModal(contact){
       </div>
       <div class="fg"><label>Policy number</label><input type="text" class="fi" id="ct-coi-pol" placeholder="Policy number" value="${v('coi_policy_number')}"></div>
       <div class="fg"><label>COI Document</label>
-        ${contact?.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
+        ${contact?.coi_url?`<div style="margin-bottom:8px"><a href="${coiUrl(contact)}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
         <div class="photo-upload" onclick="document.getElementById('coi-file-input').click()">📄 ${contact?.coi_url?'Upload new COI (replaces current)':'Upload COI document (PDF or image)'}<input type="file" id="coi-file-input" accept=".pdf,image/*" style="display:none" onchange="previewCOI(event)"></div>
         <div id="coi-preview" style="font-size:12px;color:var(--success);margin-top:6px"></div>
       </div>
@@ -1308,7 +1308,7 @@ function openCOIModal(contactId){
     </div>
     <div class="fg"><label>Policy number</label><input type="text" class="fi" id="coim-pol" value="${(contact.coi_policy_number||'').replace(/"/g,'&quot;')}"></div>
     <div class="fg"><label>COI Document</label>
-      ${contact.coi_url?`<div style="margin-bottom:8px"><a href="${contact.coi_url}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
+      ${contact.coi_url?`<div style="margin-bottom:8px"><a href="${coiUrl(contact)}" target="_blank" style="color:var(--accent);font-size:13px">📄 View current COI</a></div>`:''}
       <div class="photo-upload" onclick="document.getElementById('coim-file').click()">📄 ${contact.coi_url?'Upload new COI (replaces current)':'Click or drag COI document here'}<input type="file" id="coim-file" accept=".pdf,image/*" style="display:none" onchange="previewCOIQuick(event)"></div>
       <div id="coim-preview" style="font-size:12px;color:var(--success);margin-top:6px"></div>
     </div>
