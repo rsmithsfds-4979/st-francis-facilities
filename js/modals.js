@@ -182,6 +182,20 @@ function getPickerChecked(listId){
   return state?[...state.checked]:[];
 }
 
+// Mirrors a parent modal's Building selection into the asset picker's own
+// building filter, then re-renders. "All Buildings" or empty falls back to
+// 'all', which (with requireBuilding=true) shows the "pick a building" hint.
+function syncPickerBuilding(listId,bldName){
+  const state=_pickerState[listId];
+  if(!state)return;
+  const sel=document.getElementById(listId+'-bld');
+  const v=(!bldName||bldName==='All Buildings')?'all':bldName;
+  if(sel)sel.value=[...sel.options].some(o=>o.value===v||o.textContent===v)?v:'all';
+  // Lifting the requireBuilding gate when the parent picks a real building
+  state.requireBuilding=v==='all';
+  renderAssetPicker(listId);
+}
+
 // Returns the HTML for the filter bar + list container. Caller assigns listId.
 function assetPickerFiltersHTML(listId){
   return`
@@ -878,8 +892,8 @@ function openInvoiceModal(inv){
           <option ${v('vendor')==='Other'?'selected':''}>Other</option>
         </select>
       </div>
-      <div class="fg"><label>Building</label>
-        <select class="fi" id="inv-bld">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="inv-bld" onchange="syncPickerBuilding('inv-asset-list',this.value)">
           <option value="">Select...</option>
           <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
           ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
@@ -914,7 +928,7 @@ function openInvoiceModal(inv){
       <button class="btn" onclick="closeModal('invoice-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitInvoice()">${inv?'Save Changes':'Add Invoice'}</button>
     </div>`;
-  initAssetPicker('inv-asset-list',inv?.asset_ids||[],inv?.building||'all');
+  initAssetPicker('inv-asset-list',inv?.asset_ids||[],inv?.building||'all',true);
   const pickerBld=document.getElementById('inv-asset-list-bld');
   if(pickerBld&&inv?.building)pickerBld.value=inv.building;
   renderAssetPicker('inv-asset-list');
@@ -1634,8 +1648,8 @@ function openProjectModal(project){
     </div>
     <div class="form-row">
       <div class="fg"><label>Target year</label><input type="number" class="fi" id="proj-year" placeholder="e.g. 2027" value="${v('target_year')||''}"></div>
-      <div class="fg"><label>Building</label>
-        <select class="fi" id="proj-bld">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="proj-bld" onchange="syncPickerBuilding('proj-asset-list',this.value)">
           <option value="">—</option>
           <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
           ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
@@ -1676,7 +1690,7 @@ function openProjectModal(project){
       <button class="btn" onclick="closeModal('project-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitProject()">${project?'Save Changes':'Add Project'}</button>
     </div>`;
-  initAssetPicker('proj-asset-list',project?.asset_ids||[],project?.building||'all',false);
+  initAssetPicker('proj-asset-list',project?.asset_ids||[],project?.building||'all',true);
   const pickerBld=document.getElementById('proj-asset-list-bld');
   if(pickerBld&&project?.building&&project.building!=='All Buildings')pickerBld.value=project.building;
   renderAssetPicker('proj-asset-list');
@@ -1884,8 +1898,8 @@ function openQuoteModal(quote){
           <option ${v('vendor')==='Other'?'selected':''}>Other</option>
         </select>
       </div>
-      <div class="fg"><label>Building</label>
-        <select class="fi" id="qt-bld">
+      <div class="fg"><label>Building *</label>
+        <select class="fi" id="qt-bld" onchange="syncPickerBuilding('qt-asset-list',this.value)">
           <option value="">Select...</option>
           <option ${v('building')==='All Buildings'?'selected':''}>All Buildings</option>
           ${buildings.map(b=>`<option ${v('building')===b.name?'selected':''}>${b.name}</option>`).join('')}
@@ -1925,7 +1939,7 @@ function openQuoteModal(quote){
       <button class="btn" onclick="closeModal('quote-modal')">Cancel</button>
       <button class="btn btn-primary" onclick="submitQuote()">${quote?'Save Changes':'Save Quote'}</button>
     </div>`;
-  initAssetPicker('qt-asset-list',quote?.asset_ids||[],quote?.building||'all');
+  initAssetPicker('qt-asset-list',quote?.asset_ids||[],quote?.building||'all',true);
   const pickerBld=document.getElementById('qt-asset-list-bld');
   if(pickerBld&&quote?.building)pickerBld.value=quote.building;
   renderAssetPicker('qt-asset-list');
