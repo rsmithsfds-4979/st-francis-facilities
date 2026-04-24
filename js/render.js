@@ -695,13 +695,17 @@ function renderAssets(){
   const fb=document.getElementById('af-bld')?.value||'all';
   const fc=document.getElementById('af-cat')?.value||'all';
   const fs=document.getElementById('af-status')?.value||'all';
+  // Force the user to pick a building before adding an asset, so every new
+  // asset is born tied to a building (no "which one was that for?" later).
+  const addBtn=document.querySelector('#view-assets .topbar-actions .btn-primary');
+  if(addBtn)addBtn.style.display=fb==='all'?'none':'';
   const filtered=assets.filter(a=>{
     const m=!q||(a.description||'').toLowerCase().includes(q)||(a.serial||'').toLowerCase().includes(q)||(a.location||'').toLowerCase().includes(q)||(a.manufacturer||'').toLowerCase().includes(q)||(a.room_number||'').toLowerCase().includes(q);
     return m&&(fb==='all'||a.building===fb)&&(fc==='all'||a.category===fc)&&(fs==='all'||a.status===fs);
   });
   const el=document.getElementById('asset-list');
   if(!el)return;
-  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No assets match.</p></div>';return;}
+  if(!filtered.length){el.innerHTML='<div class="empty-state"><p>No assets match.</p>'+(fb==='all'?'<small>Pick a building filter above to enable + Add Asset.</small>':'')+'</div>';return;}
   el.innerHTML=filtered.map(a=>{
     const pic=firstPhoto(a);
     return`<div class="asset-card">
@@ -1359,15 +1363,21 @@ function renderQuotes(){
         ?`<a href="${pdfs[0]}" target="_blank" onclick="event.stopPropagation()" title="View PDF" style="text-decoration:none">📄</a>`
         :`<span title="${pdfs.length} PDFs attached" style="color:var(--accent);font-size:11px;font-weight:bold">📄×${pdfs.length}</span>`)
       :'';
+    const typeBadge=qq.quote_type?`<span class="badge b-gray" style="font-size:10px;margin-right:6px">${qq.quote_type}</span>`:'';
+    const woCount=(qq.work_order_ids||[]).length;
+    const woNote=woCount?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔧 ${woCount} WO${woCount>1?'s':''}</div>`:'';
+    const acceptedAction=qq.status==='Accepted'
+      ?`<button class="btn btn-sm" style="background:var(--accent);color:#fff;border-color:var(--accent);margin-top:4px;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();createWOFromQuote('${qq.id}')">+ WO</button>`
+      :'';
     return`<tr onclick="editQuote('${qq.id}')" style="cursor:pointer">
       <td style="font-size:11px;color:var(--text3)">${qq.quote_number||'—'}${pdfBadge?' '+pdfBadge:''}</td>
       <td style="font-size:11px;color:var(--text3)">${qq.date||'—'}</td>
       <td style="font-weight:bold">${qq.vendor||'—'}</td>
-      <td>${qq.description||''}${aCount?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${aCount} asset${aCount>1?'s':''}</div>`:''}</td>
+      <td>${typeBadge}${qq.description||''}${aCount?`<div style="font-size:11px;color:var(--text3);margin-top:2px">🔗 ${aCount} asset${aCount>1?'s':''}</div>`:''}${woNote}</td>
       <td><span class="badge b-blue" style="font-size:10px">${qq.building||''}</span></td>
       <td style="font-weight:bold">${fmt(qq.amount)}</td>
       <td style="font-size:11px;color:var(--text3)">${qq.valid_until||'—'}</td>
-      <td>${sb(qq.status||'Pending')}</td>
+      <td>${sb(qq.status||'Pending')}${acceptedAction}</td>
     </tr>`;
   }).join(''):'<tr><td colspan="8" class="loading">No quotes match these filters.</td></tr>';
 }

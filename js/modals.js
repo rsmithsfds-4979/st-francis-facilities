@@ -1894,16 +1894,24 @@ function openQuoteModal(quote){
     </div>
     <div class="fg"><label>Description *</label><input type="text" class="fi" id="qt-desc" placeholder="Scope of work being quoted" value="${v('description')}"></div>
     <div class="form-row">
+      <div class="fg"><label>Quote type</label>
+        <select class="fi" id="qt-type">
+          <option value="">— Select —</option>
+          ${['Labor only','Parts','Equipment','Labor + Parts','Labor + Equipment','Parts + Equipment','Labor + Parts + Equipment','Other'].map(t=>`<option ${quote?.quote_type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg"><label>Status</label>
+        <select class="fi" id="qt-status">
+          <option ${!quote||quote.status==='Pending'?'selected':''}>Pending</option>
+          <option ${sel('Accepted')}>Accepted</option>
+          <option ${sel('Declined')}>Declined</option>
+          <option ${sel('Expired')}>Expired</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
       <div class="fg"><label>Amount *</label><input type="number" step="0.01" class="fi" id="qt-amount" placeholder="0.00" value="${v('amount')}"></div>
       <div class="fg"><label>Valid until</label><input type="text" class="fi" id="qt-valid" placeholder="e.g. 06/30/2026" value="${v('valid_until')}"></div>
-    </div>
-    <div class="fg"><label>Status</label>
-      <select class="fi" id="qt-status">
-        <option ${!quote||quote.status==='Pending'?'selected':''}>Pending</option>
-        <option ${sel('Accepted')}>Accepted</option>
-        <option ${sel('Declined')}>Declined</option>
-        <option ${sel('Expired')}>Expired</option>
-      </select>
     </div>
     <div class="fg"><label>Quote PDFs</label>
       <div id="qt-pdf-list"></div>
@@ -1939,6 +1947,7 @@ async function submitQuote(){
     vendor,
     building:document.getElementById('qt-bld')?.value||null,
     description,
+    quote_type:document.getElementById('qt-type')?.value||null,
     amount,
     valid_until:document.getElementById('qt-valid')?.value.trim()||null,
     status:document.getElementById('qt-status')?.value||'Pending',

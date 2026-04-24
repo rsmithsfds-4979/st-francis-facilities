@@ -179,7 +179,7 @@ async function loadQuotes(){
   try{
     const{data,error}=await db.from('quotes').select('*').order('date',{ascending:false});
     if(error)throw error;
-    quotes=(data||[]).map(q=>({...q,asset_ids:normalizeIdArray(q.asset_ids),pdf_urls:normalizeIdArray(q.pdf_urls)}));
+    quotes=(data||[]).map(q=>({...q,asset_ids:normalizeIdArray(q.asset_ids),pdf_urls:normalizeIdArray(q.pdf_urls),work_order_ids:normalizeIdArray(q.work_order_ids)}));
   }catch(e){console.error(e);quotes=[];}
 }
 
@@ -189,16 +189,47 @@ async function saveQuote(d){
       const{data,error}=await db.from('quotes').update({...d,updated_at:new Date().toISOString()}).eq('id',editingQuoteId).select();
       if(error)throw error;
       const i=quotes.findIndex(q=>q.id===editingQuoteId);
-      if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)};
+      if(i>-1)quotes[i]={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls),work_order_ids:normalizeIdArray(data[0].work_order_ids)};
       showToast('Quote updated!');
     }else{
       const{data,error}=await db.from('quotes').insert([d]).select();
       if(error)throw error;
-      quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls)});
+      quotes.unshift({...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),pdf_urls:normalizeIdArray(data[0].pdf_urls),work_order_ids:normalizeIdArray(data[0].work_order_ids)});
       showToast('Quote saved!');
     }
     editingQuoteId=null;closeModal('quote-modal');renderQuotes();
   }catch(e){console.error(e);showToast('Error saving quote');}
+}
+
+// Spawn a Work Order from an Accepted quote. Pre-fills issue/vendor/building/
+// asset_ids/notes/amount and links the WO id back into the quote so the audit
+// trail is intact (mirrors createWOFromProject).
+async function createWOFromQuote(id){
+  const q=quotes.find(x=>x.id===id);
+  if(!q){showToast('Quote not found');return;}
+  const woData={
+    issue:q.description||`Work for ${q.vendor||'vendor'} quote`,
+    building:q.building||null,
+    priority:'Medium',
+    status:'Open',
+    assignee:q.vendor||null,
+    notes:[q.notes,q.amount?`Quoted at ${fmt(q.amount)}`:null].filter(Boolean).join('\n\n')||null,
+    asset_ids:Array.isArray(q.asset_ids)?q.asset_ids:[],
+  };
+  try{
+    const{data,error}=await db.from('work_orders').insert([woData]).select();
+    if(error)throw error;
+    const newWO={...data[0],asset_ids:normalizeIdArray(data[0].asset_ids),invoice_ids:normalizeIdArray(data[0].invoice_ids),photo_urls:normalizeIdArray(data[0].photo_urls)};
+    workOrders.unshift(newWO);
+    const linked=[...(Array.isArray(q.work_order_ids)?q.work_order_ids:[]),newWO.id];
+    const{data:qd}=await db.from('quotes').update({work_order_ids:linked,updated_at:new Date().toISOString()}).eq('id',id).select();
+    if(qd?.[0]){
+      const i=quotes.findIndex(x=>x.id===id);
+      if(i>-1)quotes[i]={...qd[0],asset_ids:normalizeIdArray(qd[0].asset_ids),pdf_urls:normalizeIdArray(qd[0].pdf_urls),work_order_ids:normalizeIdArray(qd[0].work_order_ids)};
+    }
+    showToast('Work Order created from quote');
+    renderQuotes();renderWO();renderDash();
+  }catch(e){console.error(e);showToast('Error creating work order');}
 }
 
 async function deleteQuote(id){
@@ -1735,13 +1766,56 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
 });
 
-// ---- QUICK ADD DROPDOWN ----
-function toggleQuickAdd(e){
-  if(e)e.stopPropagation();
-  document.getElementById('quick-add-menu')?.classList.toggle('open');
+// Open asset modal pre-filling the building from the assets-page filter,
+// so when you've narrowed the list to one building, the new asset starts
+// there instead of forcing you to pick again.
+function addAssetForFilteredBuilding(){
+  openAssetModal();
+  const fb=document.getElementById('af-bld')?.value;
+  if(!fb||fb==='all')return;
+  setTimeout(()=>{
+    const bld=document.getElementById('a-bld');
+    if(bld){bld.value=fb;if(typeof updateAssetRoomDropdown==='function')updateAssetRoomDropdown();}
+  },80);
 }
 
-function closeQuickAdd(){document.getElementById('quick-add-menu')?.classList.remove('open');}
+// ---- QUICK ADD DROPDOWN ----
+// One Quick Add menu per page topbar, injected by injectQuickAddIntoTopbars on
+// init. Uses classes (not IDs) so multiple instances coexist on the same page.
+const QUICK_ADD_HTML=`
+  <div class="quick-add-wrap">
+    <button class="btn quick-add-btn" onclick="toggleQuickAdd(event,this)">+ Quick Add ▾</button>
+    <div class="quick-add-menu">
+      <div class="quick-add-item" onclick="quickAdd('utility')">💡 <span>Log Utility Reading</span></div>
+      <div class="quick-add-item" onclick="quickAdd('invoice')">🧾 <span>Upload Invoice</span></div>
+      <div class="quick-add-item" onclick="quickAdd('quote')">📋 <span>Add Quote</span></div>
+      <div class="quick-add-item" onclick="quickAdd('pm')">🔧 <span>Complete PM Task</span></div>
+      <div class="quick-add-item" onclick="quickAdd('project')">🏗️ <span>Add Project</span></div>
+      <div class="quick-add-item" onclick="quickAdd('asset')">📦 <span>Add Asset</span></div>
+      <div class="quick-add-item" onclick="quickAdd('contact')">👤 <span>Add Contact</span></div>
+      <div class="quick-add-item" onclick="quickAdd('supply')">🧴 <span>Add Supply</span></div>
+    </div>
+  </div>`;
+
+function injectQuickAddIntoTopbars(){
+  document.querySelectorAll('.topbar-actions').forEach(actions=>{
+    if(actions.querySelector('.quick-add-wrap'))return;
+    actions.insertAdjacentHTML('beforeend',QUICK_ADD_HTML);
+  });
+}
+
+function toggleQuickAdd(e,btn){
+  if(e)e.stopPropagation();
+  // Close any other open menus first
+  document.querySelectorAll('.quick-add-menu.open').forEach(m=>{
+    if(!btn||!btn.parentElement.contains(m))m.classList.remove('open');
+  });
+  btn?.parentElement?.querySelector('.quick-add-menu')?.classList.toggle('open');
+}
+
+function closeQuickAdd(){
+  document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open'));
+}
 
 // Routes a quick-add choice to the right page + modal. Some entries are
 // building-scoped (utility) or require a list to pick from (pm completion)
@@ -1771,14 +1845,14 @@ function quickAdd(kind){
   }
 }
 
-// Close the menu when clicking outside of it.
+// Close any open menu when the click lands outside its wrap.
 document.addEventListener('click',e=>{
-  const wrap=document.querySelector('.quick-add-wrap');
-  if(wrap&&!wrap.contains(e.target))closeQuickAdd();
+  if(!e.target.closest('.quick-add-wrap'))closeQuickAdd();
 });
 
 // ---- INIT ----
 setupDragDropUploads();
 initCollapsibleNav();
 initSidebarState();
+injectQuickAddIntoTopbars();
 loadAll();
