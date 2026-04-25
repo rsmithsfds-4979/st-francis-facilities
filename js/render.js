@@ -2470,14 +2470,21 @@ function renderMyWork(){
   // the staff dropdown.
   const linkedNames=new Set(contacts.filter(c=>c.profile_id===uid).map(c=>c.name));
   const isMine=w=>w.assigned_user_id===uid||(!w.assigned_user_id&&linkedNames.has(w.assignee));
-  const myWOs=workOrders.filter(w=>isMine(w)&&w.status!=='Completed')
-    .sort((a,b)=>{
-      const pri={Critical:0,High:1,Medium:2,Low:3};
-      return(pri[a.priority]??9)-(pri[b.priority]??9);
-    });
   const me=_myProfile();
   const myName=me?.display_name||me?.email||'';
   const win=_mwWindow();
+  // WOs filtered by the same Day/Week/Month window as the schedule. Undated
+  // WOs surface only in Day view (they're "always pending") so they don't
+  // clutter Week/Month with non-date items.
+  const myWOs=workOrders.filter(w=>{
+    if(!isMine(w)||w.status==='Completed')return false;
+    const d=parseDate(w.due_date);
+    if(!d)return _mwView==='day';
+    return _mwInWindow(d,win);
+  }).sort((a,b)=>{
+    const pri={Critical:0,High:1,Medium:2,Low:3};
+    return(pri[a.priority]??9)-(pri[b.priority]??9);
+  });
   // Schedule items in the window: parish events (gcal + custom), my WOs (due_date),
   // my PMs (scheduled_date or next_due), all with a date and a quick label.
   const sched=[];
@@ -2561,7 +2568,7 @@ function renderMyWork(){
   el.innerHTML=`
     ${wxHTML}
     <div class="card">
-      <div class="card-header"><div class="card-title">${t('wos')} (${myWOs.length})</div></div>
+      <div class="card-header"><div class="card-title">${t('wos')} (${myWOs.length})</div><div style="font-size:11px;color:var(--text3);font-weight:bold;letter-spacing:.04em">${_mwLabel(win)}</div></div>
       <div style="padding:14px 18px">
         ${myWOs.length?myWOs.map(woRow).join(''):`<div style="color:var(--text3);font-size:13px;padding:6px 0">${t('none_wos')}</div>`}
       </div>
