@@ -149,7 +149,7 @@ Using the canonical client list **plus the four plumbing tables** (`app_settings
 | `budgets` | A | admin, manager, finance | admin, manager, finance | no | yes | Viewer dropped (Q6). |
 | `utility_readings` | B | admin, manager, facilities | admin, manager, facilities | yes | yes | |
 | `calendar_events` | A | admin, manager, facilities, finance, dept_head, viewer | admin, manager (Q7) | no | yes | Q7 forward note: hats era will need atomic write permissions for Music Director, Liturgical Director, Office Manager. |
-| `wo_comments` | A → B in P2 | admin, manager, facilities, dept_head, janitor | admin, manager, facilities, dept_head, janitor (DELETE: admin, manager) | no in P1, yes in P2 | yes | Q1: phase 1 inherits work_orders role list, no building check. Phase 2 denormalizes `building_id` onto the table to enable Pattern B. |
+| `wo_comments` | A → B in P2 | admin, manager, facilities, finance, dept_head, janitor, viewer | admin, manager, facilities, dept_head, janitor | no in P1, yes in P2 | yes | Q1: SELECT mirrors work_orders read list (all 7 roles); INSERT/UPDATE matches the work_orders write list. No DELETE in P1. Phase 2 denormalizes `building_id` onto the table to enable Pattern B. |
 | `app_settings` | C (catalog) | all auth | admin only | no | no | Q1: every page reads weather/gcal config; Settings page writes. |
 | `asset_service_log` | dead schema — admin only | admin only | admin only | n/a | n/a | Q1: no client refs, no triggers, zero rows. Locked admin-only pending separate cleanup decision. |
 | `service_history` | dead schema — admin only | admin only | admin only | n/a | n/a | Q1: same as above. |
