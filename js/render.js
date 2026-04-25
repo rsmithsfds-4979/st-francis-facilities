@@ -2632,10 +2632,25 @@ function openMobileWO(id){
   const w=workOrders.find(x=>x.id===id);
   if(!w)return;
   _mwoEditingId=id;
-  document.getElementById('mwo-modal-h').textContent=t('complete_wo_h');
+  const done=w.status==='Completed';
+  document.getElementById('mwo-modal-h').textContent=done?(w.issue||t('complete_wo_h')):t('complete_wo_h');
   document.getElementById('mwo-modal-sub').textContent=[w.building,w.location].filter(Boolean).join(' · ');
   const photos=Array.isArray(w.photo_urls)?w.photo_urls:[];
-  document.getElementById('mwo-body').innerHTML=`
+  // Read-only view for already-completed WOs (no completion form, no save).
+  document.getElementById('mwo-body').innerHTML=done?`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span class="badge b-green">✓ Done</span>
+        ${w.completed_date?`<span style="font-size:12px;color:var(--text3)">${w.completed_date}</span>`:''}
+      </div>
+      <div style="font-weight:bold;font-size:16px;margin-bottom:6px">${w.issue||''}</div>
+      <div style="font-size:13px;color:var(--text2)">${t('priority')}: ${w.priority||'—'}${w.due_date?` · ${t('due')} ${w.due_date}`:''}</div>
+    </div>
+    ${w.notes?`<div class="fg"><label>${t('notes')}</label><div style="background:var(--bg);padding:10px;border-radius:6px;font-size:13px;white-space:pre-wrap">${w.notes}</div></div>`:''}
+    ${photos.length?`<div class="fg"><label>📷</label><div class="photo-gallery">${photos.map(p=>`<img src="${p}" style="max-width:120px;max-height:120px;border-radius:6px;margin:4px">`).join('')}</div></div>`:''}
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('mwo-modal')">${t('cancel')}</button>
+    </div>`:`
     <div style="margin-bottom:14px">
       <div style="font-weight:bold;font-size:16px;margin-bottom:6px">${w.issue||''}</div>
       <div style="font-size:13px;color:var(--text2)">${t('priority')}: ${w.priority||'—'}${w.due_date?` · ${t('due')} ${w.due_date}`:''}</div>
@@ -2653,8 +2668,10 @@ function openMobileWO(id){
       <button class="btn" onclick="closeModal('mwo-modal')">${t('cancel')}</button>
       <button class="btn btn-success" onclick="submitMobileWOComplete()">✓ ${t('complete')}</button>
     </div>`;
-  initPhotoState('mwo',[]);
-  renderPhotoGallery('mwo','mwo-photo-gallery');
+  if(!done){
+    initPhotoState('mwo',[]);
+    renderPhotoGallery('mwo','mwo-photo-gallery');
+  }
   document.getElementById('mwo-modal').classList.add('open');
 }
 async function submitMobileWOComplete(){
