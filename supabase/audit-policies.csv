@@ -1,0 +1,29 @@
+schemaname,tablename,policyname,cmd,roles,permissive,using_clause,with_check_clause
+public,app_settings,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,asset_service_log,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,assets,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,budgets,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,buildings,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,calendar_events,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,categories,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,contact_roles,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,contacts,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,pm_schedule,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,profiles,Authenticated read profiles,SELECT,{authenticated},PERMISSIVE,true,null
+public,profiles,Self or admin write,UPDATE,{authenticated},PERMISSIVE,"((id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM profiles profiles_1
+  WHERE ((profiles_1.id = auth.uid()) AND (profiles_1.role = 'admin'::text)))))",null
+public,projects,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,quotes,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,room_types,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,rooms,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,service_history,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,supplies,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,supply_categories,supply_categories read,SELECT,{public},PERMISSIVE,(auth.role() = 'authenticated'::text),null
+public,supply_categories,supply_categories write,ALL,{public},PERMISSIVE,(auth.role() = 'authenticated'::text),(auth.role() = 'authenticated'::text)
+public,supply_requests,supply_requests read,SELECT,{public},PERMISSIVE,(auth.role() = 'authenticated'::text),null
+public,supply_requests,supply_requests write,ALL,{public},PERMISSIVE,(auth.role() = 'authenticated'::text),(auth.role() = 'authenticated'::text)
+public,utility_readings,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,vendor_invoices,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,wo_comments,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)
+public,work_orders,Authenticated access,ALL,{public},PERMISSIVE,(auth.uid() IS NOT NULL),(auth.uid() IS NOT NULL)

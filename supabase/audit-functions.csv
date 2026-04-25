@@ -1,0 +1,15 @@
+nspname,proname,pg_get_functiondef
+public,handle_new_user,"CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+AS $function$
+  begin
+    insert into public.profiles (id, email, display_name)
+    values (new.id, new.email,
+      coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', new.email))
+    on conflict (id) do nothing;
+    return new;
+  end;
+  $function$
+"

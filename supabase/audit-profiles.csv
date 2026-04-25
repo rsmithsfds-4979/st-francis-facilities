@@ -1,0 +1,8 @@
+column_name,data_type,is_nullable,column_default
+id,uuid,NO,null
+email,text,YES,null
+display_name,text,YES,null
+role,text,YES,'viewer'::text
+assigned_building_ids,jsonb,YES,'[]'::jsonb
+created_at,timestamp with time zone,YES,now()
+language,text,YES,'en'::text
