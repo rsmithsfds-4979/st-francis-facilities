@@ -1586,7 +1586,7 @@ function go(name,el){
   if(name==='projects-finance-report')renderProjectsFinanceReport();
   if(name==='projects-parish-report')renderProjectsParishReport();
   if(name==='conflicts')renderConflicts();
-  if(name==='my-work')renderMyWork();
+  if(name==='my-work'){loadMyWorkGCal().finally(renderMyWork);}
   renderHistory();
   autoCloseMobileSidebar();
 }

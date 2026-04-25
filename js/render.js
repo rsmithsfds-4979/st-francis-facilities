@@ -2343,9 +2343,10 @@ async function toggleUserBuilding(uid,bldId,checked){
 // names, building names) stays in whatever language the author entered.
 const MW_T={
   en:{
-    title:'My Work', wos:'My Work Orders', today:"Today's Schedule",
+    title:'My Work', wos:'My Work Orders', schedule:'Schedule',
+    day:'Day', week:'Week', month:'Month',
     supplies:'Supplies', request:'+ Request Supply', recent:'My Recent Requests',
-    none_wos:'No work orders assigned to you.', none_today:'Nothing scheduled today.',
+    none_wos:'No work orders assigned to you.', none_schedule:'Nothing scheduled in this period.',
     none_requests:'No requests yet.',
     open_wo:'Open', complete:'Mark Complete', priority:'Priority',
     building:'Building', due:'Due', notes:'Notes', completion_note:'Completion notes',
@@ -2355,11 +2356,13 @@ const MW_T={
     pick_supply:'Pick a supply', pick_building:'Pick a building',
     qty_required:'Enter a quantity', complete_wo_h:'Complete Work Order',
     photo:'Photo (optional)', view_wo:'View',
+    parish_event:'Parish event',
   },
   es:{
-    title:'Mi Trabajo', wos:'Mis Órdenes de Trabajo', today:'Horario de Hoy',
+    title:'Mi Trabajo', wos:'Mis Órdenes de Trabajo', schedule:'Horario',
+    day:'Día', week:'Semana', month:'Mes',
     supplies:'Suministros', request:'+ Solicitar Suministro', recent:'Mis Solicitudes Recientes',
-    none_wos:'No tiene órdenes de trabajo asignadas.', none_today:'Nada programado hoy.',
+    none_wos:'No tiene órdenes de trabajo asignadas.', none_schedule:'Nada programado en este período.',
     none_requests:'Sin solicitudes.',
     open_wo:'Abierta', complete:'Marcar como Completa', priority:'Prioridad',
     building:'Edificio', due:'Vence', notes:'Notas', completion_note:'Notas de finalización',
@@ -2369,10 +2372,50 @@ const MW_T={
     pick_supply:'Elija un suministro', pick_building:'Elija un edificio',
     qty_required:'Ingrese una cantidad', complete_wo_h:'Completar Orden de Trabajo',
     photo:'Foto (opcional)', view_wo:'Ver',
+    parish_event:'Evento parroquial',
   },
 };
 function myLang(){return _myProfile()?.language==='es'?'es':'en';}
 function t(k){return MW_T[myLang()][k]||MW_T.en[k]||k;}
+
+let _mwView='day'; // 'day' | 'week' | 'month'
+async function setMWView(v){_mwView=v;await loadMyWorkGCal();renderMyWork();}
+
+// Re-fetches the parish (gcal) calendar for the current My Work window so
+// month-view events earlier in the month aren't missed by the default load.
+async function loadMyWorkGCal(){
+  const win=_mwWindow();
+  const buf=7*24*60*60*1000;
+  if(typeof loadGCalEvents==='function')await loadGCalEvents(new Date(win.start.getTime()-buf),new Date(win.end.getTime()+buf));
+}
+
+// Day/Week/Month window centered on today. Sunday-anchored week, calendar month.
+function _mwWindow(){
+  const now=new Date();
+  const start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let end;
+  if(_mwView==='day'){
+    end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+1);
+  }else if(_mwView==='week'){
+    const dow=start.getDay();
+    start.setDate(start.getDate()-dow);
+    end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+7);
+  }else{
+    start.setDate(1);
+    end=new Date(start.getFullYear(),start.getMonth()+1,1);
+  }
+  return{start,end};
+}
+function _mwInWindow(d,win){return d&&d>=win.start&&d<win.end;}
+function _mwLabel(win){
+  const fmt={year:'numeric',month:'short',day:'numeric'};
+  if(_mwView==='day')return win.start.toLocaleDateString('en-US',fmt);
+  if(_mwView==='week'){
+    const last=new Date(win.end.getTime()-1);
+    return`${win.start.toLocaleDateString('en-US',fmt)} – ${last.toLocaleDateString('en-US',fmt)}`;
+  }
+  return win.start.toLocaleDateString('en-US',{year:'numeric',month:'long'});
+}
 
 function renderMyWork(){
   const el=document.getElementById('mw-content');
@@ -2386,11 +2429,31 @@ function renderMyWork(){
       const pri={Critical:0,High:1,Medium:2,Low:3};
       return(pri[a.priority]??9)-(pri[b.priority]??9);
     });
-  const todayStr=new Date().toLocaleDateString();
   const me=_myProfile();
   const myName=me?.display_name||me?.email||'';
-  const todayPM=pmTasks.filter(p=>(p.assigned_user_id===uid||(p.assigned_to===myName&&!p.assigned_user_id))&&p.scheduled_date===todayStr);
-  const todayWOs=myWOs.filter(w=>w.due_date===todayStr);
+  const win=_mwWindow();
+  // Schedule items in the window: parish events (gcal + custom), my WOs (due_date),
+  // my PMs (scheduled_date or next_due), all with a date and a quick label.
+  const sched=[];
+  (gcalEvents||[]).forEach(e=>{
+    const d=parseDate(e.start);
+    if(_mwInWindow(d,win))sched.push({when:d,kind:'parish',title:e.title||'(no title)',detail:e.location||''});
+  });
+  (calendarEvents||[]).forEach(e=>{
+    const d=parseDate(e.start);
+    if(_mwInWindow(d,win))sched.push({when:d,kind:'parish',title:e.title||'(no title)',detail:e.building||e.location||''});
+  });
+  myWOs.forEach(w=>{
+    const d=parseDate(w.due_date);
+    if(_mwInWindow(d,win))sched.push({when:d,kind:'wo',title:w.issue,detail:`${w.building||''}${w.priority?' · '+w.priority:''}`,id:w.id});
+  });
+  pmTasks.forEach(p=>{
+    if(p.status==='Done')return;
+    if(!(p.assigned_user_id===uid||(p.assigned_to===myName&&!p.assigned_user_id)))return;
+    const d=parseDate(p.scheduled_date)||parseDate(p.next_due);
+    if(_mwInWindow(d,win))sched.push({when:d,kind:'pm',title:p.title,detail:`${p.building||''}${p.scheduled_time?' · '+p.scheduled_time:''}`});
+  });
+  sched.sort((a,b)=>a.when-b.when);
   const myReqs=supplyRequests.filter(r=>r.requested_by===uid).slice(0,8);
   const priBadge=p=>{const m={Critical:'b-red',High:'b-red',Medium:'b-amber',Low:'b-gray'};return`<span class="badge ${m[p]||'b-gray'}">${p||'—'}</span>`;};
   const reqBadge=s=>{const m={pending:'b-amber',approved:'b-green',denied:'b-gray'};const lbl={pending:t('pending'),approved:t('approved'),denied:t('denied')};return`<span class="badge ${m[s]||'b-gray'}">${lbl[s]||s}</span>`;};
@@ -2428,12 +2491,28 @@ function renderMyWork(){
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">${t('today')}</div></div>
-      <div style="padding:14px 18px">
-        ${(todayWOs.length||todayPM.length)
-          ?[...todayWOs.map(w=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">🛠 ${w.issue} <span style="color:var(--text3);font-size:12px">· ${w.building}</span></div>`),
-            ...todayPM.map(p=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">🔧 ${p.title} <span style="color:var(--text3);font-size:12px">· ${p.building}${p.scheduled_time?' · '+p.scheduled_time:''}</span></div>`)].join('')
-          :`<div style="color:var(--text3);font-size:13px">${t('none_today')}</div>`}
+      <div class="card-header" style="flex-wrap:wrap;gap:10px">
+        <div class="card-title">${t('schedule')}</div>
+        <div style="display:flex;gap:4px">
+          ${['day','week','month'].map(v=>`<button class="btn btn-sm ${_mwView===v?'btn-primary':''}" onclick="setMWView('${v}')">${t(v)}</button>`).join('')}
+        </div>
+      </div>
+      <div style="padding:8px 18px 4px;font-size:12px;color:var(--text3);font-weight:bold;letter-spacing:.04em">${_mwLabel(win)}</div>
+      <div style="padding:8px 18px 14px">
+        ${sched.length
+          ?sched.map(s=>{
+              const icon=s.kind==='wo'?'🛠':s.kind==='pm'?'🔧':'📅';
+              const dateLbl=_mwView==='day'?'':`<span style="color:var(--text3);font-size:11px">${s.when.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${s.when.getHours()||s.when.getMinutes()?' '+s.when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):''} · </span>`;
+              const onclick=s.kind==='wo'&&s.id?`onclick="openMobileWO('${s.id}')" style="cursor:pointer"`:'';
+              return`<div ${onclick} style="padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:start;gap:8px">
+                <span style="font-size:16px;flex-shrink:0">${icon}</span>
+                <div style="flex:1;min-width:0">
+                  ${dateLbl}<strong>${s.title||''}</strong>
+                  ${s.detail?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${s.detail}</div>`:''}
+                </div>
+              </div>`;
+            }).join('')
+          :`<div style="color:var(--text3);font-size:13px;padding:6px 0">${t('none_schedule')}</div>`}
       </div>
     </div>
     <div class="card">
