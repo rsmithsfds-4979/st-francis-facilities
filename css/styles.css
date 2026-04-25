@@ -21,6 +21,16 @@ body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-hei
 .sidebar-toggle:hover{background:var(--accent)}
 .sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:45;display:none}
 .app.sidebar-open .sidebar-overlay{display:block}
+/* Janitor role: sidebar is just clutter (their only nav is My Work) — strip it
+   entirely on every viewport. The mobile hamburger and overlay go too. */
+body[data-role="janitor"] .sidebar,
+body[data-role="janitor"] .sidebar-toggle,
+body[data-role="janitor"] .sidebar-overlay,
+body[data-role="janitor"] .quick-add-wrap{display:none!important}
+body[data-role="janitor"] .topbar{padding-left:24px!important}
+@media(max-width:768px){
+  body[data-role="janitor"] .topbar{padding-left:16px!important}
+}
 /* Desktop hidden state: sidebar off, toggle visible */
 .app.sidebar-hidden .sidebar{display:none}
 .app.sidebar-hidden .sidebar-toggle{display:flex}

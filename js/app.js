@@ -2185,6 +2185,9 @@ function buildingsVisibleToUser(){
 // Hide nav items the current role can't access; hide the Settings section
 // entirely for non-admins (it manages users + system config).
 function applyNavVisibility(){
+  // Surface the current role to CSS so we can fully strip the sidebar/toggle
+  // for janitors (their only nav item is My Work — sidebar is just clutter).
+  document.body.dataset.role=userRole();
   document.querySelectorAll('.nav-item[onclick]').forEach(el=>{
     const m=el.getAttribute('onclick')?.match(/go(?:Contacts)?\(['"]([^'"]+)['"]/);
     if(!m)return;
