@@ -1,0 +1,4 @@
+# Supabase CLI scratch
+supabase/.temp/
+supabase/.branches/
+supabase/.env
