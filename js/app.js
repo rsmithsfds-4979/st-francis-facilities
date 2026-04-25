@@ -2152,7 +2152,7 @@ const PERMS={
     canEdit:['workorders','supply-requests'],
   },
   viewer:{
-    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','quotes','invoices','buildings','contacts','projects','finance','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
+    nav:['dashboard','calendar','workorders','pm','history','assets','supplies','buildings','contacts','projects','pm-report','coi-report','projects-finance-report','projects-parish-report','conflicts'],
     canEdit:[],
   },
 };
