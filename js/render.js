@@ -2473,15 +2473,18 @@ function renderMyWork(){
   const me=_myProfile();
   const myName=me?.display_name||me?.email||'';
   const win=_mwWindow();
-  // WOs filtered by the same Day/Week/Month window as the schedule. Undated
-  // WOs surface only in Day view (they're "always pending") so they don't
-  // clutter Week/Month with non-date items.
+  // WOs filtered by the same Day/Week/Month window as the schedule. Completed
+  // WOs stay visible (with a strikethrough) so the user gets visual confirmation
+  // of what they finished. Undated WOs surface only in Day view, and only if
+  // not yet completed (no anchor date for completed undated items).
   const myWOs=workOrders.filter(w=>{
-    if(!isMine(w)||w.status==='Completed')return false;
+    if(!isMine(w))return false;
     const d=parseDate(w.due_date);
-    if(!d)return _mwView==='day';
+    if(!d)return _mwView==='day'&&w.status!=='Completed';
     return _mwInWindow(d,win);
   }).sort((a,b)=>{
+    // Completed sinks to the bottom; otherwise priority order.
+    if((a.status==='Completed')!==(b.status==='Completed'))return a.status==='Completed'?1:-1;
     const pri={Critical:0,High:1,Medium:2,Low:3};
     return(pri[a.priority]??9)-(pri[b.priority]??9);
   });
@@ -2498,7 +2501,7 @@ function renderMyWork(){
   });
   myWOs.forEach(w=>{
     const d=parseDate(w.due_date);
-    if(_mwInWindow(d,win))sched.push({when:d,kind:'wo',title:w.issue,detail:`${w.building||''}${w.priority?' · '+w.priority:''}`,id:w.id});
+    if(_mwInWindow(d,win))sched.push({when:d,kind:'wo',title:w.issue,detail:`${w.building||''}${w.priority?' · '+w.priority:''}`,id:w.id,done:w.status==='Completed'});
   });
   pmTasks.forEach(p=>{
     if(p.status==='Done')return;
@@ -2515,15 +2518,18 @@ function renderMyWork(){
   const reqBadge=s=>{const m={pending:'b-amber',approved:'b-green',denied:'b-gray'};const lbl={pending:t('pending'),approved:t('approved'),denied:t('denied')};return`<span class="badge ${m[s]||'b-gray'}">${lbl[s]||s}</span>`;};
   const woRow=w=>{
     const bldRoom=[w.building,w.location].filter(Boolean).join(' · ');
-    return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg2)">
+    const done=w.status==='Completed';
+    const doneStyle=done?'opacity:.55':'';
+    const strike=done?'text-decoration:line-through':'';
+    return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg2);${doneStyle}">
       <div style="display:flex;justify-content:space-between;align-items:start;gap:10px;margin-bottom:6px">
-        <div style="font-weight:bold;font-size:15px;flex:1">${w.issue||''}</div>
-        ${priBadge(w.priority)}
+        <div style="font-weight:bold;font-size:15px;flex:1;${strike}">${w.issue||''}</div>
+        ${done?'<span class="badge b-green">✓ Done</span>':priBadge(w.priority)}
       </div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">${bldRoom}${w.due_date?` · ${t('due')} ${w.due_date}`:''}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px;${strike}">${bldRoom}${w.due_date?` · ${t('due')} ${w.due_date}`:''}${done&&w.completed_date?` · ${w.completed_date}`:''}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm" onclick="openMobileWO('${w.id}')" style="flex:1;min-width:120px;padding:10px">${t('view_wo')}</button>
-        <button class="btn btn-success btn-sm" onclick="openMobileWO('${w.id}')" style="flex:1;min-width:140px;padding:10px">✓ ${t('complete')}</button>
+        ${done?'':`<button class="btn btn-success btn-sm" onclick="openMobileWO('${w.id}')" style="flex:1;min-width:140px;padding:10px">✓ ${t('complete')}</button>`}
       </div>
     </div>`;
   };
@@ -2594,11 +2600,13 @@ function renderMyWork(){
               const icon=s.kind==='wo'?'🛠':s.kind==='pm'?'🔧':'📅';
               const dateLbl=_mwView==='day'?'':`<span style="color:var(--text3);font-size:11px">${s.when.toLocaleDateString('en-US',{month:'short',day:'numeric'})}${s.when.getHours()||s.when.getMinutes()?' '+s.when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):''} · </span>`;
               const onclick=s.kind==='wo'&&s.id?`onclick="openMobileWO('${s.id}')" style="cursor:pointer"`:'';
-              return`<div ${onclick} style="padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:start;gap:8px">
-                <span style="font-size:16px;flex-shrink:0">${icon}</span>
+              const doneStyle=s.done?'opacity:.55':'';
+              const strike=s.done?'text-decoration:line-through':'';
+              return`<div ${onclick} style="padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:start;gap:8px;${doneStyle}">
+                <span style="font-size:16px;flex-shrink:0">${s.done?'✓':icon}</span>
                 <div style="flex:1;min-width:0">
-                  ${dateLbl}<strong>${s.title||''}</strong>
-                  ${s.detail?`<div style="font-size:12px;color:var(--text3);margin-top:2px">${s.detail}</div>`:''}
+                  ${dateLbl}<strong style="${strike}">${s.title||''}</strong>
+                  ${s.detail?`<div style="font-size:12px;color:var(--text3);margin-top:2px;${strike}">${s.detail}</div>`:''}
                 </div>
               </div>`;
             }).join('')
