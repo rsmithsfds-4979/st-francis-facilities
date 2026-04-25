@@ -2097,7 +2097,7 @@ function stamp(data,isInsert){
 // by the auth.users trigger. Used for attribution AND access control.
 async function loadProfiles(){
   try{
-    const{data,error}=await db.from('profiles').select('id,email,display_name,role,assigned_building_ids,language');
+    const{data,error}=await db.from('profiles').select('id,email,display_name,role,assigned_building_ids,language,hats,active_hat');
     if(error)throw error;
     profiles=(data||[]).map(p=>({...p,assigned_building_ids:normalizeIdArray(p.assigned_building_ids)}));
   }catch(e){console.error(e);profiles=[];}
