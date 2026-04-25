@@ -284,19 +284,26 @@ function handleAddAssetInline(listId){
 
 // Opens the contact modal from the WO assign dropdown; after save, insert new name and select it.
 function handleAssignChange(sel){
-  if(sel.value!=='__add_new__')return;
-  sel.value='';
-  afterContactSave=(newContact)=>{
-    const opt=document.createElement('option');
-    opt.textContent=newContact.name;
-    opt.value=newContact.name;
-    // Insert before the "+ Add new contact" option
-    const anchor=sel.querySelector('option[value="__add_new__"]');
-    if(anchor)sel.insertBefore(opt,anchor);
-    else sel.appendChild(opt);
-    sel.value=newContact.name;
-  };
-  openContactModal();
+  if(sel.value==='__add_new__'){
+    sel.value='';
+    afterContactSave=(newContact)=>{
+      const opt=document.createElement('option');
+      opt.textContent=newContact.name;
+      opt.value=newContact.name;
+      // Insert before the "+ Add new contact" option
+      const anchor=sel.querySelector('option[value="__add_new__"]');
+      if(anchor)sel.insertBefore(opt,anchor);
+      else sel.appendChild(opt);
+      sel.value=newContact.name;
+    };
+    openContactModal();
+    return;
+  }
+  // If the picked contact is linked to a profile, auto-fill the staff dropdown
+  // so My Work picks up the WO without the manager having to set it twice.
+  const c=contacts.find(x=>x.name===sel.value);
+  const staffSel=document.getElementById('f-assign-user');
+  if(c?.profile_id&&staffSel&&!staffSel.value)staffSel.value=c.profile_id;
 }
 
 // Inline "+ Add new vendor…" from the quote modal's vendor dropdown.
@@ -689,7 +696,7 @@ function openPMModal(pm){
     <div class="form-row">
       <div class="fg"><label>Next due date</label><input type="text" class="fi" id="pm-due" placeholder="e.g. Apr 2025" value="${v('next_due')}"></div>
       <div class="fg"><label>Assign to</label>
-        <select class="fi" id="pm-assign">
+        <select class="fi" id="pm-assign" onchange="handlePMAssignChange(this)">
           <option value="">Select...</option>
           ${contacts.map(c=>`<option ${v('assigned_to')===c.name?'selected':''}>${c.name}</option>`).join('')}
           <option>Other</option>
@@ -745,6 +752,14 @@ function submitPM(){
 }
 
 function editPM(id){const p=pmTasks.find(x=>x.id===id);if(p)openPMModal(p);}
+
+// PM modal: when picking a contact whose login is linked, auto-fill the staff dropdown
+// so the PM surfaces on that user's My Work page without a second pick.
+function handlePMAssignChange(sel){
+  const c=contacts.find(x=>x.name===sel.value);
+  const staffSel=document.getElementById('pm-assign-user');
+  if(c?.profile_id&&staffSel&&!staffSel.value)staffSel.value=c.profile_id;
+}
 
 // ---- SCHEDULE PM MODAL ----
 // Two-step contact picker: pick a contact (vendor/contractor/staff), then pick a specific
@@ -1072,6 +1087,13 @@ function openContactModal(contact){
     <div class="fg"><label>Email</label><input type="text" class="fi" id="ct-email" value="${v('email')}"></div>
     <div class="fg"><label>Website</label><input type="text" class="fi" id="ct-website" placeholder="https://example.com" value="${v('website')}"></div>
     <div class="fg"><label>Notes</label><textarea class="fi" id="ct-notes">${v('notes')}</textarea></div>
+    <div class="fg"><label>Linked login (optional)</label>
+      <select class="fi" id="ct-profile">
+        <option value="">— Not linked —</option>
+        ${profiles.slice().sort((a,b)=>(a.display_name||a.email||'').localeCompare(b.display_name||b.email||'')).map(p=>`<option value="${p.id}" ${contact?.profile_id===p.id?'selected':''}>${p.display_name||p.email} (${ROLE_LABELS[p.role]||p.role||'—'})</option>`).join('')}
+      </select>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">When this contact is also an app user, link them so PM/WO assignments by name automatically surface on their My Work page.</div>
+    </div>
     <div id="people-section" style="background:var(--bg3);border-radius:8px;padding:14px;margin-bottom:12px;display:${((contact?.type||currentContactType)==='Contractor'||(contact?.type||currentContactType)==='Vendor')?'block':'none'}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:13px;font-weight:bold;color:var(--accent2)">Points of Contact</div>
@@ -1297,6 +1319,7 @@ async function submitContact(){
   const additional_phones=isIndividual?phonesDraft.filter(p=>p.label||p.number):[];
   saveContact({
     name,role,roles:selectedRoles,type,
+    profile_id:document.getElementById('ct-profile')?.value||null,
     phone:document.getElementById('ct-phone')?.value.trim(),
     phone_office:null,
     phone_office_ext:null,

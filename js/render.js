@@ -2465,7 +2465,12 @@ function renderMyWork(){
   document.getElementById('mw-title').textContent=t('title');
   const langSel=document.getElementById('mw-lang');
   if(langSel)langSel.value=myLang();
-  const myWOs=workOrders.filter(w=>w.assigned_user_id===uid&&w.status!=='Completed')
+  // Names of every contact linked to this user — so PM/WO assignments by
+  // contact name still surface on My Work even if the manager forgot to set
+  // the staff dropdown.
+  const linkedNames=new Set(contacts.filter(c=>c.profile_id===uid).map(c=>c.name));
+  const isMine=w=>w.assigned_user_id===uid||(!w.assigned_user_id&&linkedNames.has(w.assignee));
+  const myWOs=workOrders.filter(w=>isMine(w)&&w.status!=='Completed')
     .sort((a,b)=>{
       const pri={Critical:0,High:1,Medium:2,Low:3};
       return(pri[a.priority]??9)-(pri[b.priority]??9);
@@ -2490,7 +2495,10 @@ function renderMyWork(){
   });
   pmTasks.forEach(p=>{
     if(p.status==='Done')return;
-    if(!(p.assigned_user_id===uid||(p.assigned_to===myName&&!p.assigned_user_id)))return;
+    const mine=p.assigned_user_id===uid
+      ||(!p.assigned_user_id&&linkedNames.has(p.assigned_to))
+      ||(!p.assigned_user_id&&p.assigned_to===myName);
+    if(!mine)return;
     const d=parseDate(p.scheduled_date)||parseDate(p.next_due);
     if(_mwInWindow(d,win))sched.push({when:d,kind:'pm',title:p.title,detail:`${p.building||''}${p.scheduled_time?' · '+p.scheduled_time:''}`});
   });
