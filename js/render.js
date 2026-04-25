@@ -2357,6 +2357,7 @@ const MW_T={
     qty_required:'Enter a quantity', complete_wo_h:'Complete Work Order',
     photo:'Photo (optional)', view_wo:'View',
     parish_event:'Parish event',
+    today:'Today', prev:'Previous day', next:'Next day',
   },
   es:{
     title:'Mi Trabajo', wos:'Mis Órdenes de Trabajo', schedule:'Horario',
@@ -2373,13 +2374,48 @@ const MW_T={
     qty_required:'Ingrese una cantidad', complete_wo_h:'Completar Orden de Trabajo',
     photo:'Foto (opcional)', view_wo:'Ver',
     parish_event:'Evento parroquial',
+    today:'Hoy', prev:'Día anterior', next:'Día siguiente',
   },
 };
 function myLang(){return _myProfile()?.language==='es'?'es':'en';}
 function t(k){return MW_T[myLang()][k]||MW_T.en[k]||k;}
 
 let _mwView='day'; // 'day' | 'week' | 'month'
-async function setMWView(v){_mwView=v;await loadMyWorkGCal();renderMyWork();}
+let _mwAnchor=new Date(); // The date the day view is centered on; reset to today on view change
+async function setMWView(v){_mwView=v;_mwAnchor=new Date();await loadMyWorkGCal();renderMyWork();}
+async function _mwShiftDay(delta){
+  if(_mwView!=='day')return;
+  _mwAnchor=new Date(_mwAnchor.getFullYear(),_mwAnchor.getMonth(),_mwAnchor.getDate()+delta);
+  await loadMyWorkGCal();
+  renderMyWork();
+}
+async function _mwGoToday(){_mwAnchor=new Date();await loadMyWorkGCal();renderMyWork();}
+function _mwIsToday(){
+  const t=new Date();
+  return _mwAnchor.getFullYear()===t.getFullYear()&&_mwAnchor.getMonth()===t.getMonth()&&_mwAnchor.getDate()===t.getDate();
+}
+
+// Touch-swipe: left = next day, right = previous day. Day view only.
+let _mwTouchX=null,_mwTouchY=null;
+function _mwAttachSwipe(){
+  const card=document.getElementById('mw-schedule-card');
+  if(!card||card._swipeBound)return;
+  card._swipeBound=true;
+  card.addEventListener('touchstart',e=>{
+    if(_mwView!=='day')return;
+    _mwTouchX=e.touches[0].clientX;
+    _mwTouchY=e.touches[0].clientY;
+  },{passive:true});
+  card.addEventListener('touchend',e=>{
+    if(_mwView!=='day'||_mwTouchX===null)return;
+    const dx=e.changedTouches[0].clientX-_mwTouchX;
+    const dy=e.changedTouches[0].clientY-_mwTouchY;
+    _mwTouchX=_mwTouchY=null;
+    // Require horizontal-dominant motion of at least 50px so vertical scrolls don't trigger nav
+    if(Math.abs(dx)<50||Math.abs(dx)<Math.abs(dy))return;
+    _mwShiftDay(dx<0?1:-1);
+  },{passive:true});
+}
 
 // Re-fetches the parish (gcal) calendar for the current My Work window so
 // month-view events earlier in the month aren't missed by the default load.
@@ -2389,10 +2425,10 @@ async function loadMyWorkGCal(){
   if(typeof loadGCalEvents==='function')await loadGCalEvents(new Date(win.start.getTime()-buf),new Date(win.end.getTime()+buf));
 }
 
-// Day/Week/Month window centered on today. Sunday-anchored week, calendar month.
+// Day/Week/Month window anchored on _mwAnchor. Sunday-anchored week, calendar month.
 function _mwWindow(){
-  const now=new Date();
-  const start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const a=_mwAnchor||new Date();
+  const start=new Date(a.getFullYear(),a.getMonth(),a.getDate());
   let end;
   if(_mwView==='day'){
     end=new Date(start.getFullYear(),start.getMonth(),start.getDate()+1);
@@ -2490,14 +2526,21 @@ function renderMyWork(){
         ${myWOs.length?myWOs.map(woRow).join(''):`<div style="color:var(--text3);font-size:13px;padding:6px 0">${t('none_wos')}</div>`}
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="mw-schedule-card">
       <div class="card-header" style="flex-wrap:wrap;gap:10px">
         <div class="card-title">${t('schedule')}</div>
         <div style="display:flex;gap:4px">
           ${['day','week','month'].map(v=>`<button class="btn btn-sm ${_mwView===v?'btn-primary':''}" onclick="setMWView('${v}')">${t(v)}</button>`).join('')}
         </div>
       </div>
-      <div style="padding:8px 18px 4px;font-size:12px;color:var(--text3);font-weight:bold;letter-spacing:.04em">${_mwLabel(win)}</div>
+      <div style="padding:8px 18px 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${_mwView==='day'?`
+          <button class="btn btn-sm" onclick="_mwShiftDay(-1)" aria-label="${t('prev')}" style="padding:6px 10px">‹</button>
+          <div style="font-size:12px;color:var(--text3);font-weight:bold;letter-spacing:.04em;flex:1;text-align:center">${_mwLabel(win)}</div>
+          <button class="btn btn-sm" onclick="_mwShiftDay(1)" aria-label="${t('next')}" style="padding:6px 10px">›</button>
+          ${_mwIsToday()?'':`<button class="btn btn-sm" onclick="_mwGoToday()" style="padding:6px 10px">${t('today')}</button>`}
+        `:`<div style="font-size:12px;color:var(--text3);font-weight:bold;letter-spacing:.04em">${_mwLabel(win)}</div>`}
+      </div>
       <div style="padding:8px 18px 14px">
         ${sched.length
           ?sched.map(s=>{
@@ -2525,6 +2568,7 @@ function renderMyWork(){
         ${myReqs.length?myReqs.map(reqRow).join(''):`<div style="color:var(--text3);font-size:13px">${t('none_requests')}</div>`}
       </div>
     </div>`;
+  _mwAttachSwipe();
 }
 
 // ---- MY WORK · MOBILE WO COMPLETE MODAL (Phase 3) ----
