@@ -269,6 +269,11 @@ async function refreshWeather(){
   renderDashWeather();
 }
 
+async function refreshWeatherMW(){
+  await loadWeather(true);
+  renderMyWork();
+}
+
 // ---- RENDER DASHBOARD ----
 function renderDash(){
   // Run after all inner HTML is populated so collapsible data-ids pick up localStorage state
@@ -2519,7 +2524,34 @@ function renderMyWork(){
       ${reqBadge(r.status)}
     </div>`;
   };
+  // Weather card mirrors the Dashboard's #d-weather; silent if not configured.
+  const wxLoc=appSettings.weather_location;
+  let wxHTML='';
+  if(wxLoc){
+    if(!_weatherData){
+      wxHTML=`<div class="card" style="margin-bottom:16px"><div style="padding:12px 16px;font-size:12px;color:var(--text3)">Loading weather for ${wxLoc}…</div></div>`;
+    }else{
+      const cur=_weatherData.current_condition?.[0];
+      const today=_weatherData.weather?.[0];
+      const area=_weatherData.nearest_area?.[0]?.areaName?.[0]?.value||wxLoc;
+      if(cur){
+        const emoji=weatherEmoji(cur.weatherCode);
+        const desc=cur.weatherDesc?.[0]?.value||'';
+        wxHTML=`<div class="card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:18px;padding:12px 18px">
+            <div style="font-size:40px;line-height:1">${emoji}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:20px;font-weight:bold;color:var(--accent2)">${cur.temp_F}°F · ${desc}</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">${area}${today?.maxtempF&&today?.mintempF?` · H ${today.maxtempF}° / L ${today.mintempF}°`:''}${cur.windspeedMiles?` · Wind ${cur.windspeedMiles} mph`:''}</div>
+            </div>
+            <button class="btn btn-sm" onclick="refreshWeatherMW()" title="Refresh">↻</button>
+          </div>
+        </div>`;
+      }
+    }
+  }
   el.innerHTML=`
+    ${wxHTML}
     <div class="card">
       <div class="card-header"><div class="card-title">${t('wos')} (${myWOs.length})</div></div>
       <div style="padding:14px 18px">
