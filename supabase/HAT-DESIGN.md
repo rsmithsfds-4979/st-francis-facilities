@@ -628,6 +628,99 @@ Facility Manager recommends → Business Manager approves → Pastor approves
 
 Hat ownership: Pastor / Business Manager / Facility Manager.
 
+Liturgical calendar
+───────────────────
+Problem: Catholic parishes operate on a complex annual liturgical
+calendar that combines fixed dates (Christmas, Immaculate Conception),
+movable feasts whose dates shift each year (Easter, Ascension,
+Pentecost, Holy Week), and US-specific Holy Day of Obligation rules
+including obligation-lifting when certain feasts fall on a Saturday.
+Today this knowledge lives in staff heads (primarily Director of Music,
+Pastor, Office Manager). When something is forgotten or miscommunicated,
+events are missed. The app currently has no shared system of record for
+the liturgical year.
+
+Future shape: A liturgical calendar service or table that knows fixed
+feasts, calculates movable feasts per year, encodes US Holy Days of
+Obligation with conditional rules (e.g., obligation lifted if feast
+falls on Saturday), and supports parish-level overrides. Other features
+(Mass scheduling, minister scheduling, communications, sacrament prep,
+Pastor directives) read from this calendar rather than each
+re-implementing date logic.
+
+Three levels of ambition:
+- Basic: a static table seeded each year with that year's dates;
+  manually maintained by Admin or Office Manager. Low effort, prone to
+  drift if nobody remembers to update it.
+- Calculated: programmatic calculation of movable feasts (Easter
+  computus, dependent feasts) so the calendar populates automatically
+  for any given year. Holy Day obligation rules encoded as data.
+- Integrated: calendar drives downstream features automatically. New
+  parishioner-facing surfaces (e.g., upcoming Holy Days widget) read
+  from the same source. Diocesan or USCCB feed integration if such
+  feeds become available.
+
+Hat ownership: Office Manager owns day-to-day calendar maintenance;
+Admin owns the underlying data structure and any seeding scripts.
+Director of Music, Pastor, Communications, and Office Manager all read
+from it. Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN: the
+liturgical calendar is reference data, not workflow data, so it does
+not need state machines itself — but features that use it (Pastor
+directives tracked against Holy Days, sacrament prep scheduled around
+liturgical seasons) do.
+
+Pastor directives — written record of liturgical and operational planning
+─────────────────────────────────────────────────────────────────────────
+Problem: At St. Francis, the Pastor directs liturgical and operational
+planning verbally during staff meetings. Nothing is written down. The
+parish has missed events as a direct result — someone forgets they were
+asked to handle something, or the assignment is unclear, or the
+deadline drifts. This is the core failure mode the app is intended to
+address.
+
+Future shape: A directive object created by the Pastor (or by Office
+Manager / staff member with Pastor as creator) that captures: what
+needs to happen, who is responsible, when it is due, current state.
+Directives can be created ad hoc or generated from staff meetings. Each
+directive is assigned to one or more hats and surfaces on the
+assignees' home screens via "needs my attention" surfaces. State
+machine tracks the directive lifecycle (proposed / accepted /
+in-progress / complete / missed). Missed directives are visible — the
+problem ("nothing is written down, things get missed") becomes
+diagnosable rather than invisible.
+
+Three levels of ambition:
+- Basic: a simple directives table with assignment, due date, and
+  status. Manual entry by whoever was at the meeting. Visible to the
+  assigned hat on their home screen. Most of the value of this feature
+  is in the basic level — even a written list of who-owes-what-by-when
+  is a major improvement over verbal-only.
+- Coordinated: directives can be created from a "staff meeting" context
+  with multiple directives captured at once. Notifications to
+  assignees. Recurring directives (e.g., "plan Holy Week" every year,
+  due 60 days before Holy Thursday) tied to the liturgical calendar.
+- Integrated: directives feed into other planning surfaces
+  automatically. Pastor's home screen shows a dashboard of all
+  outstanding directives across hats. Diocese-required deadlines
+  (sacramental records, financial reports) surface as standing
+  directives.
+
+Hat ownership: Pastor creates directives (primary owner); any assigned
+hat sees their own directives on their home screen. Office Manager may
+create directives on the Pastor's behalf when capturing staff-meeting
+outcomes. Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN:
+directives are workflow data with explicit state. The directives table
+is the canonical example of why this app commits to state-driven design
+— without state, "needs my attention" surfaces are heuristic and
+unreliable, which is exactly the failure mode this feature exists to
+fix.
+
+Cross-feature dependency: Pastor directives benefit substantially from
+the Liturgical calendar feature being built first (so recurring
+liturgical-year directives can be tied to dates). Basic ambition level
+of directives can ship without the calendar; coordinated and integrated
+levels depend on it.
+
 ═══════════════════════════════════════════════════════════════════════════
 
 DESIGN PROCESS NOTES
