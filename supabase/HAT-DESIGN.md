@@ -161,3 +161,23 @@ Facility Manager recommends → Business Manager approves → Pastor approves
 → Diocese gate at ≥$35K.
 
 Hat ownership: Pastor / Business Manager / Facility Manager.
+
+═══════════════════════════════════════════════════════════════════════════
+
+DESIGN PROCESS NOTES
+════════════════════
+
+Cross-session observations about how upcoming hat designs should be
+sequenced or coordinated. Each entry is a planning concern, not a runtime
+feature.
+
+Project approval workflow design dependency
+───────────────────────────────────────────
+Pastor, Business Manager, and Facility Manager hats all participate in
+the project approval workflow (FM recommends → BM approves → Pastor
+approves → Diocese gate at ≥$35K). Each hat's "pending my approval" home
+surface and any approval-related quick actions need to be designed in
+lockstep across the three to avoid inconsistent handoff semantics.
+Recommended approach for next session(s): design these three hats as a
+connected cluster, or design Pastor solo with explicit placeholders for
+the approval surface that get reconciled when BM and FM are designed.
