@@ -225,6 +225,132 @@ designed across hats, not owned by one.
 
 ═══════════════════════════════════════════════════════════════════════════
 
+ADMIN HAT
+═════════
+
+Philosophy: System hat, not operations hat. Admin runs the app that
+supports the parish, not the parish itself. Used deliberately for
+specific tasks — user management, integration configuration, system
+checks — rather than continuously monitored. Log in, do the task, log
+out.
+
+Who wears this hat: Currently Rick Smith (IT Director). Designed so a
+successor or backup can step in cold and be functional on day one. In a
+multi-tenant SaaS future this hat splits into Parish Admin (manages one
+parish's users and config) and Platform Admin (manages the platform
+across parishes). Decision to design for St. Francis only with SaaS
+optionality preserved was made deliberately during HAT-DESIGN session.
+
+HOME SCREEN
+───────────
+Two sections. Both shown on landing. Backup-admin test: someone stepping
+in cold should land here and within 30 seconds know whether anything is
+broken and what's happened recently.
+
+- System status at a glance — Read-only summary. Active user count,
+  integration status (e.g., Google Calendar: connected, last sync
+  timestamp), recent error count, last successful login. Glance-and-go,
+  not a deep diagnostic surface.
+- Recent activity — Last 10-20 most-recent writes across the system,
+  drawn from per-row created_at/updated_at attribution on the existing
+  18 attributed tables. Who did what, when. Quick "did anything weird
+  happen since I was last here" view. Deep audit search lives in nav.
+
+QUICK ACTIONS (primary buttons on home)
+───────────────────────────────────────
+Three buttons. Reflects deliberate task-oriented use, not monitoring.
+Padding to four was considered and rejected — three honest actions
+beats four with one filler.
+
+- Manage users — Create user, assign hats, deactivate, edit profile.
+- Manage integrations — Add or edit API keys, view integration status,
+  configure (today: Google Calendar only).
+- View audit trail — Jump to audit-search nav with focus on the search
+  box. Used when something looks wrong and warrants investigation.
+
+NAV ITEMS (sidebar)
+───────────────────
+- Home
+- Users — Full user list with search, filter, edit, deactivate. User
+  detail page hosts account-level controls (force password reset,
+  deactivate, unlock, change email).
+- Hats and permissions — View all hats, see who has which.
+- Audit trail — Search across the existing per-row attribution columns
+  on attributed tables. Filter by user, action type (insert/update),
+  date range, table.
+- System — Diagnostic dashboard, error log, integration runtime status.
+- Settings — App-level configuration. v1 contents: Integrations section
+  (API keys, third-party service config). More sections will be added
+  here as system-level features grow. Name stays "Settings" rather than
+  renaming per-content.
+
+NOTES
+─────
+- Admin is a system hat, not an operations hat. Does not show
+  parish-operational data on the home screen. If Admin needs operational
+  context (e.g., is there an event tonight), the answer is to switch to
+  another hat — Rick also wears Facility Manager, so this is solved by
+  hat switching rather than by surfacing operations data here.
+- A lot of admin work happens in the Supabase dashboard, not in this app:
+  migrations, RLS policy review, raw diagnostic SQL, schema changes. The
+  Admin hat in this app handles user-facing admin tasks (accounts, hats,
+  integration config, audit review). Database-level work stays in the
+  dashboard. This boundary is documented explicitly so a successor knows
+  where to do what.
+- Future system-level features (additional API keys, third-party
+  integration credentials, webhook configurations, feature flags,
+  app-wide settings) belong under this hat. Pattern: Settings nav item
+  configures them, System nav item monitors them. Settings is
+  intentionally in the nav today even though it's lightly populated —
+  it's the designated home for system config as those features get added.
+- When system-level features that store credentials are built (API keys,
+  OAuth tokens, SMTP passwords), credentials must use Supabase vault or
+  equivalent secret storage, not plain columns. The Admin UI for managing
+  credentials should allow replacement but never display existing values.
+  Not design work for v1, flagged for future implementation.
+- Password resets are handled by Supabase's self-service flow (user clicks
+  "forgot password" on login page, receives email, sets new password).
+  Admin is not in that loop for normal cases. Admin intervention for
+  password/account issues lives one click deep on the user detail page
+  (force reset, deactivate, unlock, change email) — too rare to warrant
+  a quick action.
+- "Recent activity" and "Audit trail" use per-row attribution columns
+  rather than a central audit_log table. This captures inserts and
+  updates on attributed tables but does not capture logins, reads, or
+  deletes. If those event types become needed (or if UNION query
+  performance becomes a problem at scale), a dedicated audit_log table
+  is the upgrade path. Defer until needed.
+- Audit-trail view in this hat is for reading, not bulk export or
+  analysis. Bulk analysis goes to the dashboard.
+- "Needs my attention" home section was considered for v1 and deferred —
+  most candidate items (suspicious-account flagging, hat-assignment
+  requests as a workflow, audit anomalies) don't exist yet. Section can
+  be added later when those features ship.
+- Successor test for the home screen: a backup admin should land here and
+  within 30 seconds know whether anything is broken and what's happened
+  recently. The two home sections are designed to pass that test.
+
+DATA MODEL DEPENDENCIES
+───────────────────────
+Admin reads existing tables; doesn't introduce new ones in v1.
+
+- profiles (existing) — read for user list, hat assignments.
+- Per-row attribution columns on 18 tables (existing, added in security
+  phase 3) — created_by, updated_by, created_at, updated_at. Read via
+  UNION views for "Recent activity" and "Audit trail" surfaces. No
+  central audit_log table exists; design uses what's there.
+
+No new tables required for v1. Future features (credential storage,
+suspicious-account flagging, hat-assignment workflow) will need new
+tables or columns when built. Defer until needed.
+
+CROSS-HAT WORKFLOW DEPENDENCIES
+───────────────────────────────
+None. Admin operates on the system, not on parish workflows. No lockstep
+design needed with other hats.
+
+═══════════════════════════════════════════════════════════════════════════
+
 PLANNED FEATURES
 ════════════════
 
