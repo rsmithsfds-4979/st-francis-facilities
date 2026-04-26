@@ -17,7 +17,7 @@ ARCHITECTURAL COMMITMENTS
 
 Principles that shape how features in this app are designed and built.
 Captured here so they apply consistently across all hats and all features,
-and so future contributors (or future Rick) can see what foundational
+and so future contributors (or future you) can see what foundational
 decisions were made and why.
 
 STATE-DRIVEN DESIGN
@@ -296,7 +296,7 @@ specific tasks — user management, integration configuration, system
 checks — rather than continuously monitored. Log in, do the task, log
 out.
 
-Who wears this hat: Currently Rick Smith (IT Director). Designed so a
+Who wears this hat: Worn by the IT Director. Designed so a
 successor or backup can step in cold and be functional on day one. In a
 multi-tenant SaaS future this hat splits into Parish Admin (manages one
 parish's users and config) and Platform Admin (manages the platform
@@ -351,8 +351,8 @@ NOTES
 - Admin is a system hat, not an operations hat. Does not show
   parish-operational data on the home screen. If Admin needs operational
   context (e.g., is there an event tonight), the answer is to switch to
-  another hat — Rick also wears Facility Manager, so this is solved by
-  hat switching rather than by surfacing operations data here.
+  another hat — the IT Director also wears Facility Manager, so this is
+  solved by hat switching rather than by surfacing operations data here.
 - A lot of admin work happens in the Supabase dashboard, not in this app:
   migrations, RLS policy review, raw diagnostic SQL, schema changes. The
   Admin hat in this app handles user-facing admin tasks (accounts, hats,
