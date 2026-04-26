@@ -776,6 +776,229 @@ isolation here.
 
 ═══════════════════════════════════════════════════════════════════════════
 
+COMMUNICATIONS HAT
+══════════════════
+
+Philosophy: Coordinate parish-wide communications across channels to
+prevent the failure modes the parish currently experiences — items
+published to some channels and missed on others, duplicate emails,
+unauthorized announcements going out without leadership awareness, and
+content that staff first learn about when parishioners ask them. The
+hat is per-channel-scoped: a person wears Communications for the
+specific channel(s) they manage, with cross-channel coordination
+visibility and triage authority for everyone wearing the hat. Multiple
+people wear this hat today, each scoped to their channels.
+
+v1 SHIPPING NOTE: This hat depends on the Communications workflow
+planned feature (announcement objects with state machine, request
+intake, channel-specific queues, coordination dashboard) being built.
+The PLANNED FEATURES entry for that workflow will be updated after
+this hat is committed to reflect the fuller design captured here.
+Until the workflow ships, the hat is documented but not active. Per
+ARCHITECTURAL COMMITMENTS, deferred surfaces are not in the v1 UI.
+
+Who wears this hat: At St. Francis, three roles wear Communications,
+each scoped to the channel(s) they manage:
+
+- IT Director — wears Communications for the parish website.
+- Office Manager — wears Communications for social media and the
+  electronic message board.
+- RE Admin — wears Communications for the weekly bulletin and the
+  email newsletter.
+
+The hat is layered onto a primary hat via active_hat switching.
+Channel ownership is data, not a separate hat — same precedent as
+Volunteer, where ministry/group leadership is data-driven and the
+home screen adapts.
+
+Email newsletter has a known shared-ownership problem at St. Francis:
+RE Admin owns it, but Office Manager sometimes sends independently,
+producing duplicate parishioner emails. The Communications workflow
+is intended to surface and prevent this; the design assumes RE Admin
+is primary owner and Office Manager's independent sends are a
+behavior pattern the workflow will replace.
+
+HOME SCREEN
+───────────
+Three sections, conditionally shown based on the channels the person
+manages and their hat-level role.
+
+- My channel queue — Announcements assigned to channels I manage, by
+  status: pending publication (scheduled), needs-my-attention (drafts
+  assigned to me, conflicts to resolve), recently published. Per
+  channel: separate sub-list. A Communications hat wearer who manages
+  two channels sees two sub-lists. DEFERRED until Communications
+  workflow ships.
+- Triage queue — All open communication requests across the parish
+  awaiting Communications review. Visible to all Communications hat
+  wearers regardless of channel scope (cross-channel coordination is
+  everyone's responsibility). For each request: requester, what they
+  want announced, suggested channels, current status, age. Triage
+  actions: edit content, adjust channel mix, approve and schedule,
+  reject with reason, combine with related request, return to
+  requester for revision. DEFERRED until Communications workflow
+  ships.
+- Recent cross-channel activity — Last 14 days of announcements
+  published, by channel. Surfaces "what went out where" for
+  situational awareness across Communications hat wearers. DEFERRED
+  until Communications workflow ships.
+
+QUICK ACTIONS (primary buttons on home)
+───────────────────────────────────────
+Adaptive set, capped at 4 visible. The system picks based on the
+person's channel scope and current queue state.
+
+- Triage next request — Open the oldest untriaged communication
+  request. Most common Communications hat task. DEFERRED until
+  Communications workflow ships.
+- Publish next scheduled item — For the channel I manage, mark the
+  next scheduled announcement as published. DEFERRED.
+- Create announcement directly — For routine items that don't need
+  triage (e.g., recurring Mass-time reminders), Communications hat
+  wearers can create an announcement bypassing the request stage.
+  This is a Communications-only capability; non-Communications staff
+  must use the request workflow. DEFERRED.
+- Search announcements — Find a past or pending announcement by
+  topic, requester, or channel. DEFERRED.
+
+NAV ITEMS (sidebar)
+───────────────────
+- Home
+- Triage queue — Full triage surface for all open requests. Same data
+  as home, with filtering by channel, requester, age, status.
+- My channels — Per-channel publication queues and history. Adaptive
+  list based on which channels the person manages.
+- All announcements — Searchable archive of all announcements across
+  all channels. Read-only history for context.
+- Communication requests — All requests (open, closed, rejected) with
+  full state history. Audit trail for "who requested what, who
+  approved or rejected, when did it publish."
+
+NOTES
+─────
+- The triage step exists primarily as a parish-wide visibility
+  mechanism, not as editorial polish. The core problem is that staff
+  are surprised by what gets published — they learn about
+  announcements when parishioners mention them. The triage queue
+  surfaces pending publications to leadership-level hats (read-only)
+  and to all Communications hat wearers (with action authority),
+  building the shared awareness that is currently missing.
+- The triage queue also makes "the Pastor said it was okay"
+  auditable. When a parishioner submits a request claiming Pastor
+  approval, the request shows the actual requester. The Pastor sees
+  the request on his home screen (read-only with reject authority);
+  if he never approved it, he can reject. Verbal claims become
+  checkable records.
+- Pastor has reject authority on the queue — not approval, not edit,
+  just reject with reason. Communications hat wearers do the
+  approval/edit work. This separation matters: Pastor is not
+  expected to manage communications; he is expected to be able to
+  intervene when something is wrong.
+- Leadership-level read-only viewers of the triage queue: Pastor
+  (with reject), Parochial Vicar, Business Manager, Director of
+  Music, RE Director. Other hats (Deacon, Youth Minister, Facility
+  Manager, Janitor, Volunteer, Admin, Accountant) do not see the
+  queue — it is not relevant to their work and adds noise without
+  value.
+- Anyone with a staff hat can create a communication request. The
+  request becomes an announcement object only after Communications
+  triage. This is the two-stage workflow: anyone can request;
+  Communications triages and publishes. Requesters see their own
+  requests' status on their primary hat's home screen ("my
+  outstanding communication requests") regardless of which hat that
+  is.
+- Communications hat wearers can create announcements directly,
+  bypassing the request stage, for routine items. This is a
+  capability of the hat, not a permission specific to certain
+  people. Acceptable use: recurring reminders, time-sensitive items
+  with no editorial concern. Misuse risk: bypass becomes the norm
+  and the visibility benefit is lost. Operational discipline matters
+  more than UI enforcement.
+- Per-channel scoping works the same way as Volunteer's per-ministry
+  scoping. Channel ownership is data on the user record (or on a
+  channel_managers table); the hat's home screen and quick actions
+  adapt to what channels the person manages. A future Communications
+  Director hat wearer who manages all channels would see all
+  per-channel queues; today nobody does.
+- Email newsletter shared ownership is a known data-quality problem
+  the workflow is designed to address. Before the workflow ships,
+  the parish will continue having occasional duplicate emails. The
+  workflow does not solve the problem by adding restrictions; it
+  solves it by making "Office Manager is about to send an email"
+  visible to RE Admin (and vice versa) so they coordinate.
+- Channel manager assignments are managed by Admin via the "Hats and
+  permissions" nav item. Personnel changes (e.g., IT Director hands
+  off website management to Office Manager) are reflected in the
+  channel_managers table; the Communications hat home screen adapts
+  automatically based on that data. Reassignment is intentionally an
+  Admin function — same surface that manages hat assignments — to
+  keep authority changes auditable. Self-service handoff or Pastor
+  override could be added later if needed; Admin-only is the v1
+  model.
+- Successor test: a new Communications hat wearer joining the parish
+  (e.g., a Communications Director if the role is ever created)
+  should land on this home screen and within their first week
+  understand: what's pending across all channels, what recently went
+  out, who requests communications and how often, where coordination
+  gaps are happening. That test is the bar for the hat being "built"
+  rather than just designed.
+
+DATA MODEL DEPENDENCIES
+───────────────────────
+This hat depends on the Communications workflow infrastructure being
+built. Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN, all
+workflow tables include explicit state machines.
+
+- profiles (existing) — read for requester names, channel manager
+  identification.
+- communication_requests (does not exist) — created by any staff
+  hat. State: submitted / under-review / approved-as-announcement /
+  rejected / returned-to-requester. Tracks who requested, what was
+  requested, suggested channels, audience.
+- announcements (does not exist) — created from approved requests
+  (or directly by Communications hat). State: draft / scheduled /
+  published / archived. Per-channel publishing status.
+- channel_publications (does not exist) — link table tying an
+  announcement to specific channels with per-channel state
+  (scheduled / published / failed / not-applicable). Allows the same
+  announcement to track independent state on bulletin vs. email vs.
+  social.
+- channel_managers (does not exist) — link table identifying which
+  staff member manages which channels. Drives the adaptive home
+  screen and triage authority. Reference data, not workflow data.
+- Pastor directives (does not exist; planned feature) — light
+  cross-reference. A Pastor directive might say "announce X" which
+  could optionally generate a communication request automatically.
+  Cross-feature coordination, not strict dependency.
+
+CROSS-HAT WORKFLOW DEPENDENCIES
+───────────────────────────────
+- Communication request lifecycle — any staff hat creates a request;
+  Communications triages; channels publish; requester tracks status
+  on their home screen. State machine spans creation through
+  publication. Designed in lockstep with all hats that can create
+  requests (effectively all staff hats).
+- Pastor reject authority — Pastor sees triage queue read-only with
+  reject capability. Designed in lockstep with Pastor hat.
+- Leadership-level visibility — Parochial Vicar, Business Manager,
+  Director of Music, RE Director see triage queue read-only.
+  Designed in lockstep with each of those hats; the visibility
+  surface is the same per hat, just rendered on their home screen.
+- Funeral and wedding workflows — funerals and weddings often
+  trigger announcements (death notice, wedding announcement,
+  reception volunteer recruitment). The funeral coordination
+  workflow generates communication requests automatically when
+  appropriate. Designed in lockstep with Office Manager (intake),
+  Director of Music (family meeting), and Pastor (family meeting).
+- Pastor directives generating requests — when the Pastor creates a
+  directive that requires public announcement (e.g., "announce the
+  parish picnic"), the directive system can optionally generate a
+  communication request to the Communications hat. Light coupling;
+  designed in lockstep with Pastor directives feature when that
+  ships.
+
+═══════════════════════════════════════════════════════════════════════════
+
 PLANNED FEATURES
 ════════════════
 
