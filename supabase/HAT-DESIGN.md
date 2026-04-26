@@ -1097,9 +1097,56 @@ Hat ownership: Office Manager.
 
 Per-sacrament prep checklists
 ─────────────────────────────
-Each sacrament sub-item may need its own prep workflow.
+Problem: Sacramental preparation at St. Francis is informal — different
+sacraments are prepped by different staff, and there is no shared
+record of what prep needs to happen, who is doing what, or whether
+prep is complete before the sacrament is scheduled. Without a checklist
+artifact, prep state lives in the heads of the people involved.
 
-Hat ownership: Office Manager.
+Future shape: Per-sacrament checklists with explicit items and
+completion state. Each sacrament has its own checklist template
+because the prep work differs substantially across sacraments. The
+checklist surfaces in the home screen of the relevant prep owner(s)
+for each sacrament.
+
+Three levels of ambition:
+
+- Basic: a checklist template per sacrament with items and state
+  (not-started / in-progress / complete). Surfaces on relevant hat
+  home screens. Manual progression.
+- Coordinated: prep checklists tie into the family meeting workflow
+  (e.g., baptism family meeting with Director of Music auto-creates
+  the music-selection checklist item). Prep state visible to all
+  hats involved in that sacrament's workflow.
+- Integrated: family-facing surface where families see their own
+  prep progress (what's done, what's pending). Notifications when
+  prep is overdue relative to scheduled sacrament date.
+
+Hat ownership: Varies per sacrament.
+
+- Baptism — Office Manager (intake/scheduling), Director of Music
+  (family meeting for music/readings), Pastor or Deacon (celebrant).
+- First Reconciliation / First Communion / Confirmation — RE
+  Director (program oversight, curriculum), RE Admin (scheduling,
+  individual student tracking, family communication), Pastor
+  (celebrant).
+- RCIA — RE Director (program oversight), Pastor (instruction and
+  sacraments).
+- Marriage — Office Manager (intake/scheduling), Director of Music
+  (family meeting for music), Pastor (marriage prep program,
+  celebrant).
+- Anointing of the Sick — Pastor or Deacon (administered as needed,
+  often without scheduled prep), Office Manager (logging if
+  scheduled).
+- Funerals — Office Manager (intake), Director of Music (family
+  meeting for music/readings), Pastor (family meeting and
+  celebrant).
+
+The broader sacramental coordination workflows (multi-hat sequencing
+for baptism, marriage, funerals, etc.) are captured in the relevant
+hats' CROSS-HAT WORKFLOW DEPENDENCIES sections. This PLANNED FEATURES
+entry covers the prep-checklist artifact specifically; the
+coordination flow is a separate (but related) design concern.
 
 Project approval workflow
 ─────────────────────────
