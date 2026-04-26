@@ -943,3 +943,22 @@ lockstep across the three to avoid inconsistent handoff semantics.
 Recommended approach for next session(s): design these three hats as a
 connected cluster, or design Pastor solo with explicit placeholders for
 the approval surface that get reconciled when BM and FM are designed.
+
+Clergy hat design dependency
+────────────────────────────
+Pastor, Parochial Vicar, and Deacon are three distinct hats with
+overlapping but non-equivalent surfaces (e.g., directives — only Pastor
+creates them; sacramental coordination — Deacon has unique
+responsibilities; liturgy participation — all three but in different
+roles). They share enough that designing one in isolation risks
+misallocating surfaces between them; they differ enough that
+consolidating them into one hat would erase distinctions that matter
+for actual parish work. The Clergy categorization PLANNED FEATURES
+entry treats Pastor/Parochial Vicar/Deacon as a data category for
+unified clergy calendar; this is separate from but related to their
+status as hats. Recommended approach for next session(s): design
+these three hats as a connected cluster, with Pastor as the primary
+and PV / Deacon as scoped variants. The clergy lockstep design is
+its own concern inside the broader Pastor + Business Manager +
+Facility Manager approval-workflow lockstep, since Pastor is in both
+clusters.
