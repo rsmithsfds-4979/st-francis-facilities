@@ -607,7 +607,7 @@ Mass Intentions
 ───────────────
 Logging stipend-paid masses, assigning to specific masses on calendar.
 
-Hat ownership: Office Manager.
+Hat ownership: Office Manager (primary), Business Manager (backup when Office Manager is out).
 
 Clergy categorization in data model + unified clergy calendar view
 ──────────────────────────────────────────────────────────────────
