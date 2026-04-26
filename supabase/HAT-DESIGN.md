@@ -1006,22 +1006,76 @@ Cross-cutting feature wishlist that informs hat design but doesn't fit
 inside any single hat. Each entry: name, problem, future shape, ambition
 levels, hat ownership.
 
-Communications workflow — multi-channel publishing
-──────────────────────────────────────────────────
-Problem: St. Francis publishes announcements to three channels — weekly
-bulletin, electronic message board, parish website. Currently lacks
-coordination; items frequently get published to one channel and missed on
-others.
+Communications workflow — multi-channel publishing with triage
+──────────────────────────────────────────────────────────────
+Problem: St. Francis publishes announcements to five channels — parish
+website, social media, electronic message board, weekly bulletin, and
+email newsletter — each managed by different roles (IT Director, Office
+Manager, Office Manager, RE Admin, RE Admin respectively). Currently
+lacks coordination across channels and across requesters. Three
+specific failure modes occur today:
 
-Future shape: announcement objects as a single source of truth, with
-publishing status per channel.
+- Items published to one channel and missed on others (e.g., bulletin
+  announcement never makes it to social media or website).
+- Duplicate publications (e.g., RE Admin and Office Manager both send
+  overlapping email newsletters; parishioners receive the same message
+  twice).
+- Surprise publications — staff first learn about announcements when
+  parishioners ask them, because requests routed through informal
+  one-on-one conversations rather than a coordinated intake. Some of
+  these are unauthorized: parishioners occasionally try to slip
+  content through by claiming Pastor approval that wasn't given.
+
+Future shape: A two-stage state-driven workflow. Anyone with a staff
+hat creates a "communication request" describing what should be
+announced and which channels are appropriate. Communications hat
+wearers (per-channel-scoped: IT Director for website, Office Manager
+for social/message board, RE Admin for bulletin/newsletter) see all
+open requests in a triage queue. Triage actions: edit content, adjust
+channel mix, approve and convert to announcement (which then enters
+channel-specific publishing queues), reject with reason, return to
+requester for revision, or combine with related requests. Approved
+announcements track per-channel publishing state independently
+(scheduled / published / failed / not-applicable).
+
+Visibility layer: leadership-level hats (Pastor, Parochial Vicar,
+Business Manager, Director of Music, RE Director) see the triage
+queue read-only for parish-wide situational awareness — the fix for
+"staff are surprised by what gets published." Pastor specifically
+has reject authority — not approval, not edit, just reject — to
+intervene when a request is unauthorized. Other hats (Deacon, Youth
+Minister, Facility Manager, Janitor, Volunteer, Admin, Accountant)
+do not see the triage queue. Requesters see their own requests'
+status on their primary hat's home screen regardless of which hat
+that is.
 
 Three levels of ambition:
-- Basic tracking with manual checkboxes.
-- Coordination dashboard surfacing gaps.
-- Automated publishing where channels derive from tagged announcement records.
 
-Hat ownership: primarily Communications hat; visible to Office Manager.
+- Basic: communication_requests and announcements tables with
+  explicit state, triage queue surface, per-channel publishing
+  state, Pastor reject authority, leadership-level read-only
+  visibility, requester status on home screens. This is the v1
+  shipping target — minimum viable that fixes all three failure
+  modes by making pending publications visible.
+- Coordinated: notifications when triage backlog grows, channel
+  manager workload balancing, recurring announcement templates
+  (Mass times, weekly events) that auto-create scheduled
+  announcements without per-instance triage.
+- Integrated: external publishing automation where approved
+  announcements push directly to channel platforms (website CMS,
+  social media APIs, email service, bulletin layout). Substantially
+  reduces channel manager publishing workload but introduces
+  dependencies on external service integrations — design and
+  reliability concerns.
+
+Hat ownership: Communications hat is per-channel-scoped — three
+roles wear it today (IT Director, Office Manager, RE Admin) each
+covering different channels. Pastor has reject authority on the
+triage queue. Leadership-level hats have read-only triage
+visibility. Anyone with a staff hat can create requests. Channel
+manager assignments are managed by Admin via the "Hats and
+permissions" surface; reassignment is intentionally an Admin
+function (not self-service) to keep authority changes auditable.
 
 Time off requests
 ─────────────────
