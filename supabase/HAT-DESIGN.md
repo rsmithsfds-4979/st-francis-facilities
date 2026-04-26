@@ -573,6 +573,209 @@ CROSS-HAT WORKFLOW DEPENDENCIES
 
 ═══════════════════════════════════════════════════════════════════════════
 
+DIRECTOR OF MUSIC HAT
+═════════════════════
+
+Philosophy: Combined music + liturgy role at St. Francis. The Director
+of Music plans liturgies, schedules ministers, plays at Mass, and meets
+with families for sacramental events. At larger parishes this role
+could split into Music Director (music specifically) and Liturgical
+Director (broader liturgy planning); at St. Francis it is one person
+wearing one hat. The original 14-hat sketch listed "Music Director" and
+"Liturgical Director" separately; this hat consolidates both into the
+actual parish title — Director of Music. A separate Liturgical Director
+hat is not designed; it would be a future split if/when the parish
+grows.
+
+v1 SHIPPING NOTE: This is a foundation-dependent hat. Most substantive
+surfaces depend on the Liturgical calendar feature, the Pastor
+directives feature, minister scheduling tables, and the family-meeting
+coordination workflow — none of which exist yet. The hat is documented
+in this file but ships meaningfully only as those foundations are
+built. Per ARCHITECTURAL COMMITMENTS, deferred surfaces are not in the
+v1 UI. This is honest scoping for the busiest non-existent hat in the
+design.
+
+Who wears this hat: At St. Francis, the Director of Music. One person,
+combined music + liturgy responsibility. Plays organ/piano at Masses
+personally; coordinates substitutes when unable to play. Meets with
+families for funerals and weddings to plan music, readings, and
+liturgical elements. Coordinates with Pastor on liturgy planning;
+executes liturgy plans the Pastor directs (typically during staff
+meetings — see Pastor directives planned feature).
+
+HOME SCREEN
+───────────
+Three sections planned. v1 ships none of them — all three depend on
+foundations that do not yet exist. Per ARCHITECTURAL COMMITMENTS / NO
+UI THEATRE, sections without real backing data are not in the UI.
+
+- Upcoming liturgies — Next 7-14 days of Masses, special liturgies,
+  and sacramental events. For each: minister assignments, music
+  selections, readings, any pending decisions. DEFERRED until the
+  Liturgical calendar feature and minister scheduling tables exist.
+- Pastor directives assigned to me — Outstanding directives the Pastor
+  has assigned to the Director of Music. State machine tracks proposed
+  / accepted / in-progress / complete / missed. This section is the
+  direct fix for the "missed events because nothing is written down"
+  problem. DEFERRED until Pastor directives feature is built (basic
+  ambition level).
+- Upcoming family meetings — Funerals, weddings, baptisms requiring a
+  family meeting with the Director of Music. Date, family contact,
+  what needs to be planned, current state. DEFERRED until family
+  meeting coordination workflow exists (cross-hat, designed in
+  lockstep with Office Manager and Pastor).
+
+QUICK ACTIONS (primary buttons on home)
+───────────────────────────────────────
+v1 ships none. All planned actions depend on foundations not yet built.
+Per NO UI THEATRE, quick actions whose underlying data does not exist
+are not in the UI.
+
+- Schedule ministers for upcoming Mass — Open the scheduling surface
+  for the next Mass needing assignments. DEFERRED until minister
+  scheduling tables exist.
+- Find a sub — Mark a Mass as needing a substitute musician;
+  notification path to known subs. DEFERRED until minister scheduling
+  and sub-coordination data exist.
+- Plan an upcoming liturgy — Open liturgy planning for a specific Mass
+  or event (readings, music, special prayers). DEFERRED until liturgy
+  planning surfaces exist.
+- Log family meeting outcomes — After meeting with a family, capture
+  music/readings/liturgical selections. DEFERRED until family meeting
+  coordination workflow exists.
+
+NAV ITEMS (sidebar)
+───────────────────
+v1 nav is intentionally thin until foundations exist.
+
+- Home
+- Liturgical calendar — DEFERRED until Liturgical calendar feature
+  exists. When built: read-only view of the parish liturgical year
+  with feasts, Holy Days, special seasons, and any parish-specific
+  events. Director of Music reads heavily; does not own the data
+  (Office Manager does).
+- Minister scheduling — DEFERRED until minister scheduling tables
+  exist. When built: schedule and reschedule lectors, EMs, altar
+  servers, choir, musicians for specific Masses. Sub coordination.
+  Recurring assignments (e.g., "Smith family on the 1st Sunday of the
+  month").
+- Liturgy planning — DEFERRED. When built: per-Mass and per-event
+  planning of readings, music, special prayers, environment. Reads
+  from Liturgical calendar; writes plans tied to specific dates.
+- Family meetings — DEFERRED until family meeting coordination
+  workflow exists. When built: list of upcoming and recent family
+  meetings, with planning state and outcomes captured.
+- Mass intentions — Read-only view of intentions assigned to upcoming
+  Masses. Director of Music does not own this data (Office Manager
+  does, with Business Manager as backup), but reads it for context
+  when planning Masses.
+
+NOTES
+─────
+- This hat consolidates Music Director and Liturgical Director from
+  the original 14-hat sketch into the actual parish role at St.
+  Francis. The original separate Liturgical Director hat is not
+  designed — at parishes where the role splits, a future Liturgical
+  Director hat could be designed by extracting the non-music surfaces
+  from this one.
+- The Director of Music plays at Mass personally. This means their
+  schedule has dual nature: "I'm playing at this Mass" and "I need a
+  sub for this Mass." Sub coordination is a real workflow, not a side
+  note. When minister scheduling is designed, the Director of Music's
+  own playing schedule and their need-a-sub flow must both be
+  first-class concerns.
+- The "missed events" problem (events forgotten because Pastor
+  directives are verbal-only) is the direct motivation for the Pastor
+  directives planned feature. The "Pastor directives assigned to me"
+  home section is the surface where this hat benefits from that
+  feature most. Without state-driven directives, this hat is missing
+  the single biggest workflow it needs.
+- The Pastor directs liturgy planning. Director of Music executes what
+  the Pastor has directed; does not act autonomously on major
+  liturgical decisions. The hat's home screen is therefore organized
+  around "what has the Pastor asked me to do" (directives) and "what
+  is coming up that needs prep" (liturgies, family meetings), rather
+  than "what shall I autonomously plan." This is a design consequence
+  of how the role actually works at St. Francis.
+- Funeral and wedding workflow: Office Manager sets the date →
+  Director of Music meets with family (music, readings, liturgical
+  selections) → Pastor meets with family (always for funerals;
+  sometimes for weddings). This is a sequenced cross-hat workflow.
+  Captured in CROSS-HAT WORKFLOW DEPENDENCIES below; full design
+  deferred until lockstep design with Office Manager and Pastor.
+- Per-sacrament prep checklists (a separate planned feature) will
+  surface here when built — Director of Music's checklist items for
+  each sacrament prep type. Today, prep is informal.
+- Mass intentions are owned by Office Manager (with Business Manager
+  backup). Director of Music reads but does not write.
+- Successor test: if this hat were fully built, a new Director of
+  Music joining the parish should be able to land on this home screen
+  and within their first week understand: what's coming up
+  liturgically, what the Pastor has asked them to do, what ministers
+  are assigned (and where gaps are), what family meetings are pending.
+  That test cannot pass in v1; it is the bar for the hat being "built"
+  rather than just "designed."
+
+DATA MODEL DEPENDENCIES
+───────────────────────
+This hat is foundation-heavy. Most of its substantive data does not
+yet exist. Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN, all
+workflow tables built to support this hat must include explicit state
+machines.
+
+- profiles (existing) — read for minister and musician records, family
+  contact info.
+- Liturgical calendar (does not exist; planned feature) — read for
+  feasts, Holy Days, seasons, parish-specific liturgical events.
+  Reference data, not workflow data.
+- Pastor directives (does not exist; planned feature) — workflow data
+  with explicit state. Read for "directives assigned to me" surfaces;
+  writes via state transitions (accepting, completing).
+- Minister scheduling tables (do not exist) — assignment of specific
+  ministers to specific Masses. Must include state (proposed,
+  confirmed, declined, sub-needed, sub-confirmed). Recurring
+  assignments. Sub coordination data.
+- Liturgy planning records (do not exist) — readings, music, special
+  prayers per Mass or event. State (draft, finalized).
+- Family meeting records (do not exist; cross-hat with Office Manager
+  and Pastor) — funeral/wedding/baptism family meetings, selections
+  made, state of planning.
+- Mass intentions table (does not exist; planned feature, owned by
+  Office Manager) — read-only access from this hat.
+
+CROSS-HAT WORKFLOW DEPENDENCIES
+───────────────────────────────
+This hat participates in multiple cross-hat workflows. Each must be
+designed in lockstep with the participating hats; not designed in
+isolation here.
+
+- Funeral coordination workflow — Office Manager intake → Director of
+  Music family meeting (music, readings, selections) → Pastor family
+  meeting → Facility Manager (reception space if needed) →
+  Communications (announcements) → Volunteer recruitment (reception
+  volunteers, ushers). Same pattern noted in Volunteer hat. Designed
+  in lockstep with all participating hats.
+- Wedding coordination workflow — similar shape; Pastor meeting may
+  or may not happen depending on circumstances.
+- Baptism prep workflow — Director of Music meets with families;
+  Pastor performs sacrament. Designed in lockstep with Pastor and
+  per-sacrament prep checklists feature.
+- Pastor directives workflow — Pastor creates directives; Director of
+  Music receives, accepts, executes, completes. Designed in lockstep
+  with Pastor hat. State machine for directives is the primary
+  workflow this hat depends on.
+- Liturgy planning at the Pastor's direction — Pastor directs during
+  staff meetings; Director of Music plans. Workflow lives partly in
+  directives, partly in liturgy planning records. Designed in
+  lockstep with Pastor hat.
+- Mass intentions assignment — Office Manager assigns intentions to
+  specific Masses; Director of Music reads for liturgy planning
+  context. Light cross-hat dependency; primarily Office Manager's
+  workflow.
+
+═══════════════════════════════════════════════════════════════════════════
+
 PLANNED FEATURES
 ════════════════
 
