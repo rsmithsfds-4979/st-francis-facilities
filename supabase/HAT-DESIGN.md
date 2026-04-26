@@ -1201,6 +1201,32 @@ liturgical-year directives can be tied to dates). Basic ambition level
 of directives can ship without the calendar; coordinated and integrated
 levels depend on it.
 
+Project rename — broader scope than "facilities"
+────────────────────────────────────────────────
+Problem: The project is named st-francis-facilities, reflecting its
+original scope as a facilities management tool. The actual scope has
+expanded substantially — this app is now a parish management system
+that fills gaps Ministry Platform (the parish's existing church
+management system) does not address. The current name misleads
+future contributors about what the app does.
+
+Future shape: Rename the GitHub repo, the local working directory,
+and any path references in code or documentation to a name reflecting
+the broader scope. Naming is TBD; candidates worth considering
+include something parish-management-flavored that does not lock in
+"facilities."
+
+Hat ownership: Admin handles the rename mechanically. Not hat-design
+work.
+
+Recommended timing: Defer until hat design is substantially complete.
+Execute as a focused plumbing session before substantial new feature
+work begins — rename touches multiple files and is best done all at
+once, not interleaved with design or feature commits. Roughly an
+hour of careful work: rename folder, update GitHub remote, search
+and replace any path references in code/docs, verify nothing broke,
+push.
+
 ═══════════════════════════════════════════════════════════════════════════
 
 DESIGN PROCESS NOTES
