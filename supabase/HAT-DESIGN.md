@@ -413,6 +413,166 @@ design needed with other hats.
 
 ═══════════════════════════════════════════════════════════════════════════
 
+ACCOUNTANT HAT
+══════════════
+
+Philosophy: Outside-reviewer hat in the current St. Francis context.
+Accounting itself happens in QuickBooks Desktop, not in this app. The
+Accountant's role here is read-only visibility into facility spending
+for context when reconciling books. Thin by design — a parish accounting
+hat in a facilities-leaning parish management app should not pretend to
+be a full accounting tool. Real accounting work belongs in the
+accounting system.
+
+v1 SHIPPING NOTE: Most of this hat's substantive surfaces depend on
+facility expense tracking, which does not yet exist. Accountant hat
+ships meaningfully only when that foundation is built. Until then, the
+hat is documented in this file but has minimal real UI. This is not a
+failure mode; it is honest scoping per ARCHITECTURAL COMMITMENTS.
+
+Who wears this hat: Currently an outside accountant who comes in every
+2 weeks to do bookkeeping. Situation is in flux — Business Manager
+intends to take over daily bookkeeping. This design reflects the current
+state and is likely to be revised when that organizational change
+resolves. A SaaS variant for parishes with internal staff accountants
+would be a different design (data entry, approval workflow involvement,
+deeper integration) and is not captured here.
+
+HOME SCREEN
+───────────
+v1 ships one section. Second section is documented but deferred per
+ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN — will not appear in
+the UI until underlying state-tracking exists.
+
+- Recent facility spending — Summary of facility-related expenses since
+  last review (default: last 14 days, matching the every-2-weeks review
+  cadence). Total spend, count of transactions, top vendors, top
+  categories. Glance-and-go. Ships when facility expense tracking
+  exists; until then, this section is not rendered (per NO UI THEATRE).
+- Pending items needing attention — DEFERRED, not built in v1. Requires
+  state machines on facility expense tracking, vendor records, and
+  invoice processing — none of which exist yet. Section is documented
+  in this design as the intended future surface; will be built when
+  underlying state-tracking exists. No empty-state placeholder shipped
+  — per NO UI THEATRE, sections without real backing data are not in
+  the UI.
+
+QUICK ACTIONS (primary buttons on home)
+───────────────────────────────────────
+v1 ships one button. Second button is documented but deferred — per
+NO UI THEATRE, a button that does not actually export is not in the UI.
+The action ships when facility expense tracking exists and an export
+format is designed.
+
+- View facility expenses — Jump to facility expense list with default
+  filter set to current review period. Ships when facility expense
+  tracking exists; not rendered until then.
+- Export for QuickBooks — DEFERRED, not built in v1. Intended as the
+  second quick action when facility expense tracking exists and an
+  export format is designed. Format TBD; depends on what expense
+  tracking captures and what QuickBooks Desktop can ingest.
+
+NAV ITEMS (sidebar)
+───────────────────
+v1 nav is intentionally thin. Most nav items depend on data that does
+not yet exist and are deferred per ARCHITECTURAL COMMITMENTS.
+
+- Home
+- Facility expenses — DEFERRED until facility expense tracking exists.
+  When built: read-only list of facility-related spending, filterable
+  by date, vendor, category, project. Drill-down to individual work
+  order, contractor invoice, or vendor record.
+- Project approvals — Read-only view of approved projects and their
+  associated spending. Contextual reference; Accountant is not in the
+  approval chain. Ships when project approval workflow ships (cross-hat
+  dependency, see below).
+- Reports — DEFERRED. Pre-canned reports useful for accounting context
+  (spend by category, spend by vendor, project-vs-budget where budgets
+  exist). Depends on facility expense tracking and project records
+  being substantive.
+
+NOTES
+─────
+- This hat's design follows ARCHITECTURAL COMMITMENTS / STATE-DRIVEN
+  DESIGN. Surfaces that require state machines (Pending items, vendor
+  flags, invoice processing) are deferred until the underlying
+  state-tracking exists. Per NO UI THEATRE, deferred surfaces are not
+  in the v1 UI — not as empty states, not as "coming soon" stubs. They
+  are documented in this file and built later when foundations exist.
+- This hat is a placeholder shaped by current organizational
+  uncertainty. The Business Manager intends to take over daily
+  bookkeeping. If that happens, the outside accountant may not need a
+  login to this app at all — they would work entirely from QuickBooks.
+  If it does not happen, this design is roughly right but should be
+  revisited based on actual usage patterns.
+- This hat is intentionally thin. Accounting work happens in QuickBooks
+  Desktop. This app provides facility-spending visibility for context,
+  not full accounting functionality. Resist the urge to expand this hat
+  into a general-ledger replacement — that is a different product.
+- Accountant is not in the project approval workflow. The chain is
+  Facility Manager recommends → Business Manager approves → Pastor
+  approves → Diocese gate at ≥$35K. Accountant sees approved projects
+  after the fact for context, but does not approve.
+- Day-to-day repair spending (small, no contractor, no signature
+  needed) and project-level spending (contractor involved, signed
+  agreement) both flow into the books. Accountant views should show
+  both, distinguished where useful. Spending split confirmed during
+  HAT-DESIGN session — Business Manager approves project spending;
+  day-to-day repairs do not require approval. Trigger for approval is
+  qualitative (contractor + signature), not a strict dollar threshold
+  on the low end.
+- A SaaS variant of this hat for parishes with internal staff
+  accountants is a known different design. Staff accountants would do
+  data entry, may be in approval chains, and would integrate more
+  deeply with the parish's accounting system. Not captured here.
+  Documented for SaaS-future reference.
+- Successor test: an outside accountant or a future internal accountant
+  should be able to land on this home screen, when it exists, and
+  within 60 seconds know what has been spent recently and whether
+  anything needs their attention before they start reconciling. v1 home
+  — when it ships — will pass this test for the "what has been spent"
+  half; the "needs attention" half ships when state-tracking exists.
+
+DATA MODEL DEPENDENCIES
+───────────────────────
+This hat reads facility expense data that does not currently exist in
+the app. Most of this hat's value is contingent on building that
+tracking first. Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN,
+the dependent tables must include explicit state machines, not just
+data columns.
+
+- profiles (existing) — read for vendor and contractor records if those
+  are stored in profiles, or via separate vendor/contractor tables if
+  those exist. Schema TBD.
+- Facility expense tracking (does not exist) — work order costs, vendor
+  invoices, contractor payments, parts purchases. Needs schema design
+  and implementation before this hat has substantive data to display.
+  Must include state columns (e.g., invoice status: received / approved
+  / paid / void; vendor record status: new / active / deactivated /
+  needs_review).
+- Project records (partially exist) — approved projects with cost
+  fields. Read-only access for the Project Approvals nav item. Project
+  state machine designed in lockstep with project approval workflow.
+
+No new tables required for this hat itself; this hat depends on tables
+that other features will introduce.
+
+CROSS-HAT WORKFLOW DEPENDENCIES
+───────────────────────────────
+- Business Manager evolving role — if BM takes over daily bookkeeping,
+  this hat's purpose changes significantly. Design must be revisited in
+  lockstep with BM hat design and the resolution of the bookkeeping
+  organizational question.
+- Project approval workflow — this hat reads from the workflow but does
+  not participate. Designed in lockstep with Pastor, Business Manager,
+  and Facility Manager hats around the project approval chain.
+- Facility expense tracking feature — this hat is largely empty until
+  that feature exists. Design coordination needed when expense tracking
+  is built. Per STATE-DRIVEN DESIGN, expense tracking schema must
+  include state machines from the start, not bolted on later.
+
+═══════════════════════════════════════════════════════════════════════════
+
 PLANNED FEATURES
 ════════════════
 
