@@ -1089,11 +1089,122 @@ Logging stipend-paid masses, assigning to specific masses on calendar.
 
 Hat ownership: Office Manager (primary), Business Manager (backup when Office Manager is out).
 
-Clergy categorization in data model + unified clergy calendar view
-──────────────────────────────────────────────────────────────────
-Pastor/Parochial Vicar/Deacon as a category.
+Clergy availability surface — staff-only, via dedicated Google Calendars
+────────────────────────────────────────────────────────────────────────
+Problem: Clergy at St. Francis (Pastor, Parochial Vicar, Deacon) keep
+their schedules in personal Google Calendars that no other staff can
+see. The parish-relevant subset — when each clergy person is at the
+parish, when they're traveling, when they're available for sacraments
+or pastoral emergencies — is trapped in those personal calendars. The
+practical failure mode is reachability: when Office Manager or other
+staff need to find a clergy member in an emergency, or schedule a
+sacrament around clergy availability, the information lives somewhere
+they can't access. Conflating "personal calendar" with "parish
+calendar" means the safe default is "share nothing," which is what
+happens today.
 
-Hat ownership: Office Manager.
+Future shape: Each clergy member maintains a separate Google Calendar
+specifically for parish-relevant availability — distinct from their
+personal calendar. The app subscribes to each clergy person's
+parish-availability calendar (read-only) via the existing Google
+Calendar integration. Staff-facing surfaces show clergy current
+status ("Pastor: at parish until 5pm; PV: at diocese all day; Deacon:
+off") and next-7-days view for sacrament scheduling and coordination
+workflows. Personal calendars are never touched by the app — privacy
+is structural, not policy.
+
+Access control model: Parish-level hat-based defaults set the floor
+of who can see clergy availability. Individual clergy can narrow
+their own visibility further (e.g., Pastor restricts Business
+Manager) but cannot broaden it (Pastor cannot grant Janitor access
+if the parish default does not). Effective visibility for any given
+viewer is the intersection of "is this hat permitted by the parish
+default" and "has the clergy person not specifically restricted this
+hat or person." This honors both parish coordination needs (defaults
+work out of the box without per-clergy configuration) and individual
+clergy autonomy (restrictions where genuinely needed).
+
+Three levels of ambition:
+
+- Basic: hat-based defaults only. Parish-level configuration
+  (managed by Admin via the "Hats and permissions" surface) decides
+  which staff hats see clergy availability. All clergy share the
+  same visibility rules at this level. Ships first because it is
+  the simpler implementation and is enough to fix the core
+  coordination problem.
+- Coordinated: per-clergy narrow-only override. Each clergy member
+  can additionally restrict who sees their availability — but only
+  narrower than the parish default, never broader. Effective
+  visibility is the intersection (parish default AND not
+  individually-restricted). Sacrament scheduling workflows query
+  effective clergy availability automatically. Clergy can mark
+  availability windows (e.g., "available for emergency calls
+  8am-8pm") separately from specific events.
+- Integrated: the parish-availability calendar surfaces
+  parish-generated events (Mass schedules, sacramental events,
+  parish meetings) automatically alongside manually-entered items.
+  Clergy members see a unified view in their own Google Calendar
+  that combines their parish-availability calendar with the app's
+  parish-event feed.
+
+Hat ownership: Parish-level access defaults are managed by Admin
+(via the "Hats and permissions" surface, same surface that handles
+other authority configurations). Clergy each manage their own
+parish-availability calendar (Google Calendar) and, at the
+coordinated ambition level, their own narrow-only visibility
+overrides.
+
+Default hat-level visibility (parish default; subject to clergy
+narrow-only override):
+
+- Office Manager (primary user, for scheduling and reachability).
+- Pastor / Parochial Vicar / Deacon (each manages their own; reads
+  others' for coordination).
+- Director of Music (for liturgy planning).
+- Business Manager (for staff coordination).
+- RE Director / RE Admin (for sacrament prep coordination).
+
+Default not-visible:
+
+- Janitor, Volunteer, Facility Manager, Communications, Accountant,
+  Youth Minister.
+- Note: Communications is a layered hat — visibility is governed by
+  the wearer's primary hat (IT Director, Office Manager, RE Admin),
+  not by the Communications layer itself. The Communications layer
+  neither grants nor revokes clergy availability access.
+
+Privacy posture: This feature is staff-only by design. There is no
+parishioner-facing version of this surface and none is planned.
+Parishioner-facing parish-events surfaces (Mass schedules, public
+events) are separate features that draw from Ministry Platform's
+parish-events feed and have nothing to do with clergy
+parish-availability calendars. The two data sources never mix.
+
+Clergy as a category in the data model
+──────────────────────────────────────
+Problem: Several surfaces and workflows need to distinguish clergy
+from other people-records (staff, parishioners, vendors). Examples:
+sacramental celebrants must be clergy; the clergy availability
+surface needs to know who counts as clergy; some routing and
+permissions logic varies by category. Without an explicit clergy
+category in the data model, the app would have to infer category
+from hat assignments or hard-code per-row, both of which get messy
+and brittle as the app grows.
+
+Future shape: An explicit category attribute on people-records (in
+profiles or equivalent) that distinguishes clergy from staff, from
+parishioners, from vendors. Clergy sub-types (Pastor / Parochial
+Vicar / Deacon) may also be tracked as a sub-attribute or as
+hat-based identification, depending on what query patterns require.
+
+Hat ownership: Admin (data model design and migration). Reads from
+the category attribute happen across many hats — anywhere a workflow
+needs to filter by "is this person clergy."
+
+This is foundational reference data, not a workflow feature. It does
+not need a state machine. It's a prerequisite for the clergy
+availability surface and for any other feature that distinguishes
+clergy from non-clergy.
 
 Per-sacrament prep checklists
 ─────────────────────────────
