@@ -1079,9 +1079,94 @@ function (not self-service) to keep authority changes auditable.
 
 Time off requests
 ─────────────────
-Feature does not exist yet.
+Problem: Staff at St. Francis have no shared system for requesting,
+tracking, or approving time off. Today the process is informal —
+verbal requests, email, or paper — with no central record. This
+produces several failure modes: requests get forgotten or
+miscommunicated, managers can't see the cumulative time-off load
+across their reports, schedule conflicts (two staff out the same
+week) aren't surfaced until they happen, and there is no audit
+trail of approvals.
 
-Hat ownership: Janitor.
+Future shape: A request workflow with explicit state. Any staff hat
+wearer (in their primary hat) submits a time off request specifying
+dates, reason, and any notes. The request routes to the wearer's
+designated manager based on a hat-to-manager mapping. Manager
+approves or denies; status reflected on requester's home screen and
+in cumulative views. Approved time off shows on relevant calendars
+for coordination (e.g., who's scheduled to be out next week).
+
+Hat-to-manager mapping at St. Francis:
+
+- Janitor → Facility Manager.
+- Office Manager → Business Manager.
+- Director of Music → Business Manager.
+- RE Director → Business Manager.
+- RE Admin → Business Manager.
+- Youth Minister → Business Manager.
+- Facility Manager → Business Manager.
+- Business Manager → Pastor.
+- Communications wearers → primary hat's manager (Communications is
+  a layered hat; time off is requested in the primary hat, not the
+  Communications layer; routing follows the primary hat's manager).
+- Pastor, Parochial Vicar, Deacon — clergy do not submit time off
+  requests through this app. Clergy absences are handled outside
+  this system (diocesan channels, direct communication with Pastor
+  for PV/Deacon).
+- Volunteer — not staff; no time off requests.
+
+The mapping is parish-policy-shaped, not per-person. All staff in a
+given hat report to the same manager for time off purposes. The
+mapping is configured by Admin via the "Hats and permissions"
+surface (same surface that handles other authority configurations).
+Exceptions to the mapping are not supported in v1; if needed, they
+would require per-person manager override at the data layer.
+
+Three levels of ambition:
+
+- Basic: time_off_requests table with explicit state (submitted /
+  approved / denied / cancelled / completed). Hat-to-manager mapping
+  (likely a configuration table). Requester home screen shows their
+  submitted requests with status. Manager home screen shows
+  requests pending approval. State machine enforces transitions
+  (only manager can approve/deny; only requester can cancel before
+  approval). Ships first because it solves the core problem
+  (forgotten or untracked requests).
+- Coordinated: cumulative views — requester sees their year-to-date
+  time off; manager sees aggregate time off across all their direct
+  reports for capacity planning. Conflict detection (two staff in
+  the same hat or department out the same dates triggers a warning).
+  Approved time off automatically reflected on staff-facing calendar
+  surfaces.
+- Integrated: time off integrated with payroll/scheduling. Approved
+  time off automatically blocks scheduling assignments for the
+  requester during the approved dates. Annual time-off accrual rules
+  (sick days, vacation days, personal days) tracked per staff
+  member. Reporting for compliance or HR review.
+
+Hat ownership: Multi-hat by design.
+
+- Any staff hat wearer (in their primary hat) creates and tracks
+  their own requests.
+- Business Manager is the most-loaded approver — six staff hats
+  route to her (Office Manager, Director of Music, RE Director, RE
+  Admin, Youth Minister, Facility Manager). Her home screen will
+  need a substantive "time off requests pending my approval"
+  surface when this feature ships, with summary counts and
+  drill-down.
+- Facility Manager has one direct report (Janitor) for time off
+  approval purposes. Lighter surface but still needed.
+- Pastor approves only Business Manager's time off requests. Light
+  surface; appears alongside other Pastor-only items.
+- Admin manages the hat-to-manager mapping (parish-policy
+  configuration). Not a runtime decision; set during initial
+  configuration and updated when parish structure changes.
+
+Per ARCHITECTURAL COMMITMENTS / STATE-DRIVEN DESIGN: time off
+requests are workflow data with explicit state. The state machine is
+the foundation of the feature; "needs my approval" surfaces on
+manager home screens query the state column directly, not heuristic
+queries.
 
 Mass Intentions
 ───────────────
