@@ -12,6 +12,68 @@ order: HOME SCREEN, QUICK ACTIONS, NAV ITEMS, NOTES.
 
 ═══════════════════════════════════════════════════════════════════════════
 
+ARCHITECTURAL COMMITMENTS
+═════════════════════════
+
+Principles that shape how features in this app are designed and built.
+Captured here so they apply consistently across all hats and all features,
+and so future contributors (or future Rick) can see what foundational
+decisions were made and why.
+
+STATE-DRIVEN DESIGN
+───────────────────
+All workflow data uses explicit state machines, not heuristic queries.
+
+- Workflow tables (project approvals, work orders, invoices, vendor
+  records, volunteer commitments, sacrament prep, funeral coordination,
+  etc.) include explicit status columns with defined transitions.
+- "Needs my attention" surfaces, pending-item lists, approval queues, and
+  similar coordination UI query state columns directly. They do not
+  approximate state with heuristic queries like "rows created in the last
+  30 days where flag X is true."
+- Features that require state are not built until the underlying state
+  machines exist. UI does not display fake or approximated state.
+
+Rationale: This app supports multiple hats coordinating on overlapping
+work (project approvals, funeral coordination, sacrament prep, event
+coordination, etc.). Coordination depends on shared, accurate state.
+Half-baked SaaS happens when features ship faster than foundations,
+producing UI that looks complete but leaks under real coordination load.
+State-driven design is a deliberate choice to avoid that.
+
+Implications:
+
+- More upfront design work — every workflow needs its state machine
+  designed before its UI is built.
+- Real-time state follows naturally from state-driven design. Page loads
+  query current state from Postgres; no separate sync layer required for
+  v1. Supabase Realtime subscriptions are an option for live updates
+  without page refresh, deferred until needed.
+- Existing hat designs (Volunteer, Admin) implicitly assume this
+  commitment. Sections deferred in those designs (e.g., Volunteer's
+  "open opportunities," Admin's "needs my attention") are deferred
+  specifically because the underlying state does not yet exist. They
+  will be built when state-tracking exists, not before.
+
+NO UI THEATRE
+─────────────
+If a screen displays information, the information must be real and
+current.
+
+- No mock data shipped to production.
+- No placeholder states that look like working features.
+- No "coming soon" stubs that look indistinguishable from real UI.
+- If a feature is not ready, it is not in the UI. It does not appear as a
+  disabled element, a stubbed page, or a fake widget.
+
+Rationale: Half-baked SaaS dies in the gap between what a UI implies
+works and what actually works. Users lose trust when they cannot tell
+which parts of an app are real. This commitment forces honest incremental
+shipping — build foundations, ship surfaces on top, do not fake surfaces
+while foundations are missing.
+
+═══════════════════════════════════════════════════════════════════════════
+
 JANITOR HAT
 ═══════════
 
