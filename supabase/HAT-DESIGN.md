@@ -107,6 +107,124 @@ NOTES
 
 ═══════════════════════════════════════════════════════════════════════════
 
+VOLUNTEER HAT
+═════════════
+
+Philosophy: Recipient-shaped at the core (volunteers receive coordination,
+they don't initiate it), with coordinator capabilities layered in for
+people who lead a ministry or facilitate a group. Layering is driven by
+membership data (ministry_memberships, group_memberships), not by
+separate hats.
+
+Who wears this hat: Parishioners who help with parish activities — funeral
+receptions, lectoring, RE classroom helpers, festival volunteers, ministry
+members, small group participants. Some staff also wear this hat in
+addition to their staff hat (e.g., a staff member who serves as a lector
+wears both Office Manager and Volunteer).
+
+HOME SCREEN
+───────────
+Three sections, conditionally shown based on the person's memberships.
+A pure volunteer with no leadership role sees only (1) plus a friendly
+empty state.
+
+- My commitments (always shown) — Upcoming things this person is signed up
+  for, soonest first. Each entry shows date, time, what it is, where, and
+  who to contact. Empty state when no commitments.
+- Ministries I lead (shown when person leads ≥1 ministry) — For each
+  ministry led: upcoming events needing coordination, roster snapshot,
+  anything flagged "can't make it" by an assigned volunteer.
+- Groups I'm in (shown when person is a member of ≥1 group) — For each
+  group: next meeting, member list, recent activity. Facilitator tools
+  surface here when the person facilitates the group.
+
+QUICK ACTIONS (primary buttons on home)
+───────────────────────────────────────
+Adaptive set, capped at 4 visible. The system picks the most relevant
+based on the person's memberships and current commitments. A pure
+volunteer with no leadership role sees 2 actions; a ministry leader who
+also facilitates a group could see all 4.
+
+- Update contact info (always available) — Phone, email, preferred contact
+  method.
+- I can't make it (when person has upcoming commitments) — Flag a specific
+  commitment as a problem so the coordinator knows to find a replacement.
+- Recruit volunteers (when person leads a ministry) — Post an ask for an
+  upcoming event needing helpers.
+- Mark attendance (when person leads a ministry with a recent event) —
+  Record who showed up.
+- Message my group (when person facilitates a group) — Send a group-wide
+  message.
+
+NAV ITEMS (sidebar)
+───────────────────
+Adaptive. A pure volunteer sees 2 nav items; a ministry leader sees 3 or 4.
+
+- Home (always)
+- My profile / contact info (always)
+- Ministries I lead (when applicable) — Deeper coordination views per
+  ministry.
+- My groups (when applicable) — Group pages.
+
+NOTES
+─────
+- Volunteer hat is the only parishioner-facing hat in the current set; all
+  others are staff-facing. The architectural question of whether parishioners
+  should have a separate portal was raised and deferred — staying with
+  one-app-many-hats for now.
+- Staff who also volunteer wear this hat in addition to their staff hat via
+  active_hat switching. When in Volunteer mode they see this thin view; when
+  in their staff hat they see staff coordination.
+- Adaptive home screen and quick actions are a precedent established here.
+  First hat where the visible UI morphs based on the person's data rather
+  than being fixed. Future design question: should other hats borrow this
+  pattern (e.g., should a staff member who also volunteers see a "your
+  volunteer commitments" card on their staff home screen)? Defer until at
+  least one staff hat is built.
+- "I can't make it" action implies a notification path back to the recruiting
+  coordinator. Until the coordination layer exists, store who-to-notify on
+  each commitment record.
+- Open opportunities to sign up for deferred to v2 — requires the coordination
+  layer to exist (someone has to post opportunities first).
+- Availability windows (general "I'm available these times") deferred — only
+  matters if something queries it. Not needed for v1.
+
+DATA MODEL DEPENDENCIES
+───────────────────────
+These do not exist yet and need to be designed before the coordinator
+capabilities can be built.
+
+- ministry_memberships table or equivalent: (person_id, ministry_id, role)
+  where role distinguishes member from leader.
+- group_memberships table or equivalent, same shape.
+- A commitments (or volunteer_assignments) table tying a person to a
+  specific event/task with a contact-coordinator field.
+
+Schema design deferred until the coordination layer is being built. RLS
+will need review at that time.
+
+CROSS-HAT WORKFLOW DEPENDENCIES
+───────────────────────────────
+The Volunteer hat receives coordination from workflows that span multiple
+hats. These need to be designed in lockstep when the participating hats
+are designed.
+
+- Funeral coordination — Office Manager intake → Liturgical Director
+  (readings, music) → Pastor (family meeting, presider) → Facility Manager
+  (reception space) → Communications (announcements) → Volunteer
+  recruitment and notification.
+- Wedding coordination — Similar shape, different participants.
+- Event/festival coordination — Multiple ministries recruiting volunteers
+  in parallel.
+- Sacramental prep — RE Director / RE Admin coordinate volunteers for prep
+  sessions.
+
+Same architectural pattern as the project approval workflow (Pastor /
+Business Manager / Facility Manager): cross-hat process that should be
+designed across hats, not owned by one.
+
+═══════════════════════════════════════════════════════════════════════════
+
 PLANNED FEATURES
 ════════════════
 
