@@ -116,6 +116,30 @@ NOTES
 - Future bigger-parish consideration: Supply Coordinator hat will subset which
   janitors can write supply_requests vs. read-only.
 
+BUILD STATE
+───────────
+Mostly built. The mobile-first per-day work view exists and is the
+intended Janitor home screen.
+
+What exists today:
+
+- Mobile-first My Work view (renderMyWork in js/render.js): per-day
+  list of assigned work orders with mark-complete, parish calendar
+  context, and supply request entry. Bilingual EN/ES.
+- Work order detail and completion submission (openMobileWO,
+  submitMobileWOComplete in js/render.js).
+- Supply request submission with state machine (supply_requests
+  table; approveSupplyRequest / denySupplyRequest in js/app.js).
+
+What is not yet built:
+
+- Hat-aware login routing: a janitor logging in still lands on the
+  generic Dashboard rather than being routed to My Work
+  automatically. Routing logic exists at the function level (go
+  function in js/app.js) but is not driven by active_hat.
+- Time off request quick action and surface. Depends on the time
+  off requests planned feature.
+
 ═══════════════════════════════════════════════════════════════════════════
 
 OFFICE MANAGER HAT
@@ -392,6 +416,45 @@ NOTES
   within 30 seconds know whether anything is broken and what's happened
   recently. The two home sections are designed to pass that test.
 
+BUILD STATE
+───────────
+Foundation built; system-monitoring surfaces are new work.
+
+What exists today:
+
+- Settings page (renderSettings in js/render.js): central admin
+  configuration surface.
+- User management (renderUsers, updateUserRole in js/render.js):
+  list users, set role, set assigned buildings.
+- Taxonomy management: asset categories, room types, supply
+  categories, contact roles all manageable from Settings.
+- Google Calendar integration configuration (in app_settings
+  table, surfaced in Settings).
+- Dashboard weather location configuration.
+- Authentication flow (magic links via initAuth, sendMagicLink,
+  signOut in js/app.js).
+- Per-row attribution columns on 18 tables (created_by,
+  updated_by, created_at, updated_at), added in security
+  migrations 20260425000001 through 20260425000004.
+
+What is not yet built:
+
+- Hat assignment UI: the hats jsonb and active_hat columns exist
+  on profiles, but there is no UI to view or assign hats. Today
+  hat assignments are made via direct SQL.
+- Audit trail review surface: the per-row attribution data exists
+  but there is no UI to query it. Recent activity and full audit
+  trail nav items from the design are not implemented.
+- System status snapshot: integration status, recent error count,
+  and last successful login indicators from the home screen
+  design do not exist as a unified surface. Some pieces (active
+  user count from renderUsers) are queryable but not surfaced.
+- Channel manager assignment UI: depends on the Communications
+  workflow planned feature being built.
+- Hat-aware login routing decision: the question of where Admin
+  lands on login is open; today admins land on the generic
+  Dashboard.
+
 DATA MODEL DEPENDENCIES
 ───────────────────────
 Admin reads existing tables; doesn't introduce new ones in v1.
@@ -532,6 +595,42 @@ NOTES
   anything needs their attention before they start reconciling. v1 home
   — when it ships — will pass this test for the "what has been spent"
   half; the "needs attention" half ships when state-tracking exists.
+
+BUILD STATE
+───────────
+Data exists; Accountant-specific framing does not. Half the value
+of this hat is realized today through existing financial reports,
+just not framed as Accountant.
+
+What exists today:
+
+- Financial Dashboard (renderFinance, renderBudgetProgress,
+  renderBuildingCosts, renderSpendingChart in js/render.js):
+  facility spending visibility across vendors, buildings, and
+  categories.
+- Projects · Finance report (renderProjectsFinanceReport in
+  js/render.js): project-level spending tracking.
+- Vendor invoices table and view (vendor_invoices, renderInvoices)
+  with paid/unpaid tracking and filtering by year, building,
+  vendor.
+- Budgets table for annual facility spending targets.
+
+What is not yet built:
+
+- Accountant hat home screen as designed: a "Recent facility
+  spending" summary scoped to a review period (default 14 days).
+  Today the Financial Dashboard is comprehensive but not framed
+  as a glance-and-go review surface for an outside accountant.
+- Hat-aware login routing for the Accountant role.
+- Export for QuickBooks: deferred per design pending facility
+  expense tracking format decisions.
+- Pending items needing attention surface: deferred per design
+  pending state machines on facility expense tracking.
+
+The existing Financial Dashboard is functionally close to what an
+Accountant would want. Reframing it as the Accountant hat home
+screen, scoped to a review period, would deliver most of the v1
+hat value without significant new code.
 
 DATA MODEL DEPENDENCIES
 ───────────────────────
